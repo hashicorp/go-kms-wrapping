@@ -8,9 +8,9 @@ import (
 
 // TestWrapper is a wrapper that can be used for tests
 type TestWrapper struct {
-	wrapperType   string
-	secret []byte
-	keyID  string
+	wrapperType string
+	secret      []byte
+	keyID       string
 }
 
 var _ Wrapper = (*TestWrapper)(nil)
@@ -18,9 +18,9 @@ var _ Wrapper = (*TestWrapper)(nil)
 // NewTestWrapper constructs a test wrapper
 func NewTestWrapper(secret []byte) *TestWrapper {
 	return &TestWrapper{
-		wrapperType:   Test,
-		secret: secret,
-		keyID:  "static-key",
+		wrapperType: Test,
+		secret:      secret,
+		keyID:       "static-key",
 	}
 }
 
