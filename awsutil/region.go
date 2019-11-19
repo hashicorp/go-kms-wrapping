@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
-	hclog "github.com/hashicorp/go-hclog"
 )
 
 // "us-east-1 is used because it's where AWS first provides support for new features,
@@ -37,22 +36,21 @@ Our chosen approach is:
 
 This approach should be used in future updates to this logic.
 */
-func GetOrDefaultRegion(logger hclog.Logger, configuredRegion string) string {
+func GetRegion(configuredRegion string) (string, error) {
 	if configuredRegion != "" {
-		return configuredRegion
+		return configuredRegion, nil
 	}
 
 	sess, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	if err != nil {
-		logger.Warn(fmt.Sprintf("unable to start session, defaulting region to %s", DefaultRegion))
-		return DefaultRegion
+		return "", fmt.Errorf("got error when starting session: %w", err)
 	}
 
 	region := aws.StringValue(sess.Config.Region)
 	if region != "" {
-		return region
+		return region, nil
 	}
 
 	metadata := ec2metadata.New(sess, &aws.Config{
@@ -63,13 +61,13 @@ func GetOrDefaultRegion(logger hclog.Logger, configuredRegion string) string {
 		},
 	})
 	if !metadata.Available() {
-		return DefaultRegion
+		return DefaultRegion, nil
 	}
 
 	region, err = metadata.Region()
 	if err != nil {
-		logger.Warn("unable to retrieve region from instance metadata, defaulting region to %s", DefaultRegion)
-		return DefaultRegion
+		return "", fmt.Errorf("unable to retrieve region from instance metadata: %w", err)
 	}
-	return region
+
+	return region, nil
 }

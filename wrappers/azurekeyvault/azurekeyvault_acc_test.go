@@ -5,9 +5,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 func TestAzureKeyVault_SetConfig(t *testing.T) {
@@ -15,9 +12,7 @@ func TestAzureKeyVault_SetConfig(t *testing.T) {
 		t.SkipNow()
 	}
 
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	tenantID := os.Getenv("AZURE_TENANT_ID")
 	os.Unsetenv("AZURE_TENANT_ID")
 
@@ -40,9 +35,7 @@ func TestAzureKeyVault_Lifecycle(t *testing.T) {
 		t.SkipNow()
 	}
 
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	_, err := s.SetConfig(nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())

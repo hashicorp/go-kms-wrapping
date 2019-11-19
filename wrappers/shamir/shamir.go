@@ -6,16 +6,14 @@ import (
 	"crypto/cipher"
 	"errors"
 
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 )
 
 // ShamirWrapper implements the seal.Access interface for Shamir unseal
 type ShamirWrapper struct {
-	logger hclog.Logger
-	key    []byte
-	aead   cipher.AEAD
+	key  []byte
+	aead cipher.AEAD
 }
 
 // Ensure that we are implementing AutoSealAccess
@@ -26,9 +24,7 @@ func NewWrapper(opts *wrapping.WrapperOptions) *ShamirWrapper {
 	if opts == nil {
 		opts = new(wrapping.WrapperOptions)
 	}
-	seal := &ShamirWrapper{
-		logger: opts.Logger,
-	}
+	seal := new(ShamirWrapper)
 	return seal
 }
 

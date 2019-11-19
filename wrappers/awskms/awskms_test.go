@@ -7,14 +7,10 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 func TestAWSKMSWrapper(t *testing.T) {
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	s.client = &mockClient{
 		keyID: aws.String(awsTestKeyID),
 	}
@@ -38,9 +34,7 @@ func TestAWSKMSWrapper_Lifecycle(t *testing.T) {
 	if os.Getenv(EnvAWSKMSWrappingKeyID) == "" && os.Getenv(EnvVaultAWSKMSSealKeyID) == "" {
 		t.SkipNow()
 	}
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	s.client = &mockClient{
 		keyID: aws.String(awsTestKeyID),
 	}
@@ -63,9 +57,7 @@ func TestAccAWSKMSWrapper_Lifecycle(t *testing.T) {
 	if os.Getenv(EnvAWSKMSWrappingKeyID) == "" && os.Getenv(EnvVaultAWSKMSSealKeyID) == "" {
 		t.SkipNow()
 	}
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	testEncryptionRoundTrip(t, s)
 }
 
@@ -135,9 +127,7 @@ func TestAWSKMSWrapper_custom_endpoint(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Title, func(t *testing.T) {
-			s := NewWrapper(&wrapping.WrapperOptions{
-				Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-			})
+			s := NewWrapper(nil)
 
 			s.client = &mockClient{
 				keyID: aws.String(awsTestKeyID),

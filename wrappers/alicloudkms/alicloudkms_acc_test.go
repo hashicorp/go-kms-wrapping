@@ -5,9 +5,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 // This test executes real calls. The calls themselves should be free,
@@ -25,9 +22,7 @@ func TestAccAliCloudKMSWrapper_Lifecycle(t *testing.T) {
 		t.SkipNow()
 	}
 
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	_, err := s.SetConfig(nil)
 	if err != nil {
 		t.Fatalf("err : %s", err)

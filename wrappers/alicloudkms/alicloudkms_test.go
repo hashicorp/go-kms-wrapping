@@ -9,16 +9,12 @@ import (
 	"testing"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
-	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 const aliCloudTestKeyID = "foo"
 
 func TestAliCloudKMSWrapper(t *testing.T) {
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	s.client = &mockAliCloudKMSWrapperClient{
 		keyID: aliCloudTestKeyID,
 	}
@@ -42,9 +38,7 @@ func TestAliCloudKMSWrapper(t *testing.T) {
 }
 
 func TestAliCloudKMSWrapper_Lifecycle(t *testing.T) {
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	s.client = &mockAliCloudKMSWrapperClient{
 		keyID: aliCloudTestKeyID,
 	}

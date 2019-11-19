@@ -15,8 +15,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -44,8 +42,6 @@ type Wrapper struct {
 
 	environment azure.Environment
 	client      *keyvault.BaseClient
-
-	logger hclog.Logger
 }
 
 // Ensure that we are implementing Wrapper
@@ -57,7 +53,6 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 		opts = new(wrapping.WrapperOptions)
 	}
 	v := &Wrapper{
-		logger:       opts.Logger,
 		currentKeyID: new(atomic.Value),
 	}
 	v.currentKeyID.Store("")
@@ -136,13 +131,13 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	if v.client == nil {
 		client, err := v.getKeyVaultClient()
 		if err != nil {
-			return nil, errwrap.Wrapf("error initializing Azure Key Vault wrapper client: {{err}}", err)
+			return nil, fmt.Errorf("error initializing Azure Key Vault wrapper client: %w", err)
 		}
 
 		// Test the client connection using provided key ID
 		keyInfo, err := client.GetKey(context.Background(), v.buildBaseURL(), v.keyName, "")
 		if err != nil {
-			return nil, errwrap.Wrapf("error fetching Azure Key Vault wrapper key information: {{err}}", err)
+			return nil, fmt.Errorf("error fetching Azure Key Vault wrapper key information: %w", err)
 		}
 		if keyInfo.Key == nil {
 			return nil, errors.New("no key information returned")
@@ -196,7 +191,7 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (blob *wrapping
 
 	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
 	if err != nil {
-		return nil, errwrap.Wrapf("error wrapping dat: {{err}}", err)
+		return nil, fmt.Errorf("error wrapping dat: %w", err)
 	}
 
 	// Encrypt the DEK using Key Vault

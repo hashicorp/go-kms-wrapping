@@ -4,8 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
+	fmt "fmt"
 
-	"github.com/hashicorp/errwrap"
 	uuid "github.com/hashicorp/go-uuid"
 )
 
@@ -63,7 +63,7 @@ func (e *Envelope) Decrypt(data *EnvelopeInfo, additionalData []byte) ([]byte, e
 func (e *Envelope) aeadEncrypter(key []byte) (cipher.AEAD, error) {
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, errwrap.Wrapf("failed to create cipher: {{err}}", err)
+		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
 
 	// Create the GCM mode AEAD

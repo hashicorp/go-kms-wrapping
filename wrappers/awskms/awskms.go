@@ -11,9 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
-	"github.com/hashicorp/errwrap"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-kms-wrapping/awsutil"
 )
@@ -48,7 +46,6 @@ type Wrapper struct {
 	currentKeyID *atomic.Value
 
 	client kmsiface.KMSAPI
-	logger hclog.Logger
 }
 
 // Ensure that we are implementing Wrapper
@@ -60,7 +57,6 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 		opts = new(wrapping.WrapperOptions)
 	}
 	k := &Wrapper{
-		logger:       opts.Logger,
 		currentKeyID: new(atomic.Value),
 	}
 	k.currentKeyID.Store("")
@@ -92,8 +88,12 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		return nil, fmt.Errorf("'kms_key_id' not found for AWS KMS wrapper configuration")
 	}
 
-	// Please see GetOrDefaultRegion for an explanation of the order in which region is parsed.
-	k.region = awsutil.GetOrDefaultRegion(k.logger, config["region"])
+	// Please see GetRegion for an explanation of the order in which region is parsed.
+	var err error
+	k.region, err = awsutil.GetRegion(config["region"])
+	if err != nil {
+		return nil, err
+	}
 
 	// Check and set AWS access key, secret key, and session token
 	k.accessKey = config["access_key"]
@@ -111,7 +111,7 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	if k.client == nil {
 		client, err := k.getAWSKMSClient()
 		if err != nil {
-			return nil, errwrap.Wrapf("error initializing AWS KMS wrapping client: {{err}}", err)
+			return nil, fmt.Errorf("error initializing AWS KMS wrapping client: %w", err)
 		}
 
 		// Test the client connection using provided key ID
@@ -119,7 +119,7 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 			KeyId: aws.String(k.keyID),
 		})
 		if err != nil {
-			return nil, errwrap.Wrapf("error fetching AWS KMS wrapping key information: {{err}}", err)
+			return nil, fmt.Errorf("error fetching AWS KMS wrapping key information: %w", err)
 		}
 		if keyInfo == nil || keyInfo.KeyMetadata == nil || keyInfo.KeyMetadata.KeyId == nil {
 			return nil, errors.New("no key information returned")
@@ -176,7 +176,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 
 	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
 	if err != nil {
-		return nil, errwrap.Wrapf("error wrapping data: {{err}}", err)
+		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
 
 	if k.client == nil {
@@ -189,7 +189,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 	}
 	output, err := k.client.Encrypt(input)
 	if err != nil {
-		return nil, errwrap.Wrapf("error encrypting data: {{err}}", err)
+		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
 
 	// store the current key id
@@ -234,7 +234,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt
 
 		output, err := k.client.Decrypt(input)
 		if err != nil {
-			return nil, errwrap.Wrapf("error decrypting data: {{err}}", err)
+			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}
 		plaintext = output.Plaintext
 
@@ -246,7 +246,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt
 		}
 		output, err := k.client.Decrypt(input)
 		if err != nil {
-			return nil, errwrap.Wrapf("error decrypting data encryption key: {{err}}", err)
+			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
 		}
 
 		envInfo := &wrapping.EnvelopeInfo{
@@ -256,7 +256,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt
 		}
 		plaintext, err = wrapping.NewEnvelope(nil).Decrypt(envInfo, nil)
 		if err != nil {
-			return nil, errwrap.Wrapf("error decrypting data: {{err}}", err)
+			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}
 
 	default:

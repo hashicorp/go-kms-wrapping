@@ -7,16 +7,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
-	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
 const awsTestKeyID = "foo"
 
 func NewAWSKMSTestWrapper() *Wrapper {
-	s := NewWrapper(&wrapping.WrapperOptions{
-		Logger: hclog.New(&hclog.LoggerOptions{Level: hclog.Trace}),
-	})
+	s := NewWrapper(nil)
 	s.client = &mockClient{
 		keyID: aws.String(awsTestKeyID),
 	}

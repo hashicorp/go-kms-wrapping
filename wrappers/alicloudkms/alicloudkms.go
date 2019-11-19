@@ -11,8 +11,6 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/providers"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
-	"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -24,7 +22,6 @@ const (
 
 // Wrapper is a Wrapper that uses AliCloud's KMS
 type Wrapper struct {
-	logger       hclog.Logger
 	client       kmsClient
 	domain       string
 	keyID        string
@@ -40,7 +37,6 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 		opts = new(wrapping.WrapperOptions)
 	}
 	k := &Wrapper{
-		logger:       opts.Logger,
 		currentKeyID: new(atomic.Value),
 	}
 	k.currentKeyID.Store("")
@@ -132,7 +128,7 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 	keyInfo, err := k.client.DescribeKey(input)
 	if err != nil {
-		return nil, errwrap.Wrapf("error fetching AliCloud KMS key information: {{err}}", err)
+		return nil, fmt.Errorf("error fetching AliCloud KMS key information: %w", err)
 	}
 	if keyInfo == nil || keyInfo.KeyMetadata.KeyId == "" {
 		return nil, errors.New("no key information returned")
@@ -189,7 +185,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 
 	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
 	if err != nil {
-		return nil, errwrap.Wrapf("error wrapping data: {{err}}", err)
+		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
 
 	input := kms.CreateEncryptRequest()
@@ -199,7 +195,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 
 	output, err := k.client.Encrypt(input)
 	if err != nil {
-		return nil, errwrap.Wrapf("error encrypting data: {{err}}", err)
+		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
 
 	// Store the current key id.
@@ -232,7 +228,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt
 
 	output, err := k.client.Decrypt(input)
 	if err != nil {
-		return nil, errwrap.Wrapf("error decrypting data encryption key: {{err}}", err)
+		return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
 	}
 
 	keyBytes, err := base64.StdEncoding.DecodeString(output.Plaintext)
@@ -247,7 +243,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt
 	}
 	plaintext, err := wrapping.NewEnvelope(nil).Decrypt(envInfo, nil)
 	if err != nil {
-		return nil, errwrap.Wrapf("error decrypting data: {{err}}", err)
+		return nil, fmt.Errorf("error decrypting data: %w", err)
 	}
 
 	return plaintext, nil
