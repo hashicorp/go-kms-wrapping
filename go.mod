@@ -18,6 +18,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2-0.20191001231223-f32f5fe8d6a8
 	github.com/hashicorp/vault/api v1.0.5-0.20191119151908-6a42ac99dd24
 	github.com/hashicorp/vault/sdk v0.1.14-0.20191119151908-6a42ac99dd24 // indirect
+	github.com/oracle/oci-go-sdk v12.5.0+incompatible
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 	google.golang.org/api v0.14.0
 	google.golang.org/genproto v0.0.0-20190801165951-fa694d86fc64
