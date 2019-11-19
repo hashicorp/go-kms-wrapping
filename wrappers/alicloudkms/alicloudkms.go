@@ -18,8 +18,8 @@ import (
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvAliCloudKMSWrapperKeyID      = "ALICLOUD_KMS_KEY_ID"
-	EnvVaultAliCloudKMSWrapperKeyID = "VAULT_ALICLOUDKMS_SEAL_KEY_ID"
+	EnvAliCloudKMSWrappingKeyID  = "ALICLOUDKMS_WRAPPING_KEY_ID"
+	EnvVaultAliCloudKMSSealKeyID = "VAULT_ALICLOUDKMS_SEAL_KEY_ID"
 )
 
 // Wrapper is a Wrapper that uses AliCloud's KMS
@@ -61,10 +61,10 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 	// Check and set KeyID
 	switch {
-	case os.Getenv(EnvAliCloudKMSWrapperKeyID) != "":
-		k.keyID = os.Getenv(EnvAliCloudKMSWrapperKeyID)
-	case os.Getenv(EnvVaultAliCloudKMSWrapperKeyID) != "":
-		k.keyID = os.Getenv(EnvVaultAliCloudKMSWrapperKeyID)
+	case os.Getenv(EnvAliCloudKMSWrappingKeyID) != "":
+		k.keyID = os.Getenv(EnvAliCloudKMSWrappingKeyID)
+	case os.Getenv(EnvVaultAliCloudKMSSealKeyID) != "":
+		k.keyID = os.Getenv(EnvVaultAliCloudKMSSealKeyID)
 	case config["kms_key_id"] != "":
 		k.keyID = config["kms_key_id"]
 	default:
@@ -209,7 +209,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 	ret := &wrapping.EncryptedBlobInfo{
 		Ciphertext: env.Ciphertext,
 		IV:         env.IV,
-		KeyInfo: &wrapping.WrappingKeyInfo{
+		KeyInfo: &wrapping.KeyInfo{
 			KeyID:      keyID,
 			WrappedKey: []byte(output.CiphertextBlob),
 		},

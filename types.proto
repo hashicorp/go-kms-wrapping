@@ -22,29 +22,29 @@ message EncryptedBlobInfo {
     bool wrapped = 4;
 
 	// KeyInfo contains information about the key that was used to create this value
-    WrappingKeyInfo key_info = 5;
+    KeyInfo key_info = 5;
 
 	// ValuePath can be used by the client to store information about where the
 	// value came from
     string ValuePath = 6;
 }
 
-// WrappingKeyInfo contains information regarding which Wrapper key was used to
+// KeyInfo contains information regarding which Wrapper key was used to
 // encrypt the entry
-message WrappingKeyInfo {
-    // Mechanism is the method used by the seal to encrypt and sign the
-    // data as defined by the seal.
+message KeyInfo {
+    // Mechanism is the method used by the wrapper to encrypt and sign the
+    // data as defined by the wrapper.
     uint64 Mechanism = 1;
     uint64 HMACMechanism = 2;
 
-    // This is an opaque ID used by the seal to identify the specific
-    // key to use as defined by the seal.  This could be a version, key 
+    // This is an opaque ID used by the wrapper to identify the specific
+    // key to use as defined by the wrapper.  This could be a version, key 
     // label, or something else.
     string KeyID = 3;
     string HMACKeyID = 4;
 
     // These value are used when generating our own data encryption keys
-    // and encrypting them using the autoseal
+    // and encrypting them using the wrapper
     bytes WrappedKey = 5;
 
     // Mechanism specific flags

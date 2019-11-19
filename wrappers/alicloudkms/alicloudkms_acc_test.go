@@ -16,7 +16,7 @@ import (
 // what AWS charges for the same.
 //
 // To run this test, the following env variables need to be set:
-//   - VAULT_ALICLOUDKMS_SEAL_KEY_ID or ALICLOUD_KMS_KEY_ID
+//   - VAULT_ALICLOUDKMS_SEAL_KEY_ID or ALICLOUDKMS_WRAPPING_KEY_ID
 //   - ALICLOUD_REGION
 //   - ALICLOUD_ACCESS_KEY
 //   - ALICLOUD_SECRET_KEY

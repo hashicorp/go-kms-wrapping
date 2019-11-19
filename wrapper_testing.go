@@ -3,7 +3,7 @@ package wrapping
 import (
 	"context"
 
-	"github.com/hashicorp/go-kms-wrapping/xor"
+	"github.com/hashicorp/go-kms-wrapping/internal/xor"
 )
 
 // TestWrapper is a wrapper that can be used for tests
@@ -63,7 +63,7 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte) (*EncryptedBl
 
 	return &EncryptedBlobInfo{
 		Ciphertext: ct,
-		KeyInfo: &WrappingKeyInfo{
+		KeyInfo: &KeyInfo{
 			KeyID: t.KeyID(),
 		},
 	}, nil
