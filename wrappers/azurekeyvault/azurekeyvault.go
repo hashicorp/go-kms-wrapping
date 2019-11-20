@@ -19,11 +19,11 @@ import (
 )
 
 const (
-	EnvAzureKeyVaultWrappingVaultName = "AZUREKEYVAULT_WRAPPING_VAULT_NAME"
-	EnvVaultAzureKeyVaultVaultName    = "VAULT_AZUREKEYVAULT_VAULT_NAME"
+	EnvAzureKeyVaultWrapperVaultName = "AZUREKEYVAULT_WRAPPER_VAULT_NAME"
+	EnvVaultAzureKeyVaultVaultName   = "VAULT_AZUREKEYVAULT_VAULT_NAME"
 
-	EnvAzureKeyVaultWrappingKeyName = "AZUREKEYVAULT_WRAPPING_KEY_NAME"
-	EnvVaultAzureKeyVaultKeyName    = "VAULT_AZUREKEYVAULT_KEY_NAME"
+	EnvAzureKeyVaultWrapperKeyName = "AZUREKEYVAULT_WRAPPER_KEY_NAME"
+	EnvVaultAzureKeyVaultKeyName   = "VAULT_AZUREKEYVAULT_KEY_NAME"
 )
 
 // Wrapper is an Wrapper that uses Azure Key Vault
@@ -107,8 +107,8 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	switch {
-	case os.Getenv(EnvAzureKeyVaultWrappingVaultName) != "":
-		v.vaultName = os.Getenv(EnvAzureKeyVaultWrappingVaultName)
+	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "":
+		v.vaultName = os.Getenv(EnvAzureKeyVaultWrapperVaultName)
 	case os.Getenv(EnvVaultAzureKeyVaultVaultName) != "":
 		v.vaultName = os.Getenv(EnvVaultAzureKeyVaultVaultName)
 	case config["vault_name"] != "":
@@ -118,8 +118,8 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	switch {
-	case os.Getenv(EnvAzureKeyVaultWrappingKeyName) != "":
-		v.keyName = os.Getenv(EnvAzureKeyVaultWrappingKeyName)
+	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "":
+		v.keyName = os.Getenv(EnvAzureKeyVaultWrapperKeyName)
 	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "":
 		v.keyName = os.Getenv(EnvVaultAzureKeyVaultKeyName)
 	case config["key_name"] != "":

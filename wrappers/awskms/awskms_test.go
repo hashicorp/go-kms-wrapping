@@ -21,9 +21,9 @@ func TestAWSKMSWrapper(t *testing.T) {
 	}
 
 	// Set the key
-	oldKeyID := os.Getenv(EnvAWSKMSWrappingKeyID)
-	os.Setenv(EnvAWSKMSWrappingKeyID, awsTestKeyID)
-	defer os.Setenv(EnvAWSKMSWrappingKeyID, oldKeyID)
+	oldKeyID := os.Getenv(EnvAWSKMSWrapperKeyID)
+	os.Setenv(EnvAWSKMSWrapperKeyID, awsTestKeyID)
+	defer os.Setenv(EnvAWSKMSWrapperKeyID, oldKeyID)
 	_, err = s.SetConfig(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -31,16 +31,16 @@ func TestAWSKMSWrapper(t *testing.T) {
 }
 
 func TestAWSKMSWrapper_Lifecycle(t *testing.T) {
-	if os.Getenv(EnvAWSKMSWrappingKeyID) == "" && os.Getenv(EnvVaultAWSKMSSealKeyID) == "" {
+	if os.Getenv(EnvAWSKMSWrapperKeyID) == "" && os.Getenv(EnvVaultAWSKMSSealKeyID) == "" {
 		t.SkipNow()
 	}
 	s := NewWrapper(nil)
 	s.client = &mockClient{
 		keyID: aws.String(awsTestKeyID),
 	}
-	oldKeyID := os.Getenv(EnvAWSKMSWrappingKeyID)
-	os.Setenv(EnvAWSKMSWrappingKeyID, awsTestKeyID)
-	defer os.Setenv(EnvAWSKMSWrappingKeyID, oldKeyID)
+	oldKeyID := os.Getenv(EnvAWSKMSWrapperKeyID)
+	os.Setenv(EnvAWSKMSWrapperKeyID, awsTestKeyID)
+	defer os.Setenv(EnvAWSKMSWrapperKeyID, oldKeyID)
 	testEncryptionRoundTrip(t, s)
 }
 
@@ -54,7 +54,7 @@ func TestAWSKMSWrapper_Lifecycle(t *testing.T) {
 //   - AWS_ACCESS_KEY_ID
 //   - AWS_SECRET_ACCESS_KEY
 func TestAccAWSKMSWrapper_Lifecycle(t *testing.T) {
-	if os.Getenv(EnvAWSKMSWrappingKeyID) == "" && os.Getenv(EnvVaultAWSKMSSealKeyID) == "" {
+	if os.Getenv(EnvAWSKMSWrapperKeyID) == "" && os.Getenv(EnvVaultAWSKMSSealKeyID) == "" {
 		t.SkipNow()
 	}
 	s := NewWrapper(nil)
@@ -85,9 +85,9 @@ func TestAWSKMSWrapper_custom_endpoint(t *testing.T) {
 	endpointENV := "AWS_KMS_ENDPOINT"
 
 	// unset at end of test
-	os.Setenv(EnvAWSKMSWrappingKeyID, awsTestKeyID)
+	os.Setenv(EnvAWSKMSWrapperKeyID, awsTestKeyID)
 	defer func() {
-		if err := os.Unsetenv(EnvAWSKMSWrappingKeyID); err != nil {
+		if err := os.Unsetenv(EnvAWSKMSWrapperKeyID); err != nil {
 			t.Fatal(err)
 		}
 	}()

@@ -16,7 +16,7 @@ import (
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvAliCloudKMSWrappingKeyID  = "ALICLOUDKMS_WRAPPING_KEY_ID"
+	EnvAliCloudKMSWrapperKeyID   = "ALICLOUDKMS_WRAPPER_KEY_ID"
 	EnvVaultAliCloudKMSSealKeyID = "VAULT_ALICLOUDKMS_SEAL_KEY_ID"
 )
 
@@ -57,8 +57,8 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 	// Check and set KeyID
 	switch {
-	case os.Getenv(EnvAliCloudKMSWrappingKeyID) != "":
-		k.keyID = os.Getenv(EnvAliCloudKMSWrappingKeyID)
+	case os.Getenv(EnvAliCloudKMSWrapperKeyID) != "":
+		k.keyID = os.Getenv(EnvAliCloudKMSWrapperKeyID)
 	case os.Getenv(EnvVaultAliCloudKMSSealKeyID) != "":
 		k.keyID = os.Getenv(EnvVaultAliCloudKMSSealKeyID)
 	case config["kms_key_id"] != "":

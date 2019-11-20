@@ -18,7 +18,7 @@ import (
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvAWSKMSWrappingKeyID  = "AWSKMS_WRAPPING_KEY_ID"
+	EnvAWSKMSWrapperKeyID   = "AWSKMS_WRAPPER_KEY_ID"
 	EnvVaultAWSKMSSealKeyID = "VAULT_AWSKMS_SEAL_KEY_ID"
 )
 
@@ -78,8 +78,8 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 	// Check and set KeyID
 	switch {
-	case os.Getenv(EnvAWSKMSWrappingKeyID) != "":
-		k.keyID = os.Getenv(EnvAWSKMSWrappingKeyID)
+	case os.Getenv(EnvAWSKMSWrapperKeyID) != "":
+		k.keyID = os.Getenv(EnvAWSKMSWrapperKeyID)
 	case os.Getenv(EnvVaultAWSKMSSealKeyID) != "":
 		k.keyID = os.Getenv(EnvVaultAWSKMSSealKeyID)
 	case config["kms_key_id"] != "":

@@ -24,11 +24,11 @@ func TestAliCloudKMSWrapper(t *testing.T) {
 	}
 
 	// Set the key
-	if err := os.Setenv(EnvAliCloudKMSWrappingKeyID, aliCloudTestKeyID); err != nil {
+	if err := os.Setenv(EnvAliCloudKMSWrapperKeyID, aliCloudTestKeyID); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvAliCloudKMSWrappingKeyID); err != nil {
+		if err := os.Unsetenv(EnvAliCloudKMSWrapperKeyID); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -43,11 +43,11 @@ func TestAliCloudKMSWrapper_Lifecycle(t *testing.T) {
 		keyID: aliCloudTestKeyID,
 	}
 
-	if err := os.Setenv(EnvAliCloudKMSWrappingKeyID, aliCloudTestKeyID); err != nil {
+	if err := os.Setenv(EnvAliCloudKMSWrapperKeyID, aliCloudTestKeyID); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvAliCloudKMSWrappingKeyID); err != nil {
+		if err := os.Unsetenv(EnvAliCloudKMSWrapperKeyID); err != nil {
 			t.Fatal(err)
 		}
 	}()
