@@ -10,29 +10,29 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-// ShamirWrapper implements the seal.Access interface for Shamir unseal
-type ShamirWrapper struct {
+// Wrapper implements the wrapping.Wrapper interface for Shamir
+type Wrapper struct {
 	key  []byte
 	aead cipher.AEAD
 }
 
 // Ensure that we are implementing AutoSealAccess
-var _ wrapping.Wrapper = (*ShamirWrapper)(nil)
+var _ wrapping.Wrapper = (*Wrapper)(nil)
 
-// NewWrapper creates a new ShamirWrapper with the provided logger
-func NewWrapper(opts *wrapping.WrapperOptions) *ShamirWrapper {
+// NewWrapper creates a new Wrapper with the provided logger
+func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 	if opts == nil {
 		opts = new(wrapping.WrapperOptions)
 	}
-	seal := new(ShamirWrapper)
+	seal := new(Wrapper)
 	return seal
 }
 
-func (s *ShamirWrapper) GetKey() []byte {
+func (s *Wrapper) GetKey() []byte {
 	return s.key
 }
 
-func (s *ShamirWrapper) SetKey(key []byte) error {
+func (s *Wrapper) SetKey(key []byte) error {
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return err
@@ -49,33 +49,33 @@ func (s *ShamirWrapper) SetKey(key []byte) error {
 }
 
 // Init is a no-op at the moment
-func (s *ShamirWrapper) Init(_ context.Context) error {
+func (s *Wrapper) Init(_ context.Context) error {
 	return nil
 }
 
 // Finalize is called during shutdown. This is a no-op since
-// ShamirWrapper doesn't require any cleanup.
-func (s *ShamirWrapper) Finalize(_ context.Context) error {
+// Wrapper doesn't require any cleanup.
+func (s *Wrapper) Finalize(_ context.Context) error {
 	return nil
 }
 
 // Type returns the seal type for this particular Wrapper implementation
-func (s *ShamirWrapper) Type() string {
+func (s *Wrapper) Type() string {
 	return wrapping.Shamir
 }
 
 // KeyID returns the last known key id
-func (s *ShamirWrapper) KeyID() string {
+func (s *Wrapper) KeyID() string {
 	return ""
 }
 
 // HMACKeyID returns the last known HMAC key id
-func (s *ShamirWrapper) HMACKeyID() string {
+func (s *Wrapper) HMACKeyID() string {
 	return ""
 }
 
 // Encrypt is used to encrypt the plaintext using the aead held by the seal.
-func (s *ShamirWrapper) Encrypt(_ context.Context, plaintext []byte) (*wrapping.EncryptedBlobInfo, error) {
+func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte) (*wrapping.EncryptedBlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -96,7 +96,7 @@ func (s *ShamirWrapper) Encrypt(_ context.Context, plaintext []byte) (*wrapping.
 	}, nil
 }
 
-func (s *ShamirWrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) ([]byte, error) {
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
