@@ -169,12 +169,12 @@ func (k *Wrapper) HMACKeyID() string {
 // Encrypt is used to encrypt the master key using the the AWS CMK.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after the KMS client has been instantiated.
-func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
+	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
@@ -213,7 +213,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
-func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt []byte, err error) {
+func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
@@ -254,7 +254,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt
 			IV:         in.IV,
 			Ciphertext: in.Ciphertext,
 		}
-		plaintext, err = wrapping.NewEnvelope(nil).Decrypt(envInfo, nil)
+		plaintext, err = wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}

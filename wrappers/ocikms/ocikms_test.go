@@ -26,12 +26,12 @@ func TestWrapper_LifeCycle(t *testing.T) {
 
 	// Test Encrypt and Decrypt calls
 	input := []byte("foo")
-	swi, err := s.Encrypt(context.Background(), input)
+	swi, err := s.Encrypt(context.Background(), input, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := s.Decrypt(context.Background(), swi)
+	pt, err := s.Decrypt(context.Background(), swi, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}

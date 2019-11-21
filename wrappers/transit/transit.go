@@ -42,7 +42,7 @@ func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	s.client = client
 
 	// Send a value to test the wrapper and to set the current key id
-	if _, err := s.Encrypt(context.Background(), []byte("a")); err != nil {
+	if _, err := s.Encrypt(context.Background(), []byte("a"), nil); err != nil {
 		client.Close()
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (s *Wrapper) HMACKeyID() string {
 }
 
 // Encrypt is used to encrypt using Vault's Transit engine
-func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
 	ciphertext, err := s.client.Encrypt(plaintext)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte) (blob *wrapping.E
 }
 
 // Decrypt is used to decrypt the ciphertext
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) (pt []byte, err error) {
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, _ []byte) (pt []byte, err error) {
 	plaintext, err := s.client.Decrypt(in.Ciphertext)
 	if err != nil {
 		return nil, err

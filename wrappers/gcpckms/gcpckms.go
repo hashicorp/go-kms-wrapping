@@ -148,7 +148,7 @@ func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 		// Make sure user has permissions to encrypt (also checks if key exists)
 		ctx := context.Background()
-		if _, err := s.Encrypt(ctx, []byte("vault-gcpckms-test")); err != nil {
+		if _, err := s.Encrypt(ctx, []byte("vault-gcpckms-test"), nil); err != nil {
 			return nil, fmt.Errorf("failed to encrypt with GCP CKMS - ensure the "+
 				"key exists and the service account has at least "+
 				"roles/cloudkms.cryptoKeyEncrypterDecrypter permission: %w", err)
@@ -194,12 +194,12 @@ func (s *Wrapper) HMACKeyID() string {
 // Encrypt is used to encrypt the master key using the the AWS CMK.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after s.client has been instantiated.
-func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (s *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
+	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
@@ -232,7 +232,7 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (blob *wrapping
 }
 
 // Decrypt is used to decrypt the ciphertext.
-func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo) (pt []byte, err error) {
+func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
 	if in.Ciphertext == nil {
 		return nil, fmt.Errorf("given ciphertext for decryption is nil")
 	}
@@ -271,7 +271,7 @@ func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo) (
 			IV:         in.IV,
 			Ciphertext: in.Ciphertext,
 		}
-		plaintext, err = wrapping.NewEnvelope(nil).Decrypt(envInfo, nil)
+		plaintext, err = wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data with envelope: %w", err)
 		}

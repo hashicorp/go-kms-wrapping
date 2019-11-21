@@ -64,12 +64,12 @@ func TestAccAWSKMSWrapper_Lifecycle(t *testing.T) {
 func testEncryptionRoundTrip(t *testing.T, w *Wrapper) {
 	w.SetConfig(nil)
 	input := []byte("foo")
-	swi, err := w.Encrypt(context.Background(), input)
+	swi, err := w.Encrypt(context.Background(), input, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := w.Decrypt(context.Background(), swi)
+	pt, err := w.Decrypt(context.Background(), swi, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}

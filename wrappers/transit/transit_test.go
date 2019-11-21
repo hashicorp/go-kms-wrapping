@@ -26,7 +26,7 @@ func newTestTransitClient(keyID string) *testTransitClient {
 func (m *testTransitClient) Close() {}
 
 func (m *testTransitClient) Encrypt(plaintext []byte) ([]byte, error) {
-	v, err := m.wrap.Encrypt(context.Background(), plaintext)
+	v, err := m.wrap.Encrypt(context.Background(), plaintext, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (m *testTransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
 	data := &wrapping.EncryptedBlobInfo{
 		Ciphertext: []byte(splitKey[2]),
 	}
-	v, err := m.wrap.Decrypt(context.Background(), data)
+	v, err := m.wrap.Decrypt(context.Background(), data, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +59,12 @@ func TestTransitWrapper_Lifecycle(t *testing.T) {
 
 	// Test Encrypt and Decrypt calls
 	input := []byte("foo")
-	swi, err := s.Encrypt(context.Background(), input)
+	swi, err := s.Encrypt(context.Background(), input, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := s.Decrypt(context.Background(), swi)
+	pt, err := s.Decrypt(context.Background(), swi, nil)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}

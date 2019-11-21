@@ -184,12 +184,12 @@ func (v *Wrapper) HMACKeyID() string {
 // Encrypt is used to encrypt using Azure Key Vault.
 // This returns the ciphertext, and/or any errors from this
 // call.
-func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (v *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
+	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping dat: %w", err)
 	}
@@ -222,7 +222,7 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (blob *wrapping
 }
 
 // Decrypt is used to decrypt the ciphertext
-func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo) (pt []byte, err error) {
+func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
 	if in == nil {
 		return nil, errors.New("given input for decryption is nil")
 	}
@@ -250,7 +250,7 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo) (
 		IV:         in.IV,
 		Ciphertext: in.Ciphertext,
 	}
-	return wrapping.NewEnvelope(nil).Decrypt(envInfo, nil)
+	return wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
 }
 
 func (v *Wrapper) buildBaseURL() string {

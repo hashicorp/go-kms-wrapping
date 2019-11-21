@@ -1,4 +1,4 @@
-package shamir
+package aead
 
 import (
 	"context"
@@ -12,8 +12,8 @@ import (
 
 // Wrapper implements the wrapping.Wrapper interface for Shamir
 type Wrapper struct {
-	key  []byte
-	aead cipher.AEAD
+	keyBytes []byte
+	aead     cipher.AEAD
 }
 
 // Ensure that we are implementing AutoSealAccess
@@ -28,11 +28,16 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 	return seal
 }
 
-func (s *Wrapper) GetKey() []byte {
-	return s.key
+func (s *Wrapper) GetKeyBytes() []byte {
+	return s.keyBytes
 }
 
-func (s *Wrapper) SetKey(key []byte) error {
+func (s *Wrapper) SetAEAD(aead cipher.AEAD) {
+	s.aead = aead
+}
+
+// SetAESGCMKeyBytes takes in a byte slice and constucts an AES-GCM AEAD from it
+func (s *Wrapper) SetAESGCMKeyBytes(key []byte) error {
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return err
@@ -43,7 +48,7 @@ func (s *Wrapper) SetKey(key []byte) error {
 		return err
 	}
 
-	s.key = key
+	s.keyBytes = key
 	s.aead = aead
 	return nil
 }
@@ -75,7 +80,7 @@ func (s *Wrapper) HMACKeyID() string {
 }
 
 // Encrypt is used to encrypt the plaintext using the aead held by the seal.
-func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte) (*wrapping.EncryptedBlobInfo, error) {
+func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (*wrapping.EncryptedBlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -89,14 +94,14 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte) (*wrapping.Encryp
 		return nil, err
 	}
 
-	ciphertext := s.aead.Seal(nil, iv, plaintext, nil)
+	ciphertext := s.aead.Seal(nil, iv, plaintext, aad)
 
 	return &wrapping.EncryptedBlobInfo{
 		Ciphertext: append(iv, ciphertext...),
 	}, nil
 }
 
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) ([]byte, error) {
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -107,7 +112,7 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo) ([]
 
 	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
 
-	plaintext, err := s.aead.Open(nil, iv, ciphertext, nil)
+	plaintext, err := s.aead.Open(nil, iv, ciphertext, aad)
 	if err != nil {
 		return nil, err
 	}

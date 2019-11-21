@@ -28,7 +28,7 @@ func NewEnvelope(opts *EnvelopeOptions) *Envelope {
 }
 
 // Encrypt takes in plaintext and envelope encrypts it, generating an EnvelopeInfo value
-func (e *Envelope) Encrypt(plaintext []byte, additionalData []byte) (*EnvelopeInfo, error) {
+func (e *Envelope) Encrypt(plaintext []byte, aad []byte) (*EnvelopeInfo, error) {
 	// Generate DEK
 	key, err := uuid.GenerateRandomBytes(32)
 	if err != nil {
@@ -44,20 +44,20 @@ func (e *Envelope) Encrypt(plaintext []byte, additionalData []byte) (*EnvelopeIn
 	}
 
 	return &EnvelopeInfo{
-		Ciphertext: aead.Seal(nil, iv, plaintext, additionalData),
+		Ciphertext: aead.Seal(nil, iv, plaintext, aad),
 		Key:        key,
 		IV:         iv,
 	}, nil
 }
 
 // Decrypt takes in EnvelopeInfo and potentially additional data and decrypts. Additional data is separate from the encrypted blob info as it is expected that will be sourced from a separate location.
-func (e *Envelope) Decrypt(data *EnvelopeInfo, additionalData []byte) ([]byte, error) {
+func (e *Envelope) Decrypt(data *EnvelopeInfo, aad []byte) ([]byte, error) {
 	aead, err := e.aeadEncrypter(data.Key)
 	if err != nil {
 		return nil, err
 	}
 
-	return aead.Open(nil, data.IV, data.Ciphertext, additionalData)
+	return aead.Open(nil, data.IV, data.Ciphertext, aad)
 }
 
 func (e *Envelope) aeadEncrypter(key []byte) (cipher.AEAD, error) {

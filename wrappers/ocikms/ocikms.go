@@ -140,7 +140,7 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	// Calling Encrypt method with empty string just to validate keyId access and store current keyVersion
-	encryptedBlobInfo, err := k.Encrypt(context.Background(), []byte(""))
+	encryptedBlobInfo, err := k.Encrypt(context.Background(), []byte(""), nil)
 	if err != nil || encryptedBlobInfo == nil {
 		return nil, fmt.Errorf("failed "+KMSConfigKeyID+" validation: %w", err)
 	}
@@ -179,12 +179,12 @@ func (k *Wrapper) Finalize(context.Context) error {
 	return nil
 }
 
-func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (*wrapping.EncryptedBlobInfo, error) {
+func (k *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (*wrapping.EncryptedBlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, nil)
+	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
@@ -234,7 +234,7 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte) (*wrapping.Encr
 	return ret, nil
 }
 
-func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo) ([]byte, error) {
+func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
@@ -263,7 +263,7 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo) (
 		Ciphertext: in.Ciphertext,
 	}
 
-	plaintext, err := wrapping.NewEnvelope(nil).Decrypt(envInfo, nil)
+	plaintext, err := wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting data: %w", err)
 	}
