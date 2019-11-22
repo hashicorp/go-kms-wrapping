@@ -22,9 +22,6 @@ const (
 	EnvVaultAWSKMSSealKeyID = "VAULT_AWSKMS_SEAL_KEY_ID"
 )
 
-// AWSKMSMechanism is the method used to encrypt/decrypt in the wrapper
-type AWSKMSMechanism uint32
-
 const (
 	// AWSKMSEncrypt is used to directly encrypt the data with KMS
 	AWSKMSEncrypt = iota

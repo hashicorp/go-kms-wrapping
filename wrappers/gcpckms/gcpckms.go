@@ -26,9 +26,6 @@ const (
 	EnvVaultGCPCKMSSealCryptoKey = "VAULT_GCPCKMS_SEAL_CRYPTO_KEY"
 )
 
-// GCPKMSMechanism is the method used to encrypt/decrypt in the wrapper
-type GCPKMSMechanism uint32
-
 const (
 	// GCPKMSEncrypt is used to directly encrypt the data with KMS
 	GCPKMSEncrypt = iota

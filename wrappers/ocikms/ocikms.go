@@ -40,9 +40,6 @@ const (
 	KMSConfigAuthTypeAPIKey = "auth_type_api_key"
 )
 
-// OCIKMSMechanism is the method used to encrypt/decrypt in auto unseal process
-type OCIKMSMechanism uint32
-
 type Wrapper struct {
 	authTypeAPIKey bool   // true for user principal, false for instance principal, default is false
 	keyID          string // OCI KMS keyID
