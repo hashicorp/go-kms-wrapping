@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	cloudkms "cloud.google.com/go/kms/apiv1"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/lexman42/go-kms-wrapping"
 	context "golang.org/x/net/context"
 	"google.golang.org/api/option"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"

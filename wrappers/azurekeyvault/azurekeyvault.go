@@ -15,7 +15,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/lexman42/go-kms-wrapping"
 )
 
 const (

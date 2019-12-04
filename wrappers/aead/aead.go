@@ -6,7 +6,7 @@ import (
 	"crypto/cipher"
 	"errors"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/lexman42/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
 )
 

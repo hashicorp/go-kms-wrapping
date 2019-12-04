@@ -3,7 +3,7 @@ package wrapping
 import (
 	"context"
 
-	"github.com/hashicorp/go-kms-wrapping/internal/xor"
+	"github.com/lexman42/go-kms-wrapping/internal/xor"
 )
 
 // TestWrapper is a wrapper that can be used for tests

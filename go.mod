@@ -1,4 +1,4 @@
-module github.com/hashicorp/go-kms-wrapping
+module github.com/lexman42/go-kms-wrapping
 
 go 1.13
 

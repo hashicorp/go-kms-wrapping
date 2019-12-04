@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/lexman42/go-kms-wrapping"
 )
 
 // Wrapper is a wrapper that leverages Vault's Transit secret
@@ -106,4 +106,9 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, _ [
 		return nil, err
 	}
 	return plaintext, nil
+}
+
+// GetClient returns the transit Wrapper's transitClientEncryptor
+func (s *Wrapper) GetClient() transitClientEncryptor {
+	return s.client
 }
