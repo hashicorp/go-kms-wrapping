@@ -149,9 +149,9 @@ func TestAWSKMSWrapper_custom_endpoint(t *testing.T) {
 				t.Fatalf("error setting config: %s", err)
 			}
 
-			// call getAWSKMSClient() to get the configured client and verify it's
+			// call GetAWSKMSClient() to get the configured client and verify it's
 			// endpoint
-			k, err := s.getAWSKMSClient()
+			k, err := s.GetAWSKMSClient()
 			if err != nil {
 				t.Fatal(err)
 			}
