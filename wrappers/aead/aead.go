@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/base64"
 	"errors"
+	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
@@ -39,6 +41,40 @@ func NewShamirWrapper(opts *wrapping.WrapperOptions) *ShamirWrapper {
 	return &ShamirWrapper{
 		Wrapper: NewWrapper(opts),
 	}
+}
+
+// SetConfig sets the fields on the Wrapper object based on
+// values from the config parameter.
+func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
+	if config == nil {
+		config = map[string]string{}
+	}
+
+	key := config["key"]
+	if key == "" {
+		return nil, nil
+	}
+
+	aeadType := config["aead_type"]
+	switch aeadType {
+	case "aes-gcm":
+		keyRaw, err := base64.StdEncoding.DecodeString(key)
+		if err != nil {
+			return nil, fmt.Errorf("error base64-decoding key: %w", err)
+		}
+		if err := s.SetAESGCMKeyBytes(keyRaw); err != nil {
+			return nil, fmt.Errorf("error setting AES GCM key: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown aead_type %q", aeadType)
+	}
+
+	// Map that holds non-sensitive configuration info
+	wrappingInfo := make(map[string]string)
+	wrappingInfo["aead_type"] = config["aead_type"]
+
+	return wrappingInfo, nil
 }
 
 func (s *Wrapper) GetKeyBytes() []byte {
