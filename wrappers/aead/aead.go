@@ -10,14 +10,21 @@ import (
 	"github.com/hashicorp/go-uuid"
 )
 
-// Wrapper implements the wrapping.Wrapper interface for Shamir
+// Wrapper implements the wrapping.Wrapper interface for AEAD
 type Wrapper struct {
 	keyBytes []byte
 	aead     cipher.AEAD
 }
 
+// ShamirWrapper is here for backwards compatibility for Vault; it reports a
+// type of "shamir" instead of "aead"
+type ShamirWrapper struct {
+	*Wrapper
+}
+
 // Ensure that we are implementing AutoSealAccess
 var _ wrapping.Wrapper = (*Wrapper)(nil)
+var _ wrapping.Wrapper = (*ShamirWrapper)(nil)
 
 // NewWrapper creates a new Wrapper with the provided logger
 func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
@@ -26,6 +33,12 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 	}
 	seal := new(Wrapper)
 	return seal
+}
+
+func NewShamirWrapper(opts *wrapping.WrapperOptions) *ShamirWrapper {
+	return &ShamirWrapper{
+		Wrapper: NewWrapper(opts),
+	}
 }
 
 func (s *Wrapper) GetKeyBytes() []byte {
@@ -66,6 +79,10 @@ func (s *Wrapper) Finalize(_ context.Context) error {
 
 // Type returns the seal type for this particular Wrapper implementation
 func (s *Wrapper) Type() string {
+	return wrapping.AEAD
+}
+
+func (s *ShamirWrapper) Type() string {
 	return wrapping.Shamir
 }
 
