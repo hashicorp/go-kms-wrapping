@@ -8,16 +8,17 @@ import (
 
 // These values define known types of Wrappers
 const (
-	AEAD          = "aead"
-	Shamir        = "shamir"
-	PKCS11        = "pkcs11"
-	AliCloudKMS   = "alicloudkms"
-	AWSKMS        = "awskms"
-	GCPCKMS       = "gcpckms"
-	AzureKeyVault = "azurekeyvault"
-	OCIKMS        = "ocikms"
-	Transit       = "transit"
-	Test          = "test-auto"
+	AEAD            = "aead"
+	Shamir          = "shamir"
+	PKCS11          = "pkcs11"
+	AliCloudKMS     = "alicloudkms"
+	AWSKMS          = "awskms"
+	GCPCKMS         = "gcpckms"
+	AzureKeyVault   = "azurekeyvault"
+	OCIKMS          = "ocikms"
+	TencentCloudKMS = "tencentcloudkms"
+	Transit         = "transit"
+	Test            = "test-auto"
 
 	// HSMAutoDeprecated is a deprecated type relevant to Vault prior to 0.9.0.
 	// It is still referenced in certain code paths for upgrade purporses
