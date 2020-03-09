@@ -17,6 +17,7 @@ require (
 	github.com/hashicorp/vault/api v1.0.5-0.20191122173911-80fcc7907c78
 	github.com/hashicorp/vault/sdk v0.1.14-0.20191229212425-c478d00be0d6
 	github.com/oracle/oci-go-sdk v12.5.0+incompatible
+	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
 	google.golang.org/api v0.14.0
 	google.golang.org/genproto v0.0.0-20190801165951-fa694d86fc64
