@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"hash"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 	"github.com/hashicorp/go-uuid"
+	"golang.org/x/crypto/hkdf"
 )
 
 // Wrapper implements the wrapping.Wrapper interface for AEAD
@@ -24,15 +27,28 @@ type ShamirWrapper struct {
 	*Wrapper
 }
 
+type DerivedWrapperOptions struct {
+	// AEADType is the type of AEAD to use in the sub-wrapper. An empty value
+	// defaults to "aes-gcm".
+	AEADType string
+
+	// Hash is the type of hash function to use with HKDF. Defaults to
+	// sha256.New.
+	Hash func() hash.Hash
+
+	// Salt is the salt value to use, can be (but shouldn't be) nil
+	Salt []byte
+
+	// Info is the info value to use, can be (but shouldn't be) nil
+	Info []byte
+}
+
 // Ensure that we are implementing AutoSealAccess
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 var _ wrapping.Wrapper = (*ShamirWrapper)(nil)
 
 // NewWrapper creates a new Wrapper with the provided logger
-func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
-	if opts == nil {
-		opts = new(wrapping.WrapperOptions)
-	}
+func NewWrapper(_ *wrapping.WrapperOptions) *Wrapper {
 	seal := new(Wrapper)
 	return seal
 }
@@ -41,6 +57,45 @@ func NewShamirWrapper(opts *wrapping.WrapperOptions) *ShamirWrapper {
 	return &ShamirWrapper{
 		Wrapper: NewWrapper(opts),
 	}
+}
+
+// NewDerivedWrapper returns an aead.Wrapper whose key is set to an hkdf-based
+// derivation from the original wrapper
+func (s *Wrapper) NewDerivedWrapper(opts *DerivedWrapperOptions) (*Wrapper, error) {
+	if opts == nil {
+		opts = new(DerivedWrapperOptions)
+	}
+	if len(s.keyBytes) == 0 {
+		return nil, errors.New("cannot create a sub-wrapper when key byte are not set")
+	}
+
+	h := opts.Hash
+	if h == nil {
+		h = sha256.New
+	}
+
+	ret := new(Wrapper)
+	reader := hkdf.New(h, s.keyBytes, opts.Salt, opts.Info)
+
+	switch opts.AEADType {
+	case "", "aes-gcm":
+		ret.keyBytes = make([]byte, len(s.keyBytes))
+		n, err := reader.Read(ret.keyBytes)
+		if err != nil {
+			return nil, fmt.Errorf("error reading bytes from derived reader: %w", err)
+		}
+		if n != len(s.keyBytes) {
+			return nil, fmt.Errorf("expected to read %d bytes, but read %d bytes from derived reader", len(s.keyBytes), n)
+		}
+		if err := ret.SetAESGCMKeyBytes(ret.keyBytes); err != nil {
+			return nil, fmt.Errorf("error setting derived AES GCM key: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("not a supported aead type: %q", opts.AEADType)
+	}
+
+	return ret, nil
 }
 
 // SetConfig sets the fields on the Wrapper object based on
