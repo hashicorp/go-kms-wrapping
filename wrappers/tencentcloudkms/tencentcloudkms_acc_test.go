@@ -13,11 +13,11 @@ import (
 // what AWS charges for the same.
 //
 // To run this test, the following env variables need to be set:
-//   - VAULT_TENCENTCLOUDKMS_SEAL_KEY_ID or TENCENTCLOUDKMS_WRAPPER_KEY_ID
+//   - TENCENTCLOUD_KMS_KEY_ID
 //   - TENCENTCLOUD_SECRET_ID
 //   - TENCENTCLOUD_SECRET_KEY
 //   - TENCENTCLOUD_SECURITY_TOKEN (required when using session token)
-//   - TENCENTCLOUD_REGION
+//   - TENCENTCLOUD_REGION (ap-guangzhou if not specify)
 func TestAccTencentCloudKMSWrapper_Lifecycle(t *testing.T) {
 	if os.Getenv("VAULT_ACC") == "" && os.Getenv("KMS_ACC_TESTS") == "" {
 		t.SkipNow()

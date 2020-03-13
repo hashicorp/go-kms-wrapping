@@ -13,18 +13,13 @@ import (
 	kms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/kms/v20190118"
 )
 
-// These constants contain the accepted env vars; the Vault one is for backwards compat
-const (
-	EnvTencentCloudKMSWrapperKeyID   = "TENCENTCLOUDKMS_WRAPPER_KEY_ID"
-	EnvVaultTencentCloudKMSSealKeyID = "VAULT_TENCENTCLOUDKMS_SEAL_KEY_ID"
-)
-
 // These constants are TencentCloud accepted env vars
 const (
 	PROVIDER_SECRET_ID      = "TENCENTCLOUD_SECRET_ID"
 	PROVIDER_SECRET_KEY     = "TENCENTCLOUD_SECRET_KEY"
 	PROVIDER_SECURITY_TOKEN = "TENCENTCLOUD_SECURITY_TOKEN"
 	PROVIDER_REGION         = "TENCENTCLOUD_REGION"
+	PROVIDER_KMS_KEY_ID     = "TENCENTCLOUD_KMS_KEY_ID"
 )
 
 // Wrapper is a wrapper that uses TencentCloud KMS
@@ -61,18 +56,15 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 //
 // Order of precedence values:
 // * Environment variable
-// * Vault configuration file
-// * Instance metadata role (access key and secret key)
+// * Instance metadata role
 func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
 	if config == nil {
 		config = map[string]string{}
 	}
 
 	switch {
-	case os.Getenv(EnvTencentCloudKMSWrapperKeyID) != "":
-		k.keyID = os.Getenv(EnvTencentCloudKMSWrapperKeyID)
-	case os.Getenv(EnvVaultTencentCloudKMSSealKeyID) != "":
-		k.keyID = os.Getenv(EnvVaultTencentCloudKMSSealKeyID)
+	case os.Getenv(PROVIDER_KMS_KEY_ID) != "":
+		k.keyID = os.Getenv(PROVIDER_KMS_KEY_ID)
 	case config["kms_key_id"] != "":
 		k.keyID = config["kms_key_id"]
 	default:

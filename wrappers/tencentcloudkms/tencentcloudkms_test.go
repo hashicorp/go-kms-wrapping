@@ -21,22 +21,18 @@ func TestTencentCloudKMSWrapper(t *testing.T) {
 	}
 
 	// Clean the env vars for keyID not found
-	tmpKeyID := os.Getenv(EnvTencentCloudKMSWrapperKeyID)
-	if tmpKeyID == "" {
-		tmpKeyID = os.Getenv(EnvVaultTencentCloudKMSSealKeyID)
-	}
-	_ = os.Unsetenv(EnvTencentCloudKMSWrapperKeyID)
-	_ = os.Unsetenv(EnvVaultTencentCloudKMSSealKeyID)
+	tmpKeyID := os.Getenv(PROVIDER_KMS_KEY_ID)
+	_ = os.Unsetenv(PROVIDER_KMS_KEY_ID)
 
 	if _, err := s.SetConfig(nil); err == nil {
 		t.Fatal("expected error when TencentCloudKMSWrapper keyID is not provided")
 	}
 
-	if err := os.Setenv(EnvTencentCloudKMSWrapperKeyID, tencentCloudTestKeyID); err != nil {
+	if err := os.Setenv(PROVIDER_KMS_KEY_ID, tencentCloudTestKeyID); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Setenv(EnvTencentCloudKMSWrapperKeyID, tmpKeyID); err != nil {
+		if err := os.Setenv(PROVIDER_KMS_KEY_ID, tmpKeyID); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -52,18 +48,14 @@ func TestTencentCloudKMSWrapper_Lifecycle(t *testing.T) {
 	}
 
 	// Clean the env vars for keyID not found
-	tmpKeyID := os.Getenv(EnvTencentCloudKMSWrapperKeyID)
-	if tmpKeyID == "" {
-		tmpKeyID = os.Getenv(EnvVaultTencentCloudKMSSealKeyID)
-	}
-	_ = os.Unsetenv(EnvTencentCloudKMSWrapperKeyID)
-	_ = os.Unsetenv(EnvVaultTencentCloudKMSSealKeyID)
+	tmpKeyID := os.Getenv(PROVIDER_KMS_KEY_ID)
+	_ = os.Unsetenv(PROVIDER_KMS_KEY_ID)
 
-	if err := os.Setenv(EnvTencentCloudKMSWrapperKeyID, tencentCloudTestKeyID); err != nil {
+	if err := os.Setenv(PROVIDER_KMS_KEY_ID, tencentCloudTestKeyID); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Setenv(EnvTencentCloudKMSWrapperKeyID, tmpKeyID); err != nil {
+		if err := os.Setenv(PROVIDER_KMS_KEY_ID, tmpKeyID); err != nil {
 			t.Fatal(err)
 		}
 	}()
