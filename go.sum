@@ -131,6 +131,8 @@ github.com/hashicorp/vault/sdk v0.1.14-0.20200215195600-2ca765f0a500/go.mod h1:W
 github.com/hashicorp/vault/sdk v0.1.14-0.20200310193702-5895508cf706 h1:pW1APjWy5G+0cEmOJ/ehvDuhnYDB+8HzudQ9yOW0fc0=
 github.com/hashicorp/vault/sdk v0.1.14-0.20200310193702-5895508cf706/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
+github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4 h1:/+f4LG96YdYE6/Duf7iZxPMRQHYaokb/CkuvkG+VPpY=
+github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4/go.mod h1:WQBcHRNX9shz3928lWEvstQJtAtYI7ks6XlgtRT9Tcw=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5imkbgOkpRUYLnmbU7UEFbjtDA2hxJ1ichM=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/json-iterator/go v1.1.5 h1:gL2yXlmiIo4+t+y32d4WGwOjKGYcGOuyrg46vadswDE=

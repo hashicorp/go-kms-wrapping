@@ -16,6 +16,7 @@ const (
 	GCPCKMS         = "gcpckms"
 	AzureKeyVault   = "azurekeyvault"
 	OCIKMS          = "ocikms"
+  HuaweiCloudKMS = "huaweicloudkms"
 	TencentCloudKMS = "tencentcloudkms"
 	Transit         = "transit"
 	Test            = "test-auto"
