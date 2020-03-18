@@ -17,7 +17,7 @@ import (
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvHuaweiCloudKMSWrapperKeyID   = "HUAWEICLOUDKMS_WRAPPER_KEY_ID"
+	EnvHuaweiCloudKMSWrapperKeyID = "HUAWEICLOUDKMS_WRAPPER_KEY_ID"
 )
 
 // Wrapper is a Wrapper that uses HuaweiCloud's KMS

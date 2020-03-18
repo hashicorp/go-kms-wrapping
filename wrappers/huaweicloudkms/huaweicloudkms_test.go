@@ -3,7 +3,6 @@ package huaweicloudkms
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"os"
 	"reflect"
 	"testing"
@@ -94,7 +93,7 @@ func (m *mockHuaweiCloudKMSWrapperClient) decrypt(cipherText string) (string, er
 	decoded := make([]byte, decLen)
 	len, err := base64.StdEncoding.Decode(decoded, []byte(cipherText))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if len < decLen {
