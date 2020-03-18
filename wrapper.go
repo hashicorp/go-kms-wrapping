@@ -9,14 +9,14 @@ import (
 // These values define known types of Wrappers
 const (
 	AEAD            = "aead"
-	Shamir          = "shamir"
-	PKCS11          = "pkcs11"
 	AliCloudKMS     = "alicloudkms"
 	AWSKMS          = "awskms"
-	GCPCKMS         = "gcpckms"
 	AzureKeyVault   = "azurekeyvault"
+	GCPCKMS         = "gcpckms"
+	HuaweiCloudKMS  = "huaweicloudkms"
 	OCIKMS          = "ocikms"
-  HuaweiCloudKMS = "huaweicloudkms"
+	PKCS11          = "pkcs11"
+	Shamir          = "shamir"
 	TencentCloudKMS = "tencentcloudkms"
 	Transit         = "transit"
 	Test            = "test-auto"

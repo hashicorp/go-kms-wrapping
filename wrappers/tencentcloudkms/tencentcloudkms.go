@@ -135,7 +135,7 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	wrappingInfo := make(map[string]string)
-	wrappingInfo["retgion"] = k.region
+	wrappingInfo["region"] = k.region
 	wrappingInfo["kms_key_id"] = k.keyID
 
 	return wrappingInfo, nil
