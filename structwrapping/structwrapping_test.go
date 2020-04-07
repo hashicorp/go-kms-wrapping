@@ -14,6 +14,7 @@ func TestStructWrapping(t *testing.T) {
 	assert.Nil(t, err)
 
 	t.Run("shared encryption/decryption tests", func(t *testing.T) {
+		t.Parallel()
 		t.Run("bad basic values", func(t *testing.T) {
 			t.Parallel()
 			var err error
@@ -83,6 +84,7 @@ func TestStructWrapping(t *testing.T) {
 	})
 
 	t.Run("bad encryption tests", func(t *testing.T) {
+		t.Parallel()
 		t.Run("bad plaintext values", func(t *testing.T) {
 			t.Parallel()
 			var err error
@@ -108,6 +110,7 @@ func TestStructWrapping(t *testing.T) {
 	})
 
 	t.Run("bad decryption tests", func(t *testing.T) {
+		t.Parallel()
 		t.Run("bad ciphertext values", func(t *testing.T) {
 			t.Parallel()
 			var err error
