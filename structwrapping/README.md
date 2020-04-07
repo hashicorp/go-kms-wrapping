@@ -40,7 +40,7 @@ type sutStruct struct {
 }
 
 sut := &sutStruct{PT1: []byte("foo"), PT2: []byte("bar")}
-err = WrapStruct(nil, wrapper, sut)
+err = WrapStruct(nil, wrapper, sut, nil)
 assert.Nil(t, err)
 assert.NotNil(t, sut.CT1)
 assert.NotNil(t, sut.CT2)
@@ -54,7 +54,7 @@ assert.Nil(t, err)
 assert.Equal(t, barVal, []byte("bar"))
 
 sut2 := &sutStruct{CT1: sut.CT1, CT2: sut.CT2}
-err = UnwrapStruct(nil, wrapper, sut2)
+err = UnwrapStruct(nil, wrapper, sut2, nil)
 assert.Nil(t, err)
 assert.NotNil(t, sut2.PT1)
 assert.NotNil(t, sut2.PT2)
