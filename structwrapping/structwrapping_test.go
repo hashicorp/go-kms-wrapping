@@ -161,8 +161,6 @@ func TestStructWrapping(t *testing.T) {
 		sut2 := &sutStruct{CT1: sut.CT1, CT2: sut.CT2}
 		err = UnwrapStruct(nil, wrapper, sut2, nil)
 		assert.Nil(t, err)
-		assert.NotNil(t, sut2.PT1)
-		assert.NotNil(t, sut2.PT2)
 		assert.Equal(t, sut2.PT1, []byte("foo"))
 		assert.Equal(t, sut2.PT2, []byte("bar"))
 	})
