@@ -16,6 +16,9 @@ Caveats:
   change
 
 ## Usage
+Add struct tags that specify fields for wrapping.  Wrapping tags must contain:
+* a field type of pt (plaintext) or ct (ciphertext) 
+* a unique name that ties together a pair of pt and ct fields 
 
 The best way to see how to use the package is via one of the tests for this
 package, reproduced below:
