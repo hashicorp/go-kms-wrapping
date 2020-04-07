@@ -10,34 +10,35 @@ import (
 
 func TestStructWrapping(t *testing.T) {
 	wrapper := aead.NewWrapper(nil)
-	wrapper.SetConfig(map[string]string{"aead_type": "aes-gcm", "key": "QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI="})
+	_, err := wrapper.SetConfig(map[string]string{"aead_type": "aes-gcm", "key": "QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI="})
+	assert.Nil(t, err)
 
 	t.Run("shared encryption/decryption tests", func(t *testing.T) {
 		t.Run("bad basic values", func(t *testing.T) {
 			t.Parallel()
 			var err error
 			// Zero
-			err = WrapStruct(nil, nil, nil)
+			err = WrapStruct(nil, nil, nil, nil)
 			assert.Error(t, err, "nil wrapper passed in")
-			err = WrapStruct(nil, wrapper, nil)
+			err = WrapStruct(nil, wrapper, nil, nil)
 			assert.Error(t, err, "input not valid")
-			err = WrapStruct(nil, wrapper, interface{}(nil))
+			err = WrapStruct(nil, wrapper, interface{}(nil), nil)
 			assert.Error(t, err, "input not valid")
-			err = WrapStruct(nil, wrapper, "foobar")
+			err = WrapStruct(nil, wrapper, "foobar", nil)
 			assert.Error(t, err, "input not a pointer")
-			err = WrapStruct(nil, wrapper, new(int32))
+			err = WrapStruct(nil, wrapper, new(int32), nil)
 			assert.Error(t, err, "input not a struct")
 
 			type badTagStruct struct {
 				field string `wrapping:"foobar"`
 			}
-			err = WrapStruct(nil, wrapper, new(badTagStruct))
+			err = WrapStruct(nil, wrapper, new(badTagStruct), nil)
 			assert.Error(t, err, "error in wrapping tag specification")
 
 			type badTagPrefixStruct struct {
 				field string `wrapping:"dr,foobar"`
 			}
-			err = WrapStruct(nil, wrapper, new(badTagPrefixStruct))
+			err = WrapStruct(nil, wrapper, new(badTagPrefixStruct), nil)
 			assert.Error(t, err, "unknown tag type for wrapping tag")
 
 		})
@@ -49,14 +50,14 @@ func TestStructWrapping(t *testing.T) {
 				PT1 []byte `wrapping:"pt,foobar"`
 				PT2 []byte `wrapping:"pt,foobar"`
 			}
-			err = WrapStruct(nil, wrapper, &doubledPTIdentifierStruct{PT1: []byte("foo"), PT2: []byte("bar")})
+			err = WrapStruct(nil, wrapper, &doubledPTIdentifierStruct{PT1: []byte("foo"), PT2: []byte("bar")}, nil)
 			assert.Error(t, err, "detected two pt wrapping tags with the same identifier")
 
 			type doubledCTIdentifierStruct struct {
 				CT1 *wrapping.EncryptedBlobInfo `wrapping:"ct,foobar"`
 				CT2 *wrapping.EncryptedBlobInfo `wrapping:"ct,foobar"`
 			}
-			err = WrapStruct(nil, wrapper, &doubledCTIdentifierStruct{})
+			err = WrapStruct(nil, wrapper, &doubledCTIdentifierStruct{}, nil)
 			assert.Error(t, err, "detected two ct wrapping tags with the same identifier")
 		})
 
@@ -68,7 +69,7 @@ func TestStructWrapping(t *testing.T) {
 				CT1 *wrapping.EncryptedBlobInfo `wrapping:"ct,foo"`
 				PT2 []byte                      `wrapping:"pt,bar"`
 			}
-			err = WrapStruct(nil, wrapper, &mismatchedPTStruct{PT1: []byte("foo"), PT2: []byte("bar")})
+			err = WrapStruct(nil, wrapper, &mismatchedPTStruct{PT1: []byte("foo"), PT2: []byte("bar")}, nil)
 			assert.Error(t, err, "no ct wrapping tag found for identifier \"bar\"")
 
 			type mismatchedCTStruct struct {
@@ -76,7 +77,7 @@ func TestStructWrapping(t *testing.T) {
 				CT1 *wrapping.EncryptedBlobInfo `wrapping:"ct,bar"`
 				CT2 *wrapping.EncryptedBlobInfo `wrapping:"ct,foo"`
 			}
-			err = WrapStruct(nil, wrapper, &mismatchedPTStruct{PT1: []byte("foo")})
+			err = WrapStruct(nil, wrapper, &mismatchedPTStruct{PT1: []byte("foo")}, nil)
 			assert.Error(t, err, "no pt wrapping tag found for identifier \"foo\"")
 		})
 	})
@@ -88,20 +89,20 @@ func TestStructWrapping(t *testing.T) {
 			type badPTTypeStruct struct {
 				field string `wrapping:"pt,foobar"`
 			}
-			err = WrapStruct(nil, wrapper, new(badPTTypeStruct))
+			err = WrapStruct(nil, wrapper, new(badPTTypeStruct), nil)
 			assert.Error(t, err, "plaintext value is not a slice")
 
 			type badPTSliceTypeStruct struct {
 				field []int `wrapping:"pt,foobar"`
 			}
-			err = WrapStruct(nil, wrapper, new(badPTSliceTypeStruct))
+			err = WrapStruct(nil, wrapper, new(badPTSliceTypeStruct), nil)
 			assert.Error(t, err, "plaintext value is not a byte slice")
 
 			type nilPTSliceStruct struct {
 				Field   []byte                      `wrapping:"pt,foobar"`
 				CTField *wrapping.EncryptedBlobInfo `wrapping:"ct,foobar"`
 			}
-			err = WrapStruct(nil, wrapper, new(nilPTSliceStruct))
+			err = WrapStruct(nil, wrapper, new(nilPTSliceStruct), nil)
 			assert.Error(t, err, "plaintext byte slice is nil")
 		})
 	})
@@ -113,20 +114,20 @@ func TestStructWrapping(t *testing.T) {
 			type badCTTypeStruct struct {
 				field string `wrapping:"ct,foobar"`
 			}
-			err = UnwrapStruct(nil, wrapper, new(badCTTypeStruct))
+			err = UnwrapStruct(nil, wrapper, new(badCTTypeStruct), nil)
 			assert.Error(t, err, "ciphertext value is not a pointer")
 
 			type badCTSliceTypeStruct struct {
 				field *int `wrapping:"ct,foobar"`
 			}
-			err = UnwrapStruct(nil, wrapper, new(badCTSliceTypeStruct))
+			err = UnwrapStruct(nil, wrapper, new(badCTSliceTypeStruct), nil)
 			assert.Error(t, err, "ciphertext value is not the expected type")
 
 			type nilCTStruct struct {
 				Field   []byte                      `wrapping:"pt,foobar"`
 				CTField *wrapping.EncryptedBlobInfo `wrapping:"ct,foobar"`
 			}
-			err = UnwrapStruct(nil, wrapper, new(nilCTStruct))
+			err = UnwrapStruct(nil, wrapper, new(nilCTStruct), nil)
 			assert.Error(t, err, "ciphertext pointer is nil")
 		})
 	})
@@ -141,7 +142,7 @@ func TestStructWrapping(t *testing.T) {
 			CT2 *wrapping.EncryptedBlobInfo `wrapping:"ct,bar"`
 		}
 		sut := &sutStruct{PT1: []byte("foo"), PT2: []byte("bar")}
-		err = WrapStruct(nil, wrapper, sut)
+		err = WrapStruct(nil, wrapper, sut, nil)
 		assert.Nil(t, err)
 		assert.NotNil(t, sut.CT1)
 		assert.NotNil(t, sut.CT2)
@@ -155,7 +156,7 @@ func TestStructWrapping(t *testing.T) {
 		assert.Equal(t, barVal, []byte("bar"))
 
 		sut2 := &sutStruct{CT1: sut.CT1, CT2: sut.CT2}
-		err = UnwrapStruct(nil, wrapper, sut2)
+		err = UnwrapStruct(nil, wrapper, sut2, nil)
 		assert.Nil(t, err)
 		assert.NotNil(t, sut2.PT1)
 		assert.NotNil(t, sut2.PT2)

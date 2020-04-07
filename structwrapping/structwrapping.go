@@ -93,7 +93,7 @@ func buildEncDecMap(ctx context.Context, in interface{}) (encDecMap, error) {
 	return edMap, nil
 }
 
-func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}) error {
+func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, aad []byte) error {
 	if wrapper == nil {
 		return errors.New("nil wrapper passed in")
 	}
@@ -113,7 +113,7 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}) e
 		if enc == nil {
 			return errors.New("plaintext byte slice is nil")
 		}
-		blobInfo, err := wrapper.Encrypt(ctx, enc, nil)
+		blobInfo, err := wrapper.Encrypt(ctx, enc, aad)
 		if err != nil {
 			return fmt.Errorf("error wrapping value: %w", err)
 		}
@@ -123,7 +123,7 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}) e
 	return nil
 }
 
-func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}) error {
+func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, aad []byte) error {
 	if wrapper == nil {
 		return errors.New("nil wrapper passed in")
 	}
@@ -143,7 +143,7 @@ func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{})
 		if dec == nil {
 			return errors.New("ciphertext pointer is nil")
 		}
-		bs, err := wrapper.Decrypt(ctx, dec, nil)
+		bs, err := wrapper.Decrypt(ctx, dec, aad)
 		if err != nil {
 			return fmt.Errorf("error unwrapping value: %w", err)
 		}

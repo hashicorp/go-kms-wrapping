@@ -8,6 +8,7 @@ encryption and decryption before sending to and when retrieving values from a
 database, via a hook/middleware. 
 
 Caveats:
+
 * The input must be a pointer to a struct
 * Tags must be balanced (there must be a matching ct tag entry with the same
   identifier as a pt tag entry, and vice versa)
@@ -16,9 +17,15 @@ Caveats:
   change
 
 ## Usage
-Add struct tags that specify fields for wrapping.  Wrapping tags must contain:
-* a field type of pt (plaintext) or ct (ciphertext) 
-* a unique name that ties together a pair of pt and ct fields 
+
+Add struct tags that specify fields for wrapping. Wrapping tags must contain:
+
+* A field type of `pt` (plaintext) or `ct` (ciphertext) 
+* A unique name that ties together a pair of `pt` and `ct` fields 
+
+This unique name does _not_ need to match the name of a struct field; this is
+on purpose, so that struct fields can be renamed without breaking this
+functionality.
 
 The best way to see how to use the package is via one of the tests for this
 package, reproduced below:
