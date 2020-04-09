@@ -28,8 +28,12 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 		t.Fatal(n)
 	}
 	root := NewWrapper(nil)
+	root.SetConfig(map[string]string{"key_id": "root"})
 	if err := root.SetAESGCMKeyBytes(rootKey); err != nil {
 		t.Fatal(err)
+	}
+	if root.KeyID() != "root" {
+		t.Fatal(root.keyID)
 	}
 	encBlob, err := root.Encrypt(nil, []byte("foobar"), nil)
 	if err != nil {
@@ -45,11 +49,15 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	}
 
 	sub, err := root.NewDerivedWrapper(&DerivedWrapperOptions{
-		Salt: []byte("zip"),
-		Info: []byte("zap"),
+		KeyID: "sub",
+		Salt:  []byte("zip"),
+		Info:  []byte("zap"),
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if sub.KeyID() != "sub" {
+		t.Fatal(sub.keyID)
 	}
 	// This should fail as it should be a different key
 	decVal, err = sub.Decrypt(nil, encBlob, nil)
@@ -76,11 +84,15 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 
 	// Ensure that deriving a second subkey with the same params works
 	sub2, err := root.NewDerivedWrapper(&DerivedWrapperOptions{
-		Salt: []byte("zip"),
-		Info: []byte("zap"),
+		KeyID: "sub2",
+		Salt:  []byte("zip"),
+		Info:  []byte("zap"),
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if sub2.KeyID() != "sub2" {
+		t.Fatal(sub2.keyID)
 	}
 	subDecVal, err = sub2.Decrypt(nil, subEncBlob, nil)
 	if err != nil {
