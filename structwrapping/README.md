@@ -27,35 +27,52 @@ This unique name does _not_ need to match the name of a struct field; this is
 on purpose, so that struct fields can be renamed without breaking this
 functionality.
 
+The plaintext struct fields can be either a `[]byte` or `string`. The
+ciphertext fields can be `[]byte`, `string`, or `*wrapping.EncryptedBlobInfo`.
+The library will automatically convert types (including marshaling/unmarshaling
+`*wrapping.EncryptedBlobInfo`) as necessary.
+
 The best way to see how to use the package is via one of the tests for this
 package, reproduced below:
 ```go
-var err error
-type sutStruct struct {
-    PT1 []byte                      `wrapping:"pt,foo"`
-    CT1 *wrapping.EncryptedBlobInfo `wrapping:"ct,foo"`
+		var err error
+		type sutStruct struct {
+			PT1 []byte                      `wrapping:"pt,foo"`
+			PT2 string                      `wrapping:"pt,bar"`
+			PT3 []byte                      `wrapping:"pt,zip"`
+			CT1 *wrapping.EncryptedBlobInfo `wrapping:"ct,foo"`
+			CT2 []byte                      `wrapping:"ct,bar"`
+			CT3 string                      `wrapping:"ct,zip"`
+		}
+		sut := &sutStruct{PT1: []byte("foo"), PT2: "bar", PT3: []byte("zip")}
+		err = WrapStruct(nil, wrapper, sut, nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, sut.CT1)
+		assert.NotNil(t, sut.CT2)
+		assert.NotNil(t, sut.CT3)
 
-    PT2 []byte                      `wrapping:"pt,bar"`
-    CT2 *wrapping.EncryptedBlobInfo `wrapping:"ct,bar"`
-}
+		fooVal, err := wrapper.Decrypt(nil, sut.CT1, nil)
+		assert.Nil(t, err)
+		assert.Equal(t, fooVal, []byte("foo"))
 
-sut := &sutStruct{PT1: []byte("foo"), PT2: []byte("bar")}
-err = WrapStruct(nil, wrapper, sut, nil)
-assert.Nil(t, err)
-assert.NotNil(t, sut.CT1)
-assert.NotNil(t, sut.CT2)
+		ebi := new(wrapping.EncryptedBlobInfo)
+		err = proto.Unmarshal(sut.CT2, ebi)
+		assert.Nil(t, err)
+		barVal, err := wrapper.Decrypt(nil, ebi, nil)
+		assert.Nil(t, err)
+		assert.Equal(t, barVal, []byte("bar"))
 
-fooVal, err := wrapper.Decrypt(nil, sut.CT1, nil)
-assert.Nil(t, err)
-assert.Equal(t, fooVal, []byte("foo"))
+		ebi = new(wrapping.EncryptedBlobInfo)
+		err = proto.Unmarshal([]byte(sut.CT3), ebi)
+		assert.Nil(t, err)
+		zipVal, err := wrapper.Decrypt(nil, ebi, nil)
+		assert.Nil(t, err)
+		assert.Equal(t, zipVal, []byte("zip"))
 
-barVal, err := wrapper.Decrypt(nil, sut.CT2, nil)
-assert.Nil(t, err)
-assert.Equal(t, barVal, []byte("bar"))
-
-sut2 := &sutStruct{CT1: sut.CT1, CT2: sut.CT2}
-err = UnwrapStruct(nil, wrapper, sut2, nil)
-assert.Nil(t, err)
-assert.Equal(t, sut2.PT1, []byte("foo"))
-assert.Equal(t, sut2.PT2, []byte("bar"))
+		sut2 := &sutStruct{CT1: sut.CT1, CT2: sut.CT2, CT3: sut.CT3}
+		err = UnwrapStruct(nil, wrapper, sut2, nil)
+		assert.Nil(t, err)
+		assert.Equal(t, sut2.PT1, []byte("foo"))
+		assert.Equal(t, sut2.PT2, "bar")
+		assert.Equal(t, sut2.PT3, []byte("zip"))
 ```
