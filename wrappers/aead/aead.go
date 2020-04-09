@@ -17,6 +17,7 @@ import (
 
 // Wrapper implements the wrapping.Wrapper interface for AEAD
 type Wrapper struct {
+	keyID    string
 	keyBytes []byte
 	aead     cipher.AEAD
 }
@@ -28,6 +29,9 @@ type ShamirWrapper struct {
 }
 
 type DerivedWrapperOptions struct {
+	// KeyID is the key ID to set on the derived wrapper
+	KeyID string
+
 	// AEADType is the type of AEAD to use in the sub-wrapper. An empty value
 	// defaults to "aes-gcm".
 	AEADType string
@@ -74,7 +78,9 @@ func (s *Wrapper) NewDerivedWrapper(opts *DerivedWrapperOptions) (*Wrapper, erro
 		h = sha256.New
 	}
 
-	ret := new(Wrapper)
+	ret := &Wrapper{
+		keyID: opts.KeyID,
+	}
 	reader := hkdf.New(h, s.keyBytes, opts.Salt, opts.Info)
 
 	switch opts.AEADType {
@@ -104,6 +110,8 @@ func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	if config == nil {
 		config = map[string]string{}
 	}
+
+	s.keyID = config["key_id"]
 
 	key := config["key"]
 	if key == "" {
@@ -179,7 +187,7 @@ func (s *ShamirWrapper) Type() string {
 
 // KeyID returns the last known key id
 func (s *Wrapper) KeyID() string {
-	return ""
+	return s.keyID
 }
 
 // HMACKeyID returns the last known HMAC key id
@@ -206,6 +214,9 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (*wrapping.E
 
 	return &wrapping.EncryptedBlobInfo{
 		Ciphertext: append(iv, ciphertext...),
+		KeyInfo: &wrapping.KeyInfo{
+			KeyID: s.keyID,
+		},
 	}, nil
 }
 
