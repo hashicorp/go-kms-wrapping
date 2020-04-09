@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"google.golang.org/protobuf/proto"
 )
 
 type entry struct {
@@ -49,11 +50,8 @@ func buildEncDecMap(ctx context.Context, in interface{}) (encDecMap, error) {
 		fieldKind := field.Type.Kind()
 		switch tagParts[0] {
 		case "pt":
-			if fieldKind != reflect.Slice {
-				return nil, errors.New("plaintext value is not a slice")
-			}
 			if !field.Type.ConvertibleTo(reflect.TypeOf([]byte(nil))) {
-				return nil, errors.New("plaintext value is not a byte slice")
+				return nil, errors.New("plaintext value can not be used as a byte slice")
 			}
 			curr := edMap[tagParts[1]]
 			if curr[0] != nil {
@@ -63,11 +61,17 @@ func buildEncDecMap(ctx context.Context, in interface{}) (encDecMap, error) {
 			edMap[tagParts[1]] = curr
 
 		case "ct":
-			if fieldKind != reflect.Ptr {
-				return nil, errors.New("ciphertext value is not a pointer")
-			}
-			if !field.Type.ConvertibleTo(reflect.TypeOf((*wrapping.EncryptedBlobInfo)(nil))) {
-				return nil, errors.New("ciphertext value is not the expected type")
+			switch fieldKind {
+			case reflect.Ptr:
+				if !field.Type.ConvertibleTo(reflect.TypeOf((*wrapping.EncryptedBlobInfo)(nil))) {
+					return nil, errors.New("ciphertext pointer value is not the expected type")
+				}
+			case reflect.String, reflect.Slice:
+				if !field.Type.ConvertibleTo(reflect.TypeOf([]byte(nil))) {
+					return nil, errors.New("ciphertext string/byte value cannot be used as a byte slice")
+				}
+			default:
+				return nil, errors.New("unsupported ciphertext value type")
 			}
 			curr := edMap[tagParts[1]]
 			if curr[1] != nil {
@@ -106,8 +110,13 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, a
 	val := reflect.Indirect(reflect.ValueOf(in))
 	for _, v := range edMap {
 		encRaw := val.Field(v[0].index).Interface()
-		enc, ok := encRaw.([]byte)
-		if !ok {
+		var enc []byte
+		switch encRaw.(type) {
+		case []byte:
+			enc = encRaw.([]byte)
+		case string:
+			enc = []byte(encRaw.(string))
+		default:
 			return errors.New("could not convert value for encryption to []byte")
 		}
 		if enc == nil {
@@ -117,7 +126,26 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, a
 		if err != nil {
 			return fmt.Errorf("error wrapping value: %w", err)
 		}
-		val.Field(v[1].index).Set(reflect.ValueOf(blobInfo))
+
+		field := val.Field(v[1].index)
+		switch field.Interface().(type) {
+		case *wrapping.EncryptedBlobInfo:
+			field.Set(reflect.ValueOf(blobInfo))
+		case []byte:
+			protoBytes, err := proto.Marshal(blobInfo)
+			if err != nil {
+				return fmt.Errorf("error marshaling proto in byte field: %w", err)
+			}
+			field.Set(reflect.ValueOf(protoBytes))
+		case string:
+			protoBytes, err := proto.Marshal(blobInfo)
+			if err != nil {
+				return fmt.Errorf("error marshaling proto in string field: %w", err)
+			}
+			field.Set(reflect.ValueOf(string(protoBytes)))
+		default:
+			return errors.New("could not set value on ciphertext field, incorrect type")
+		}
 	}
 
 	return nil
@@ -136,18 +164,41 @@ func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{},
 	val := reflect.Indirect(reflect.ValueOf(in))
 	for _, v := range edMap {
 		decRaw := val.Field(v[1].index).Interface()
-		dec, ok := decRaw.(*wrapping.EncryptedBlobInfo)
-		if !ok {
-			return errors.New("could not convert value for decryption to *wrapping.EncryptedBlobInfo")
+		var dec *wrapping.EncryptedBlobInfo
+		var decBytes []byte
+		switch typedDec := decRaw.(type) {
+		case *wrapping.EncryptedBlobInfo:
+			dec = typedDec
+		case string:
+			decBytes = []byte(typedDec)
+		case []byte:
+			decBytes = typedDec
+		default:
+			return errors.New("could not convert value for decryption to a known type")
 		}
 		if dec == nil {
-			return errors.New("ciphertext pointer is nil")
+			if decBytes != nil {
+				dec = new(wrapping.EncryptedBlobInfo)
+				if err := proto.Unmarshal(decBytes, dec); err != nil {
+					return fmt.Errorf("error unmarshaling encrypted blob info: %w", err)
+				}
+			} else {
+				return errors.New("ciphertext pointer is nil")
+			}
 		}
 		bs, err := wrapper.Decrypt(ctx, dec, aad)
 		if err != nil {
 			return fmt.Errorf("error unwrapping value: %w", err)
 		}
-		val.Field(v[0].index).Set(reflect.ValueOf(bs))
+		field := val.Field(v[0].index)
+		switch field.Interface().(type) {
+		case []byte:
+			field.Set(reflect.ValueOf(bs))
+		case string:
+			field.Set(reflect.ValueOf(string(bs)))
+		default:
+			return errors.New("could not set value on plaintext field, incorrect type")
+		}
 	}
 
 	return nil
