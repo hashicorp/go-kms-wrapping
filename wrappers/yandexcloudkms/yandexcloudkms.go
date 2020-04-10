@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/kms/v1"
 	"github.com/yandex-cloud/go-sdk/iamkey"
-	"io/ioutil"
 	"os"
 	"sync/atomic"
 
@@ -16,8 +15,16 @@ import (
 
 // These constants contain the accepted env vars
 const (
-	EnvYandexCloudOAuthToken = "YANDEXCLOUD_OAUTH_TOKEN"
-	EnvYandexCloudKMSKeyID   = "YANDEXCLOUD_KMS_KEY_ID"
+	EnvYandexCloudOAuthToken            = "YANDEXCLOUD_OAUTH_TOKEN"
+	EnvYandexCloudServiceAccountKeyFile = "YANDEXCLOUD_SERVICE_ACCOUNT_KEY_FILE"
+	EnvYandexCloudKMSKeyID              = "YANDEXCLOUD_KMS_KEY_ID"
+)
+
+// These constants contain the accepted config parameters
+const (
+	CfgYandexCloudOAuthToken            = "oauth_token"
+	CfgYandexCloudServiceAccountKeyFile = "service_account_key_file"
+	CfgYandexCloudKMSKeyID              = "kms_key_id"
 )
 
 // Wrapper represents credentials and Key information for the KMS Key used to
@@ -49,7 +56,7 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // Order of precedence Yandex.Cloud values:
 // * Environment variable
 // * Value from Vault configuration file
-// * Instance metadata role (access key and secret key)
+// * Instance metadata role
 // * Default values
 func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
 	if config == nil {
@@ -57,42 +64,27 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	// Check and set KeyID
-	switch {
-	case os.Getenv(EnvYandexCloudKMSKeyID) != "":
-		k.keyID = os.Getenv(EnvYandexCloudKMSKeyID)
-	case config["kms_key_id"] != "":
-		k.keyID = config["kms_key_id"]
-	default:
-		return nil, fmt.Errorf("'kms_key_id' not found for Yandex.Cloud wrapper configuration")
+	keyID := coalesce(os.Getenv(EnvYandexCloudKMSKeyID), config[CfgYandexCloudKMSKeyID])
+	if keyID == "" {
+		return nil, fmt.Errorf(
+			"Neither '%s' environment variable nor '%s' config parameter is set",
+			EnvYandexCloudKMSKeyID, CfgYandexCloudKMSKeyID,
+		)
 	}
-
-	//// Please see GetRegion for an explanation of the order in which region is parsed.
-	//var err error
-	//k.region, err = awsutil.GetRegion(config["region"])
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//// Check and set AWS access key, secret key, and session token
-	//k.accessKey = config["access_key"]
-	//k.secretKey = config["secret_key"]
-	//k.sessionToken = config["session_token"]
-	//
-	//k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
-	//if k.endpoint == "" {
-	//	if endpoint, ok := config["endpoint"]; ok {
-	//		k.endpoint = endpoint
-	//	}
-	//}
+	k.keyID = keyID
 
 	// Check and set k.client
 	if k.client == nil {
-		client, err := k.GetYandexCloudKMSClient(config)
+		client, err := getYandexCloudKMSClient(
+			coalesce(os.Getenv(EnvYandexCloudOAuthToken), config[CfgYandexCloudOAuthToken]),
+			coalesce(os.Getenv(EnvYandexCloudServiceAccountKeyFile), config[CfgYandexCloudServiceAccountKeyFile]),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing Yandex.Cloud KMS wrapping client: %w", err)
 		}
 
-		plaintext := []byte("test")
+		// Test the client connection using provided key ID
+		plaintext := []byte("plaintext")
 		encryptResponse, err := client.Encrypt(
 			context.Background(),
 			&kms.SymmetricEncryptRequest{
@@ -117,16 +109,6 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 			return nil, fmt.Errorf("encrypt/decrypt error: %w", err)
 		}
 
-		//// Test the client connection using provided key ID
-		//keyInfo, err := client.DescribeKey(&kms.DescribeKeyInput{
-		//	KeyId: aws.String(k.keyID),
-		//})
-		//if err != nil {
-		//	return nil, fmt.Errorf("error fetching AWS KMS wrapping key information: %w", err)
-		//}
-		//if keyInfo == nil || keyInfo.KeyMetadata == nil || keyInfo.KeyMetadata.KeyId == nil {
-		//	return nil, errors.New("no key information returned")
-		//}
 		k.currentKeyID.Store(k.keyID)
 
 		k.client = client
@@ -182,15 +164,6 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 		return nil, fmt.Errorf("nil client")
 	}
 
-	//input := &kms.EncryptInput{
-	//	KeyId:     aws.String(k.keyID),
-	//	Plaintext: env.Key,
-	//}
-	//output, err := k.client.Encrypt(input)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error encrypting data: %w", err)
-	//}
-
 	encryptResponse, err := k.client.Encrypt(
 		context.Background(),
 		&kms.SymmetricEncryptRequest{
@@ -232,25 +205,6 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	//// Default to mechanism used before key info was stored
-	//if in.KeyInfo == nil {
-	//	in.KeyInfo = &wrapping.KeyInfo{
-	//		Mechanism: AWSKMSEncrypt,
-	//	}
-	//}
-
-	//var plaintext []byte
-
-	//// KeyID is not passed to this call because AWS handles this
-	//// internally based on the metadata stored with the encrypted data
-	//input := &kms.DecryptInput{
-	//	CiphertextBlob: in.KeyInfo.WrappedKey,
-	//}
-	//output, err := k.client.Decrypt(input)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
-	//}
-
 	decryptResponse, err := k.client.Decrypt(
 		context.Background(),
 		&kms.SymmetricDecryptRequest{
@@ -276,58 +230,8 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 }
 
 // GetYandexCloudKMSClient returns an instance of the KMS client.
-func (k *Wrapper) GetYandexCloudKMSClient(config map[string]string) (kms.SymmetricCryptoServiceClient, error) {
-	//credsConfig := &awsutil.CredentialsConfig{}
-	//
-	//credsConfig.AccessKey = k.accessKey
-	//credsConfig.SecretKey = k.secretKey
-	//credsConfig.SessionToken = k.sessionToken
-	//credsConfig.Region = k.region
-	//
-	//credsConfig.HTTPClient = cleanhttp.DefaultClient()
-	//
-	//creds, err := credsConfig.GenerateCredentialChain()
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//awsConfig := &aws.Config{
-	//	Credentials: creds,
-	//	Region:      aws.String(credsConfig.Region),
-	//	HTTPClient:  cleanhttp.DefaultClient(),
-	//}
-	//
-	//if k.endpoint != "" {
-	//	awsConfig.Endpoint = aws.String(k.endpoint)
-	//}
-	//
-	//sess, err := session.NewSession(awsConfig)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	/*
-		var token string
-		switch {
-		case os.Getenv(EnvYandexCloudOAuthToken) != "":
-			token = os.Getenv(EnvYandexCloudOAuthToken)
-		case config["oauth_token"] != "":
-			token = config["oauth_token"]
-		default:
-			return nil, fmt.Errorf("'oauth_token' not found for Yandex.Cloud wrapper configuration")
-		}
-		credentials := ycsdk.OAuthToken(token)
-	*/
-
-	content, err := ioutil.ReadFile("/Users/zamysel/private.key")
-	if err != nil {
-		return nil, err
-	}
-	credentials, err := ycsdk.ServiceAccountKey(&iamkey.Key{
-		Id:         "ajep5qmhl8bgk7gpgfn7",
-		Subject:    &iamkey.Key_ServiceAccountId{ServiceAccountId: "ajeu4tcraf114usctb77"},
-		PrivateKey: string(content),
-	})
+func getYandexCloudKMSClient(oauthToken string, serviceAccountKeyFile string) (kms.SymmetricCryptoServiceClient, error) {
+	credentials, err := getCredentials(oauthToken, serviceAccountKeyFile)
 	if err != nil {
 		return nil, err
 	}
@@ -341,4 +245,33 @@ func (k *Wrapper) GetYandexCloudKMSClient(config map[string]string) (kms.Symmetr
 	}
 
 	return sdk.KMSCrypto().SymmetricCrypto(), nil
+}
+
+func getCredentials(oauthToken string, serviceAccountKeyFile string) (ycsdk.Credentials, error) {
+	if oauthToken != "" && serviceAccountKeyFile != "" {
+		return nil, fmt.Errorf("TODO")
+	}
+
+	if oauthToken != "" {
+		return ycsdk.OAuthToken(oauthToken), nil
+	}
+
+	if serviceAccountKeyFile != "" {
+		key, err := iamkey.ReadFromJSONFile(serviceAccountKeyFile)
+		if err != nil {
+			return nil, err
+		}
+		return ycsdk.ServiceAccountKey(key)
+	}
+
+	return ycsdk.InstanceServiceAccount(), nil
+}
+
+func coalesce(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }
