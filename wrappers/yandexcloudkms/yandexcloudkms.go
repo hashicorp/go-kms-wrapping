@@ -1,7 +1,6 @@
 package yandexcloudkms
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/yandex-cloud/go-genproto/yandex/cloud/kms/v1"
@@ -30,9 +29,9 @@ const (
 // Wrapper represents credentials and Key information for the KMS Key used to
 // encryption and decryption
 type Wrapper struct {
-	client       kms.SymmetricCryptoServiceClient
-	keyID        string
-	currentKeyID *atomic.Value
+	client           kms.SymmetricCryptoServiceClient
+	keyID            string
+	currentVersionID *atomic.Value
 }
 
 // Ensure that we are implementing Wrapper
@@ -44,9 +43,9 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 		opts = new(wrapping.WrapperOptions)
 	}
 	k := &Wrapper{
-		currentKeyID: new(atomic.Value),
+		currentVersionID: new(atomic.Value),
 	}
-	k.currentKeyID.Store("")
+	k.currentVersionID.Store("")
 	return k
 }
 
@@ -82,36 +81,15 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing Yandex.Cloud KMS wrapping client: %w", err)
 		}
-
-		// Test the client connection using provided key ID
-		plaintext := []byte("plaintext")
-		encryptResponse, err := client.Encrypt(
-			context.Background(),
-			&kms.SymmetricEncryptRequest{
-				KeyId:     k.keyID,
-				Plaintext: plaintext,
-			},
-		)
-		if err != nil {
-			return nil, fmt.Errorf("encrypt error: %w", err)
-		}
-		decryptResponse, err := client.Decrypt(
-			context.Background(),
-			&kms.SymmetricDecryptRequest{
-				KeyId:      k.keyID,
-				Ciphertext: encryptResponse.Ciphertext,
-			},
-		)
-		if err != nil {
-			return nil, fmt.Errorf("decrypt error: %w", err)
-		}
-		if !bytes.Equal(decryptResponse.Plaintext, plaintext) {
-			return nil, fmt.Errorf("encrypt/decrypt error: %w", err)
-		}
-
-		k.currentKeyID.Store(k.keyID)
-
 		k.client = client
+
+		// Make sure user has permissions to encrypt (also checks if key exists)
+		if _, err := k.Encrypt(context.Background(), []byte("go-kms-wrapping-test"), nil); err != nil {
+			return nil, fmt.Errorf(
+				"failed to encrypt with Yandex.Cloud KMS key - ensure the "+
+					"key exists and the service account (or the user) has all"+
+					"the required permissions: %w", err)
+		}
 	}
 
 	// Map that holds non-sensitive configuration info
@@ -139,7 +117,7 @@ func (k *Wrapper) Type() string {
 
 // KeyID returns the last known key id
 func (k *Wrapper) KeyID() string {
-	return k.currentKeyID.Load().(string)
+	return k.currentVersionID.Load().(string)
 }
 
 // HMACKeyID returns the last known HMAC key id
@@ -175,23 +153,17 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
 
-	// Store the current key id
-	//
-	// When using a key alias, this will return the actual underlying key id
-	// used for encryption.  This is helpful if you are looking to reencyrpt
-	// your data when it is not using the latest key id. See these docs relating
-	// to key rotation https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
-	keyID := encryptResponse.KeyId
-	k.currentKeyID.Store(keyID)
+	// Store the current version id
+	k.currentVersionID.Store(encryptResponse.VersionId)
 
 	ret := &wrapping.EncryptedBlobInfo{
 		Ciphertext: env.Ciphertext,
 		IV:         env.IV,
 		KeyInfo: &wrapping.KeyInfo{
-			// Even though we do not use the key id during decryption, store it
+			// Even though we do not use the version id during decryption, store it
 			// to know exactly the specific key used in encryption in case we
 			// want to rewrap older entries
-			KeyID:      keyID,
+			KeyID:      encryptResponse.VersionId,
 			WrappedKey: encryptResponse.Ciphertext,
 		},
 	}
