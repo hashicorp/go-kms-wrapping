@@ -26,7 +26,7 @@ const (
 	CfgYandexCloudKMSKeyID              = "kms_key_id"
 )
 
-// Wrapper represents credentials and Key information for the KMS Key used to
+// Wrapper represents credentials and key information for the KMS Key used to
 // encryption and decryption
 type Wrapper struct {
 	client           kms.SymmetricCryptoServiceClient
@@ -81,14 +81,9 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing Yandex.Cloud KMS wrapping client: %w", err)
 		}
-		k.client = client
 
-		// Make sure user has permissions to encrypt (also checks if key exists)
-		if _, err := k.Encrypt(context.Background(), []byte("go-kms-wrapping-test"), nil); err != nil {
-			return nil, fmt.Errorf(
-				"failed to encrypt with Yandex.Cloud KMS key - ensure the "+
-					"key exists and the service account (or the user) has all"+
-					"the required permissions: %w", err)
+		if err := k.setClient(client); err != nil {
+			return nil, err
 		}
 	}
 
@@ -97,6 +92,20 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	wrappingInfo["kms_key_id"] = k.keyID
 
 	return wrappingInfo, nil
+}
+
+func (k *Wrapper) setClient(client kms.SymmetricCryptoServiceClient) error {
+	k.client = client
+
+	// Make sure user has permissions to encrypt (also checks if key exists)
+	if _, err := k.Encrypt(context.Background(), []byte("go-kms-wrapping-test"), nil); err != nil {
+		return fmt.Errorf(
+			"failed to encrypt with Yandex.Cloud KMS key - ensure the "+
+				"key exists and the service account (or the user) has all"+
+				"the required permissions: %w", err)
+	}
+
+	return nil
 }
 
 // Init is called during core.Initialize. No-op at the moment.
