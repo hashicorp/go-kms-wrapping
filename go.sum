@@ -184,11 +184,11 @@ github.com/hashicorp/golang-lru v0.5.1 h1:0hERBMJE1eitiLkihrMvRVBYAkpHzc/J3QdDN+
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
-github.com/hashicorp/vault/api v1.0.5-0.20200513233819-f0478830be9c h1:fkRQI68Qm6xSiobW0tiab4o3cbsSuYJRtOIhHhHR1Hg=
-github.com/hashicorp/vault/api v1.0.5-0.20200513233819-f0478830be9c/go.mod h1:a/XOzZ9QFH/DbLJYfIACu92f6DzswFNSJINAdw8e8/k=
-github.com/hashicorp/vault/sdk v0.1.14-0.20200310200459-8f075a2701b4/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
-github.com/hashicorp/vault/sdk v0.1.14-0.20200513233819-f0478830be9c h1:T+MHZa5Wy3I70mRdn8M0uoUsAts19Is/KjKkQZQMzog=
-github.com/hashicorp/vault/sdk v0.1.14-0.20200513233819-f0478830be9c/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
+github.com/hashicorp/vault/api v1.0.5-0.20200514164214-89b1987e38c2 h1:lfjJouPlC/inHjTOqe48N/BiLshU2YZqkxkUbNPj4fU=
+github.com/hashicorp/vault/api v1.0.5-0.20200514164214-89b1987e38c2/go.mod h1:P8A7gn1a6j/7qQ4zOaWI6FC/Q9jQWEBRTOwZH33tC9o=
+github.com/hashicorp/vault/sdk v0.1.14-0.20200514144402-4bfac290c352/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
+github.com/hashicorp/vault/sdk v0.1.14-0.20200514164214-89b1987e38c2 h1:nFnSG20ciQAUIRKqMMEn75yBqjfUWL4DzkQLS3uy0qQ=
+github.com/hashicorp/vault/sdk v0.1.14-0.20200514164214-89b1987e38c2/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
 github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4 h1:/+f4LG96YdYE6/Duf7iZxPMRQHYaokb/CkuvkG+VPpY=
 github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4/go.mod h1:WQBcHRNX9shz3928lWEvstQJtAtYI7ks6XlgtRT9Tcw=
