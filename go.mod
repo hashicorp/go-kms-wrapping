@@ -15,8 +15,8 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.12.1
 	github.com/hashicorp/go-uuid v1.0.2
-	github.com/hashicorp/vault/api v1.0.5-0.20200310193702-5895508cf706
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200310193702-5895508cf706
+	github.com/hashicorp/vault/api v1.0.5-0.20200513233819-f0478830be9c
+	github.com/hashicorp/vault/sdk v0.1.14-0.20200513233819-f0478830be9c
 	github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4
 	github.com/oracle/oci-go-sdk v12.5.0+incompatible
 	github.com/stretchr/testify v1.5.1
