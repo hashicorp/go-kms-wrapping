@@ -21,6 +21,7 @@ const (
 	TencentCloudKMS = "tencentcloudkms"
 	Transit         = "transit"
 	Test            = "test-auto"
+	X25519          = "x25519"
 
 	// HSMAutoDeprecated is a deprecated type relevant to Vault prior to 0.9.0.
 	// It is still referenced in certain code paths for upgrade purporses

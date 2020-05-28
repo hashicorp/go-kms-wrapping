@@ -19,6 +19,7 @@ import (
 type Wrapper struct {
 	keyID    string
 	keyBytes []byte
+	aeadType string
 	aead     cipher.AEAD
 }
 
@@ -31,6 +32,11 @@ type ShamirWrapper struct {
 type DerivedWrapperOptions struct {
 	// KeyID is the key ID to set on the derived wrapper
 	KeyID string
+
+	// KeyBytes can be used to override the base key. This can be useful if all
+	// you really want is a derived key, to avoid having to set a key
+	// initially.
+	KeyBytes []byte
 
 	// AEADType is the type of AEAD to use in the sub-wrapper. An empty value
 	// defaults to "aes-gcm".
@@ -69,8 +75,17 @@ func (s *Wrapper) NewDerivedWrapper(opts *DerivedWrapperOptions) (*Wrapper, erro
 	if opts == nil {
 		opts = new(DerivedWrapperOptions)
 	}
-	if len(s.keyBytes) == 0 {
-		return nil, errors.New("cannot create a sub-wrapper when key byte are not set")
+
+	var keyBytes []byte
+	switch {
+	case opts.KeyBytes != nil:
+		keyBytes = opts.KeyBytes
+	case s == nil:
+	default:
+		keyBytes = s.keyBytes
+	}
+	if len(keyBytes) == 0 {
+		return nil, errors.New("cannot create a sub-wrapper when key bytes are not set")
 	}
 
 	h := opts.Hash
@@ -81,17 +96,17 @@ func (s *Wrapper) NewDerivedWrapper(opts *DerivedWrapperOptions) (*Wrapper, erro
 	ret := &Wrapper{
 		keyID: opts.KeyID,
 	}
-	reader := hkdf.New(h, s.keyBytes, opts.Salt, opts.Info)
+	reader := hkdf.New(h, keyBytes, opts.Salt, opts.Info)
 
 	switch opts.AEADType {
 	case "", "aes-gcm":
-		ret.keyBytes = make([]byte, len(s.keyBytes))
+		ret.keyBytes = make([]byte, len(keyBytes))
 		n, err := reader.Read(ret.keyBytes)
 		if err != nil {
 			return nil, fmt.Errorf("error reading bytes from derived reader: %w", err)
 		}
-		if n != len(s.keyBytes) {
-			return nil, fmt.Errorf("expected to read %d bytes, but read %d bytes from derived reader", len(s.keyBytes), n)
+		if n != len(keyBytes) {
+			return nil, fmt.Errorf("expected to read %d bytes, but read %d bytes from derived reader", len(keyBytes), n)
 		}
 		if err := ret.SetAESGCMKeyBytes(ret.keyBytes); err != nil {
 			return nil, fmt.Errorf("error setting derived AES GCM key: %w", err)
@@ -112,25 +127,15 @@ func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	s.keyID = config["key_id"]
+	s.aeadType = config["aead_type"]
 
 	key := config["key"]
 	if key == "" {
 		return nil, nil
 	}
 
-	aeadType := config["aead_type"]
-	switch aeadType {
-	case "aes-gcm":
-		keyRaw, err := base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			return nil, fmt.Errorf("error base64-decoding key: %w", err)
-		}
-		if err := s.SetAESGCMKeyBytes(keyRaw); err != nil {
-			return nil, fmt.Errorf("error setting AES GCM key: %w", err)
-		}
-
-	default:
-		return nil, fmt.Errorf("unknown aead_type %q", aeadType)
+	if err := s.SetKey(key); err != nil {
+		return nil, err
 	}
 
 	// Map that holds non-sensitive configuration info
@@ -146,6 +151,32 @@ func (s *Wrapper) GetKeyBytes() []byte {
 
 func (s *Wrapper) SetAEAD(aead cipher.AEAD) {
 	s.aead = aead
+}
+
+func (s *Wrapper) SetRawKey(key []byte) error {
+	switch s.aeadType {
+	case "", "aes-gcm":
+		if err := s.SetAESGCMKeyBytes(key); err != nil {
+			return fmt.Errorf("error setting AES GCM key: %w", err)
+		}
+	}
+
+	return fmt.Errorf("unknown aead_type %q", s.aeadType)
+}
+
+func (s *Wrapper) SetKey(key string) error {
+	switch s.aeadType {
+	case "", "aes-gcm":
+		keyRaw, err := base64.StdEncoding.DecodeString(key)
+		if err != nil {
+			return fmt.Errorf("error base64-decoding key: %w", err)
+		}
+		if err := s.SetAESGCMKeyBytes(keyRaw); err != nil {
+			return fmt.Errorf("error setting AES GCM key: %w", err)
+		}
+	}
+
+	return fmt.Errorf("unknown aead_type %q", s.aeadType)
 }
 
 // SetAESGCMKeyBytes takes in a byte slice and constucts an AES-GCM AEAD from it
