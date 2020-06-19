@@ -93,7 +93,8 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 	ret := &wrapping.EncryptedBlobInfo{
 		Ciphertext: ciphertext,
 		KeyInfo: &wrapping.KeyInfo{
-			KeyID: keyID,
+			KeyID:      keyID,
+			WrappedKey: []byte{'s'},
 		},
 	}
 	return ret, nil
