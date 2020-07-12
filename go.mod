@@ -21,9 +21,12 @@ require (
 	github.com/oracle/oci-go-sdk v12.5.0+incompatible
 	github.com/stretchr/testify v1.5.1
 	github.com/tencentcloud/tencentcloud-sdk-go v3.0.171+incompatible
+	github.com/yandex-cloud/go-genproto v0.0.0-20200706121451-bfae58471d97
+	github.com/yandex-cloud/go-sdk v0.0.0-20200707154350-763c5b940220
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	golang.org/x/net v0.0.0-20200513185701-a91f0712d120
 	google.golang.org/api v0.24.0
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884
+	google.golang.org/grpc v1.28.0
 	google.golang.org/protobuf v1.22.0
 )
