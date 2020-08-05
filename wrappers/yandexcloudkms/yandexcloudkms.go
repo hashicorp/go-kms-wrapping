@@ -132,7 +132,7 @@ func (k *Wrapper) HMACKeyID() string {
 // Encrypt is used to encrypt the master key using Yandex.Cloud symmetric key.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after the KMS client has been instantiated.
-func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (k *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
@@ -147,7 +147,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 	}
 
 	encryptResponse, err := k.client.Encrypt(
-		context.Background(),
+		ctx,
 		&kms.SymmetricEncryptRequest{
 			KeyId:     k.keyID,
 			Plaintext: env.Key,
@@ -176,13 +176,13 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
-func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
+func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
 	decryptResponse, err := k.client.Decrypt(
-		context.Background(),
+		ctx,
 		&kms.SymmetricDecryptRequest{
 			KeyId:      k.keyID,
 			Ciphertext: in.KeyInfo.WrappedKey,
@@ -228,7 +228,7 @@ func getCredentials(oauthToken string, serviceAccountKeyFile string) (ycsdk.Cred
 		return nil, fmt.Errorf("error configuring authentication: both OAuth token and service account key file are specified")
 	}
 
-	// Yandex account authentification (via Oauth token)
+	// Yandex account authentication (via Oauth token)
 	if oauthToken != "" {
 		return ycsdk.OAuthToken(oauthToken), nil
 	}

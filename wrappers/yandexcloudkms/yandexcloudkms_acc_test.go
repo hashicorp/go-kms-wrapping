@@ -12,7 +12,7 @@ import (
 //
 // To run this test, the following env variables need to be set:
 //   - YANDEXCLOUD_KMS_KEY_ID
-//   - YANDEXCLOUD_OAUTH_TOKEN (required only for Yandex account authentification)
+//   - YANDEXCLOUD_OAUTH_TOKEN (required only for Yandex account authentication)
 //   - YANDEXCLOUD_SERVICE_ACCOUNT_KEY_FILE (required only for service account authentication)
 //
 // Yandex account OAuth token can be received here:
