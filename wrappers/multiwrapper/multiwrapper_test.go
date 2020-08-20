@@ -105,6 +105,26 @@ func TestMultiWrapper(t *testing.T) {
 		}
 	}
 
+	// Check retriving the wrappers
+	checkW1 := multi.WrapperForKeyID("w1")
+	if checkW1 == nil {
+		t.Fatal("nil w1")
+	}
+	if checkW1.KeyID() != "w1" {
+		t.Fatal("mismatch")
+	}
+	checkW2 := multi.WrapperForKeyID("w2")
+	if checkW2 == nil {
+		t.Fatal("nil w2")
+	}
+	if checkW2.KeyID() != "w2" {
+		t.Fatal("mismatch")
+	}
+	checkW3 := multi.WrapperForKeyID("w3")
+	if checkW3 != nil {
+		t.Fatal("expected key not found")
+	}
+
 	// Check removing a wrapper, and not removing the base wrapper
 	multi.RemoveWrapper("w1")
 	multi.RemoveWrapper("w2")
