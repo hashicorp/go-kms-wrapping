@@ -2,9 +2,9 @@ package wrapping
 
 import (
 	"context"
+	"crypto/rsa"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
 )
 
 // These values define known types of Wrappers
@@ -29,6 +29,15 @@ const (
 	HSMAutoDeprecated = "hsm-auto"
 )
 
+// KeyType defines types of cryptographic keys.
+type KeyType string
+
+const (
+	RSA2048 KeyType = "rsa_2048"
+	RSA3072 KeyType = "rsa_3072"
+	RSA4096 KeyType = "rsa_4096"
+)
+
 // Purpose defines the cryptographic capabilities of a key.
 type Purpose string
 
@@ -45,6 +54,19 @@ const (
 	Software ProtectionLevel = "software"
 	HSM      ProtectionLevel = "hsm"
 )
+
+// KMSKey represents a cryptographic key that can be imported into a KMS.
+type KMSKey struct {
+	Type            KeyType
+	Purpose         Purpose
+	ProtectionLevel ProtectionLevel
+	Material        KeyMaterial
+}
+
+// KeyMaterial contains key material for various key types.
+type KeyMaterial struct {
+	RSAKey *rsa.PrivateKey
+}
 
 // Wrapper is the embedded implementation of autoSeal that contains logic
 // specific to encrypting and decrypting data, or in this case keys.
@@ -72,15 +94,15 @@ type Wrapper interface {
 type LifecycleWrapper interface {
 	Wrapper
 
-	// ImportKey creates a named key by importing key material in the given KeyEntry.
-	// The key will have the given KeyType, Purpose, and ProtectionLevel if supported by the implementation.
+	// ImportKey creates a named key by importing key material in the given KMSKey.
+	// The key will have the given Type, Purpose, and ProtectionLevel if supported by the implementation.
 	// Returns the ID of a new key version and an error.
-	ImportKey(ctx context.Context, name string, kt keysutil.KeyType, ke keysutil.KeyEntry, pr Purpose, pl ProtectionLevel) (string, error)
+	ImportKey(ctx context.Context, name string, key KMSKey) (string, error)
 
-	// RotateKey rotates the named key by creating a new key version with key material in the given KeyEntry.
-	// The key version will have the given KeyType, Purpose, and ProtectionLevel if supported by the implementation.
+	// RotateKey rotates the named key by creating a new key version with key material in the given KMSKey.
+	// The key version will have the given Type, Purpose, and ProtectionLevel if supported by the implementation.
 	// Returns the ID of a new key version and an error.
-	RotateKey(ctx context.Context, name string, kt keysutil.KeyType, ke keysutil.KeyEntry, pr Purpose, pl ProtectionLevel) (string, error)
+	RotateKey(ctx context.Context, name string, key KMSKey) (string, error)
 
 	// DeleteKey deletes the named key.
 	// Returns a bool representing if the key exists and an error.

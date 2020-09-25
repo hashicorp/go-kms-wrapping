@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/keysutil"
 )
 
 const (
@@ -262,11 +261,11 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 	return wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
 }
 
-func (v *Wrapper) ImportKey(_ context.Context, _ string, _ keysutil.KeyType, _ keysutil.KeyEntry, _ wrapping.Purpose, _ wrapping.ProtectionLevel) (string, error) {
+func (v *Wrapper) ImportKey(_ context.Context, _ string, _ wrapping.KMSKey) (string, error) {
 	return "", nil
 }
 
-func (v *Wrapper) RotateKey(_ context.Context, _ string, _ keysutil.KeyType, _ keysutil.KeyEntry, _ wrapping.Purpose, _ wrapping.ProtectionLevel) (string, error) {
+func (v *Wrapper) RotateKey(_ context.Context, _ string, _ wrapping.KMSKey) (string, error) {
 	return "", nil
 }
 
