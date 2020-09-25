@@ -123,14 +123,14 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	switch {
-	case v.keyNotRequired:
-		// key not required to set config
 	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "":
 		v.keyName = os.Getenv(EnvAzureKeyVaultWrapperKeyName)
 	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "":
 		v.keyName = os.Getenv(EnvVaultAzureKeyVaultKeyName)
 	case config["key_name"] != "":
 		v.keyName = config["key_name"]
+	case v.keyNotRequired:
+		// key not required to set config
 	default:
 		return nil, errors.New("key name is required")
 	}
