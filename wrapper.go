@@ -42,9 +42,12 @@ const (
 type Purpose string
 
 const (
-	EncryptDecrypt Purpose = "encrypt_decrypt"
-	SignVerify     Purpose = "sign_verify"
-	WrapUnwrap     Purpose = "wrap_unwrap"
+	Encrypt Purpose = "encrypt"
+	Decrypt Purpose = "decrypt"
+	Sign    Purpose = "sign"
+	Verify  Purpose = "verify"
+	Wrap    Purpose = "wrap"
+	Unwrap  Purpose = "unwrap"
 )
 
 // ProtectionLevel defines where cryptographic operations are performed with a key.
@@ -58,7 +61,7 @@ const (
 // KMSKey represents a cryptographic key that can be imported into a KMS.
 type KMSKey struct {
 	Type            KeyType
-	Purpose         Purpose
+	Purposes        []Purpose
 	ProtectionLevel ProtectionLevel
 	Material        KeyMaterial
 }
