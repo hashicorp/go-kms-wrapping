@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
 )
 
@@ -40,8 +40,10 @@ type Wrapper struct {
 
 	currentKeyID *atomic.Value
 
-	environment azure.Environment
-	client      *keyvault.BaseClient
+	environment    azure.Environment
+	client         *keyvault.BaseClient
+	logger         hclog.Logger
+	keyNotRequired bool
 }
 
 // Ensure that we are implementing Wrapper
@@ -53,7 +55,9 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 		opts = new(wrapping.WrapperOptions)
 	}
 	v := &Wrapper{
-		currentKeyID: new(atomic.Value),
+		currentKeyID:   new(atomic.Value),
+		logger:         opts.Logger,
+		keyNotRequired: opts.KeyNotRequired,
 	}
 	v.currentKeyID.Store("")
 	return v
@@ -124,6 +128,8 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		v.keyName = os.Getenv(EnvVaultAzureKeyVaultKeyName)
 	case config["key_name"] != "":
 		v.keyName = config["key_name"]
+	case v.keyNotRequired:
+		// key not required to set config
 	default:
 		return nil, errors.New("key name is required")
 	}
@@ -134,15 +140,17 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 			return nil, fmt.Errorf("error initializing Azure Key Vault wrapper client: %w", err)
 		}
 
-		// Test the client connection using provided key ID
-		keyInfo, err := client.GetKey(context.Background(), v.buildBaseURL(), v.keyName, "")
-		if err != nil {
-			return nil, fmt.Errorf("error fetching Azure Key Vault wrapper key information: %w", err)
+		if !v.keyNotRequired {
+			// Test the client connection using provided key ID
+			keyInfo, err := client.GetKey(context.Background(), v.buildBaseURL(), v.keyName, "")
+			if err != nil {
+				return nil, fmt.Errorf("error fetching Azure Key Vault wrapper key information: %w", err)
+			}
+			if keyInfo.Key == nil {
+				return nil, errors.New("no key information returned")
+			}
+			v.currentKeyID.Store(parseKeyVersion(to.String(keyInfo.Key.Kid)))
 		}
-		if keyInfo.Key == nil {
-			return nil, errors.New("no key information returned")
-		}
-		v.currentKeyID.Store(parseKeyVersion(to.String(keyInfo.Key.Kid)))
 
 		v.client = client
 	}
@@ -251,6 +259,26 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 		Ciphertext: in.Ciphertext,
 	}
 	return wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
+}
+
+func (v *Wrapper) ImportKey(_ context.Context, _ string, _ wrapping.KMSKey) (string, error) {
+	return "", nil
+}
+
+func (v *Wrapper) RotateKey(_ context.Context, _ string, _ wrapping.KMSKey) (string, error) {
+	return "", nil
+}
+
+func (v *Wrapper) DeleteKey(_ context.Context, _ string) (bool, error) {
+	return false, nil
+}
+
+func (v *Wrapper) EnableKeyVersion(_ context.Context, _, _ string) error {
+	return nil
+}
+
+func (v *Wrapper) DisableKeyVersion(_ context.Context, _, _ string) error {
+	return nil
 }
 
 func (v *Wrapper) buildBaseURL() string {
