@@ -5,8 +5,8 @@ go 1.13
 require (
 	cloud.google.com/go v0.56.0
 	github.com/Azure/azure-sdk-for-go v36.2.0+incompatible
-	github.com/Azure/go-autorest/autorest v0.10.1
-	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
+	github.com/Azure/go-autorest/autorest v0.11.9
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.3
 	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190620160927-9418d7b0cd0f
@@ -23,7 +23,7 @@ require (
 	github.com/tencentcloud/tencentcloud-sdk-go v3.0.171+incompatible
 	github.com/yandex-cloud/go-genproto v0.0.0-20200722140432-762fe965ce77
 	github.com/yandex-cloud/go-sdk v0.0.0-20200722140627-2194e5077f13
-	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
+	golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	google.golang.org/api v0.24.0
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013
