@@ -108,7 +108,7 @@ type LifecycleWrapper interface {
 	RotateKey(ctx context.Context, name string, key KMSKey) (string, error)
 
 	// DeleteKey deletes the named key.
-	// Returns a bool representing if the key exists and an error.
+	// Returns a bool representing if the key existed before deletion and an error.
 	DeleteKey(ctx context.Context, name string) (bool, error)
 
 	// EnableKeyVersion enables the version of the named key.

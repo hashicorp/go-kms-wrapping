@@ -174,8 +174,11 @@ func TestAzureKeyVault_KeyLifecycle(t *testing.T) {
 
 	// Delete the key
 	exists, err := s.DeleteKey(ctx, name)
-	if err != nil || !exists {
+	if err != nil {
 		t.Fatalf("err: %s", err.Error())
+	}
+	if !exists {
+		t.Fatal("expected key to exist before deletion")
 	}
 
 	// Expect that the key no longer exists

@@ -388,8 +388,18 @@ func (v *Wrapper) RotateKey(ctx context.Context, name string, key wrapping.KMSKe
 // will result in the deletion of all versions of the key. After deletion, the key
 // cannot be used for crypto operations.
 func (v *Wrapper) DeleteKey(ctx context.Context, name string) (bool, error) {
-	res, err := v.client.DeleteKey(ctx, v.baseURL, name)
-	return res.StatusCode != http.StatusNotFound, err
+	if res, err := v.client.DeleteKey(ctx, v.baseURL, name); err != nil {
+		// The response isn't a pointer, but the embedded struct holding the status code is.
+		// If we can't read the status code, assume the key exists and return the error.
+		if res.Response.Response == nil {
+			return true, err
+		}
+
+		// The key existed before the failed deletion attempt if the status code isn't a 404.
+		return res.StatusCode != http.StatusNotFound, err
+	}
+
+	return true, nil
 }
 
 // EnableKeyVersion enables the given version of the given key.
