@@ -341,7 +341,7 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 			Kid: to.String(kekBundle.Key.Kid),
 		},
 		CipherText: wrappedKeyMaterial,
-		Generator:  "Hashicorp",
+		Generator:  "HashiCorp",
 	}
 	ktb, err := json.Marshal(b)
 	if err != nil {
