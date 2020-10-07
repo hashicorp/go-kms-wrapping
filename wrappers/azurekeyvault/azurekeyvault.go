@@ -370,6 +370,10 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 	return parseKeyVersion(to.String(imported.Key.Kid)), nil
 }
 
+// RotateKey rotates the key with the given name in Azure Key Vault. Rotating a
+// key is achieved by importing the material in the given KMSKey into an existing
+// key. After rotation, the current (latest) version of the key will contain the
+// material in the given KMSKey.
 func (v *Wrapper) RotateKey(ctx context.Context, name string, key wrapping.KMSKey) (string, error) {
 	// Check that the key exists before importing a new version
 	if _, err := v.client.GetKey(ctx, v.baseURL, name, ""); err != nil {
@@ -380,11 +384,15 @@ func (v *Wrapper) RotateKey(ctx context.Context, name string, key wrapping.KMSKe
 	return v.ImportKey(ctx, name, key)
 }
 
+// DeleteKey deletes the key with the given name from Azure Key Vault. Deleting a key
+// will result in the deletion of all versions of the key. After deletion, the key
+// cannot be used for crypto operations.
 func (v *Wrapper) DeleteKey(ctx context.Context, name string) (bool, error) {
 	res, err := v.client.DeleteKey(ctx, v.baseURL, name)
 	return res.StatusCode != http.StatusNotFound, err
 }
 
+// EnableKeyVersion enables the given version of the given key.
 func (v *Wrapper) EnableKeyVersion(ctx context.Context, name, version string) error {
 	_, err := v.client.UpdateKey(ctx, v.baseURL, name, version, keyvault.KeyUpdateParameters{
 		KeyAttributes: &keyvault.KeyAttributes{
@@ -394,6 +402,7 @@ func (v *Wrapper) EnableKeyVersion(ctx context.Context, name, version string) er
 	return err
 }
 
+// DisableKeyVersion disables the given version of the given key.
 func (v *Wrapper) DisableKeyVersion(ctx context.Context, name, version string) error {
 	_, err := v.client.UpdateKey(ctx, v.baseURL, name, version, keyvault.KeyUpdateParameters{
 		KeyAttributes: &keyvault.KeyAttributes{
