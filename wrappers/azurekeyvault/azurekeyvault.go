@@ -301,7 +301,9 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 		return "", fmt.Errorf("error generating KEK: %w", err)
 	}
 	defer func() {
-		v.client.DeleteKey(ctx, v.buildBaseURL(), kekName)
+		if _, err := v.client.DeleteKey(ctx, v.buildBaseURL(), kekName); err != nil {
+			v.logger.Warn("error deleting KEK", "name", kekName, "error", err)
+		}
 	}()
 
 	// Parse the RSA public key of the KEK
