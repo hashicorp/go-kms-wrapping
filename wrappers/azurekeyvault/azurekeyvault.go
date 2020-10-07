@@ -55,6 +55,7 @@ type Wrapper struct {
 	client         *keyvault.BaseClient
 	logger         hclog.Logger
 	keyNotRequired bool
+	baseURL        string
 }
 
 // Ensure that we are implementing Wrapper
@@ -145,6 +146,9 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		return nil, errors.New("key name is required")
 	}
 
+	// Set the base URL
+	v.baseURL = v.buildBaseURL()
+
 	if v.client == nil {
 		client, err := v.getKeyVaultClient()
 		if err != nil {
@@ -153,7 +157,7 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 		if !v.keyNotRequired {
 			// Test the client connection using provided key ID
-			keyInfo, err := client.GetKey(context.Background(), v.buildBaseURL(), v.keyName, "")
+			keyInfo, err := client.GetKey(context.Background(), v.baseURL, v.keyName, "")
 			if err != nil {
 				return nil, fmt.Errorf("error fetching Azure Key Vault wrapper key information: %w", err)
 			}
@@ -289,7 +293,7 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 	// Generate an HSM backed RSA key pair in Azure Key Vault.
 	// This key will be used as the KEK and has an expiration.
 	exp := date.UnixTime(time.Now().Add(3 * time.Minute))
-	kekBundle, err := v.client.CreateKey(ctx, v.buildBaseURL(), kekName, keyvault.KeyCreateParameters{
+	kekBundle, err := v.client.CreateKey(ctx, v.baseURL, kekName, keyvault.KeyCreateParameters{
 		Kty:     keyvault.RSAHSM,
 		KeySize: to.Int32Ptr(2048),
 		KeyOps:  &[]keyvault.JSONWebKeyOperation{"import"},
@@ -301,7 +305,7 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 		return "", fmt.Errorf("error generating KEK: %w", err)
 	}
 	defer func() {
-		if _, err := v.client.DeleteKey(ctx, v.buildBaseURL(), kekName); err != nil {
+		if _, err := v.client.DeleteKey(ctx, v.baseURL, kekName); err != nil {
 			v.logger.Warn("error deleting KEK", "name", kekName, "error", err)
 		}
 	}()
@@ -348,7 +352,7 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 	// Upload the key transfer blob to import the key
 	kty := v.keyTypeToKty(key.Type)
 	ops := v.keyPurposesToKeyOps(key.Purposes)
-	imported, err := v.client.ImportKey(ctx, v.buildBaseURL(), name, keyvault.KeyImportParameters{
+	imported, err := v.client.ImportKey(ctx, v.baseURL, name, keyvault.KeyImportParameters{
 		Key: &keyvault.JSONWebKey{
 			Kty:    kty,
 			T:      to.StringPtr(ktbEncoded),
@@ -368,7 +372,7 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 
 func (v *Wrapper) RotateKey(ctx context.Context, name string, key wrapping.KMSKey) (string, error) {
 	// Check that the key exists before importing a new version
-	if _, err := v.client.GetKey(ctx, v.buildBaseURL(), name, ""); err != nil {
+	if _, err := v.client.GetKey(ctx, v.baseURL, name, ""); err != nil {
 		return "", err
 	}
 
@@ -377,12 +381,12 @@ func (v *Wrapper) RotateKey(ctx context.Context, name string, key wrapping.KMSKe
 }
 
 func (v *Wrapper) DeleteKey(ctx context.Context, name string) (bool, error) {
-	res, err := v.client.DeleteKey(ctx, v.buildBaseURL(), name)
+	res, err := v.client.DeleteKey(ctx, v.baseURL, name)
 	return res.StatusCode != http.StatusNotFound, err
 }
 
 func (v *Wrapper) EnableKeyVersion(ctx context.Context, name, version string) error {
-	_, err := v.client.UpdateKey(ctx, v.buildBaseURL(), name, version, keyvault.KeyUpdateParameters{
+	_, err := v.client.UpdateKey(ctx, v.baseURL, name, version, keyvault.KeyUpdateParameters{
 		KeyAttributes: &keyvault.KeyAttributes{
 			Enabled: to.BoolPtr(true),
 		},
@@ -391,7 +395,7 @@ func (v *Wrapper) EnableKeyVersion(ctx context.Context, name, version string) er
 }
 
 func (v *Wrapper) DisableKeyVersion(ctx context.Context, name, version string) error {
-	_, err := v.client.UpdateKey(ctx, v.buildBaseURL(), name, version, keyvault.KeyUpdateParameters{
+	_, err := v.client.UpdateKey(ctx, v.baseURL, name, version, keyvault.KeyUpdateParameters{
 		KeyAttributes: &keyvault.KeyAttributes{
 			Enabled: to.BoolPtr(false),
 		},
