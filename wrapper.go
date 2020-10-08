@@ -33,9 +33,9 @@ const (
 type KeyType string
 
 const (
-	RSA2048 KeyType = "rsa_2048"
-	RSA3072 KeyType = "rsa_3072"
-	RSA4096 KeyType = "rsa_4096"
+	RSA2048 KeyType = "rsa-2048"
+	RSA3072 KeyType = "rsa-3072"
+	RSA4096 KeyType = "rsa-4096"
 )
 
 // Purpose defines the cryptographic capabilities of a key.
