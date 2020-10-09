@@ -30,32 +30,32 @@ const (
 )
 
 // KeyType defines types of cryptographic keys.
-type KeyType string
+type KeyType int
 
 const (
-	RSA2048 KeyType = "rsa-2048"
-	RSA3072 KeyType = "rsa-3072"
-	RSA4096 KeyType = "rsa-4096"
+	RSA2048 KeyType = iota
+	RSA3072
+	RSA4096
 )
 
 // Purpose defines the cryptographic capabilities of a key.
-type Purpose string
+type Purpose int
 
 const (
-	Encrypt Purpose = "encrypt"
-	Decrypt Purpose = "decrypt"
-	Sign    Purpose = "sign"
-	Verify  Purpose = "verify"
-	Wrap    Purpose = "wrap"
-	Unwrap  Purpose = "unwrap"
+	Encrypt Purpose = iota
+	Decrypt
+	Sign
+	Verify
+	Wrap
+	Unwrap
 )
 
 // ProtectionLevel defines where cryptographic operations are performed with a key.
-type ProtectionLevel string
+type ProtectionLevel int
 
 const (
-	Software ProtectionLevel = "software"
-	HSM      ProtectionLevel = "hsm"
+	Software ProtectionLevel = iota
+	HSM
 )
 
 // KMSKey represents a cryptographic key that can be imported into a KMS.
@@ -125,4 +125,47 @@ type WrapperOptions struct {
 	// KeyNotRequired indicates if an existing key must be
 	// supplied in the configuration for a Wrapper.
 	KeyNotRequired bool
+}
+
+func (k KeyType) String() string {
+	switch k {
+	case RSA2048:
+		return "rsa-2048"
+	case RSA3072:
+		return "rsa-3072"
+	case RSA4096:
+		return "rsa-4096"
+	default:
+		return "unknown"
+	}
+}
+
+func (p Purpose) String() string {
+	switch p {
+	case Encrypt:
+		return "encrypt"
+	case Decrypt:
+		return "decrypt"
+	case Sign:
+		return "sign"
+	case Verify:
+		return "verify"
+	case Wrap:
+		return "wrap"
+	case Unwrap:
+		return "unwrap"
+	default:
+		return "unknown"
+	}
+}
+
+func (p ProtectionLevel) String() string {
+	switch p {
+	case Software:
+		return "software"
+	case HSM:
+		return "hsm"
+	default:
+		return "unknown"
+	}
 }

@@ -198,11 +198,11 @@ func TestWrapper_validateKMSKey(t *testing.T) {
 			name: "invalid KMS key unsupported type",
 			args: args{
 				wrapping.KMSKey{
-					Type: wrapping.KeyType("aes_256"),
+					Type: wrapping.KeyType(1234),
 					Purposes: []wrapping.Purpose{
 						wrapping.Decrypt,
 					},
-					ProtectionLevel: wrapping.Software,
+					ProtectionLevel: wrapping.HSM,
 					Material: wrapping.KeyMaterial{
 						RSAKey: &rsa.PrivateKey{},
 					},
@@ -216,9 +216,25 @@ func TestWrapper_validateKMSKey(t *testing.T) {
 				wrapping.KMSKey{
 					Type: wrapping.RSA2048,
 					Purposes: []wrapping.Purpose{
-						wrapping.Purpose("invalid"),
+						wrapping.Purpose(1234),
 					},
-					ProtectionLevel: wrapping.Software,
+					ProtectionLevel: wrapping.HSM,
+					Material: wrapping.KeyMaterial{
+						RSAKey: &rsa.PrivateKey{},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid KMS key unsupported protection level",
+			args: args{
+				wrapping.KMSKey{
+					Type: wrapping.RSA2048,
+					Purposes: []wrapping.Purpose{
+						wrapping.Decrypt,
+					},
+					ProtectionLevel: wrapping.ProtectionLevel(1234),
 					Material: wrapping.KeyMaterial{
 						RSAKey: &rsa.PrivateKey{},
 					},
@@ -256,7 +272,7 @@ func TestWrapper_keyPurposesToKeyOps(t *testing.T) {
 		{
 			name: "unsupported purpose",
 			args: args{
-				purposes: []wrapping.Purpose{wrapping.Purpose("unsupported")},
+				purposes: []wrapping.Purpose{wrapping.Purpose(1234)},
 			},
 			want: []string{},
 		},
@@ -309,9 +325,9 @@ func TestWrapper_keyTypeToKty(t *testing.T) {
 		want keyvault.JSONWebKeyType
 	}{
 		{
-			name: "empty key type",
+			name: "unsupported key type",
 			args: args{
-				kt: wrapping.KeyType(""),
+				kt: wrapping.KeyType(1234),
 			},
 			want: keyvault.JSONWebKeyType(""),
 		},
