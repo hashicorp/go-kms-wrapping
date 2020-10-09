@@ -33,7 +33,7 @@ const (
 type KeyType int
 
 const (
-	RSA2048 KeyType = iota
+	RSA2048 KeyType = 1 + iota
 	RSA3072
 	RSA4096
 )
@@ -42,7 +42,7 @@ const (
 type Purpose int
 
 const (
-	Encrypt Purpose = iota
+	Encrypt Purpose = 1 + iota
 	Decrypt
 	Sign
 	Verify
@@ -54,7 +54,7 @@ const (
 type ProtectionLevel int
 
 const (
-	Software ProtectionLevel = iota
+	Software ProtectionLevel = 1 + iota
 	HSM
 )
 
