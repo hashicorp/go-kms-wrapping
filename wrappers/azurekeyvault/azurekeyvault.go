@@ -324,6 +324,8 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 		if targetKey, err = x509.MarshalPKCS8PrivateKey(key.Material.RSAKey); err != nil {
 			return "", err
 		}
+	default:
+		return "", fmt.Errorf("%q does not support key type %q", v.Type(), key.Type)
 	}
 
 	// Produce the wrapped key material needed for import
