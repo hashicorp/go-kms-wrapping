@@ -30,7 +30,7 @@ const (
 )
 
 // KeyType defines types of cryptographic keys.
-type KeyType int
+type KeyType uint32
 
 const (
 	RSA2048 KeyType = 1 + iota
@@ -39,7 +39,7 @@ const (
 )
 
 // Purpose defines the cryptographic capabilities of a key.
-type Purpose int
+type Purpose uint32
 
 const (
 	Encrypt Purpose = 1 + iota
@@ -51,7 +51,7 @@ const (
 )
 
 // ProtectionLevel defines where cryptographic operations are performed with a key.
-type ProtectionLevel int
+type ProtectionLevel uint32
 
 const (
 	Software ProtectionLevel = 1 + iota
