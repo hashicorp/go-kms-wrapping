@@ -505,7 +505,10 @@ func (v *Wrapper) wrapTargetKey(pub *rsa.PublicKey, targetKey []byte) (string, e
 		return "", err
 	}
 
-	// Zero the ephemeral AES key
+	// Zero the memory of the ephemeral AES key. This is a best-effort
+	// cleanup, as the buffer may have been copied during a garbage
+	// collection. Exposure of the key in memory is minimized by
+	// zeroing the buffer as soon as it's no longer needed.
 	for i := range aesKey {
 		aesKey[i] = 0
 	}
