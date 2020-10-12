@@ -30,32 +30,32 @@ const (
 )
 
 // KeyType defines types of cryptographic keys.
-type KeyType string
+type KeyType uint32
 
 const (
-	RSA2048 KeyType = "rsa_2048"
-	RSA3072 KeyType = "rsa_3072"
-	RSA4096 KeyType = "rsa_4096"
+	RSA2048 KeyType = 1 + iota
+	RSA3072
+	RSA4096
 )
 
 // Purpose defines the cryptographic capabilities of a key.
-type Purpose string
+type Purpose uint32
 
 const (
-	Encrypt Purpose = "encrypt"
-	Decrypt Purpose = "decrypt"
-	Sign    Purpose = "sign"
-	Verify  Purpose = "verify"
-	Wrap    Purpose = "wrap"
-	Unwrap  Purpose = "unwrap"
+	Encrypt Purpose = 1 + iota
+	Decrypt
+	Sign
+	Verify
+	Wrap
+	Unwrap
 )
 
 // ProtectionLevel defines where cryptographic operations are performed with a key.
-type ProtectionLevel string
+type ProtectionLevel uint32
 
 const (
-	Software ProtectionLevel = "software"
-	HSM      ProtectionLevel = "hsm"
+	Software ProtectionLevel = 1 + iota
+	HSM
 )
 
 // KMSKey represents a cryptographic key that can be imported into a KMS.
@@ -108,7 +108,7 @@ type LifecycleWrapper interface {
 	RotateKey(ctx context.Context, name string, key KMSKey) (string, error)
 
 	// DeleteKey deletes the named key.
-	// Returns a bool representing if the key exists and an error.
+	// Returns a bool representing if the key existed before deletion and an error.
 	DeleteKey(ctx context.Context, name string) (bool, error)
 
 	// EnableKeyVersion enables the version of the named key.
@@ -125,4 +125,47 @@ type WrapperOptions struct {
 	// KeyNotRequired indicates if an existing key must be
 	// supplied in the configuration for a Wrapper.
 	KeyNotRequired bool
+}
+
+func (k KeyType) String() string {
+	switch k {
+	case RSA2048:
+		return "rsa-2048"
+	case RSA3072:
+		return "rsa-3072"
+	case RSA4096:
+		return "rsa-4096"
+	default:
+		return "unknown"
+	}
+}
+
+func (p Purpose) String() string {
+	switch p {
+	case Encrypt:
+		return "encrypt"
+	case Decrypt:
+		return "decrypt"
+	case Sign:
+		return "sign"
+	case Verify:
+		return "verify"
+	case Wrap:
+		return "wrap"
+	case Unwrap:
+		return "unwrap"
+	default:
+		return "unknown"
+	}
+}
+
+func (p ProtectionLevel) String() string {
+	switch p {
+	case Software:
+		return "software"
+	case HSM:
+		return "hsm"
+	default:
+		return "unknown"
+	}
 }
