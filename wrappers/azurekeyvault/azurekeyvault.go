@@ -623,20 +623,20 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 	return &client, nil
 }
 
-func (v *Wrapper) VaultName() string {
-	return v.vaultName
-}
-
+// Client returns the AzureKeyVault client used by the wrapper.
 func (v *Wrapper) Client() *keyvault.BaseClient {
 	return v.client
 }
 
-func (v *Wrapper) Environment() azure.Environment {
-	return v.environment
-}
-
+// Logger returns the logger used by the wrapper.
 func (v *Wrapper) Logger() hclog.Logger {
 	return v.logger
+}
+
+// BaseURL returns the base URL for key management operation requests based
+// on the Azure Vault name and environment.
+func (v *Wrapper) BaseURL() string {
+	return v.baseURL
 }
 
 // Kid gets returned as a full URL, get the last bit which is just
