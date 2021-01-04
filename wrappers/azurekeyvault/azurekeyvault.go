@@ -164,7 +164,7 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 			if keyInfo.Key == nil {
 				return nil, errors.New("no key information returned")
 			}
-			v.currentKeyID.Store(parseKeyVersion(to.String(keyInfo.Key.Kid)))
+			v.currentKeyID.Store(ParseKeyVersion(to.String(keyInfo.Key.Kid)))
 		}
 
 		v.client = client
@@ -229,7 +229,7 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 	}
 
 	// Store the current key version
-	keyVersion := parseKeyVersion(to.String(resp.Kid))
+	keyVersion := ParseKeyVersion(to.String(resp.Kid))
 	v.currentKeyID.Store(keyVersion)
 
 	ret := &wrapping.EncryptedBlobInfo{
@@ -369,7 +369,7 @@ func (v *Wrapper) ImportKey(ctx context.Context, name string, key wrapping.KMSKe
 	}
 
 	// Return the version ID generated for the imported key
-	return parseKeyVersion(to.String(imported.Key.Kid)), nil
+	return ParseKeyVersion(to.String(imported.Key.Kid)), nil
 }
 
 // RotateKey rotates the key with the given name in Azure Key Vault. Rotating a
@@ -623,9 +623,25 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 	return &client, nil
 }
 
+func (v *Wrapper) VaultName() string {
+	return v.vaultName
+}
+
+func (v *Wrapper) Client() *keyvault.BaseClient {
+	return v.client
+}
+
+func (v *Wrapper) Environment() azure.Environment {
+	return v.environment
+}
+
+func (v *Wrapper) Logger() hclog.Logger {
+	return v.logger
+}
+
 // Kid gets returned as a full URL, get the last bit which is just
 // the version
-func parseKeyVersion(kid string) string {
+func ParseKeyVersion(kid string) string {
 	keyVersionParts := strings.Split(kid, "/")
 	return keyVersionParts[len(keyVersionParts)-1]
 }
