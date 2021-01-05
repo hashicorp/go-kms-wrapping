@@ -5,6 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"sync/atomic"
+
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -12,9 +16,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"os"
-	"strings"
-	"sync/atomic"
 )
 
 const (
