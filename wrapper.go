@@ -13,6 +13,7 @@ const (
 	AzureKeyVault   = "azurekeyvault"
 	GCPCKMS         = "gcpckms"
 	HuaweiCloudKMS  = "huaweicloudkms"
+	IBMKP           = "ibmkp"
 	MultiWrapper    = "multiwrapper"
 	OCIKMS          = "ocikms"
 	PKCS11          = "pkcs11"
