@@ -13,9 +13,9 @@ import (
 	"time"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/common/auth"
-	"github.com/oracle/oci-go-sdk/keymanagement"
+	"github.com/oracle/oci-go-sdk/v40/common"
+	"github.com/oracle/oci-go-sdk/v40/common/auth"
+	"github.com/oracle/oci-go-sdk/v40/keymanagement"
 )
 
 const (
