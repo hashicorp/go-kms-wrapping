@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 type testTransitClient struct {

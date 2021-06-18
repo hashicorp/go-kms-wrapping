@@ -3,12 +3,13 @@ package yandexcloudkms
 import (
 	"context"
 	"fmt"
-	"github.com/yandex-cloud/go-genproto/yandex/cloud/kms/v1"
-	"github.com/yandex-cloud/go-sdk/iamkey"
 	"os"
 	"sync/atomic"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	"github.com/yandex-cloud/go-genproto/yandex/cloud/kms/v1"
+	"github.com/yandex-cloud/go-sdk/iamkey"
+
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	ycsdk "github.com/yandex-cloud/go-sdk"
 )
 

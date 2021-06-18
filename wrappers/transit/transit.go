@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // Wrapper is a wrapper that leverages Vault's Transit secret

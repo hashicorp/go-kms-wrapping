@@ -1,21 +1,10 @@
 syntax = "proto3";
 
-option go_package = "github.com/hashicorp/go-kms-wrapping;wrapping";
+option go_package = "github.com/hashicorp/go-kms-wrapping/v2;wrapping";
 
 package github.com.hashicorp.go.kms.wrapping.types;
 
-// Envelope performs encryption or decryption, wrapping sensitive data. It
-// creates a random key. This is usable on its own but since many KMS systems
-// or key types cannot support large values, this is used by implementations in
-// this package to encrypt large values with a DEK and use the actual KMS to
-// encrypt the DEK.
-message Envelope {
-}
-
-// EnvelopeOptions is a placeholder for future options, such as the ability to
-// switch which algorithm is used
-message EnvelopeOptions {
-}
+import "google/protobuf/struct.proto";
 
 // EnvelopeInfo contains the information necessary to perfom encryption or
 // decryption in an envelope fashion
@@ -30,29 +19,39 @@ message EnvelopeInfo {
 	bytes iv = 3;
 }
 
-// EncryptedBlobInfo contains information about the encrypted value along with
+// BlobInfo contains information about the encrypted value along with
 // information about the key used to encrypt it
-message EncryptedBlobInfo {
+message BlobInfo {
 	// Ciphertext is the encrypted bytes
 	bytes ciphertext = 1;
 
 	// IV is the initialization value used during encryption
-	bytes iv  = 2;
+	bytes iv = 2;
 
 	// HMAC is the bytes of the HMAC, if any
 	bytes hmac = 3;
 
-	// Wrapped can be used by the client to indicate whether Ciphertext
-	// actually contains wrapped data or not. This can be useful if you want to
-	// reuse the same struct to pass data along before and after wrapping.
-	bool wrapped = 4;
+	// Wrapped can be used by the client to indicate whether Ciphertext actually
+	// contains wrapped data or not. This can be useful if you want to reuse the
+	// same struct to pass data along before and after wrapping. Deprecated in
+	// favor of plaintext.
+	bool wrapped = 4 [deprecated = true];
+
+	// Plaintext can be used to allow the same struct to be used to pass data
+	// along before and after (un)wrapping.
+	bytes plaintext = 7;
 
 	// KeyInfo contains information about the key that was used to create this value
-    KeyInfo key_info = 5;
+	KeyInfo key_info = 5;
 
 	// ValuePath can be used by the client to store information about where the
-	// value came from
-	string ValuePath = 6;
+	// value came from. Deprecated in favor of client_data.
+	string value_path = 6 [deprecated = true];
+
+	// ClientData can be used by the client to store extra information, for
+	// instance, the location/provenance of where an encrypted value came from
+	// (useful for associating AAD to the encrypted value).
+	google.protobuf.Struct client_data = 8;
 }
 
 // KeyInfo contains information regarding which Wrapper key was used to
@@ -60,19 +59,19 @@ message EncryptedBlobInfo {
 message KeyInfo {
 	// Mechanism is the method used by the wrapper to encrypt and sign the
 	// data as defined by the wrapper.
-	uint64 Mechanism = 1;
-	uint64 HMACMechanism = 2;
+	uint64 mechanism = 1;
+	uint64 hmac_mechanism = 2;
 
 	// This is an opaque ID used by the wrapper to identify the specific key to
 	// use as defined by the wrapper. This could be a version, key label, or
 	// something else.
-	string KeyID = 3;
-	string HMACKeyID = 4;
+	string key_id = 3;
+	string hmac_key_id = 4;
 
 	// These value are used when generating our own data encryption keys
 	// and encrypting them using the wrapper
-	bytes WrappedKey = 5;
+	bytes wrapped_key = 5;
 
 	// Mechanism specific flags
-	uint64 Flags = 6;
+	uint64 flags = 6;
 }

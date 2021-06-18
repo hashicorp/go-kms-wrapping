@@ -5,7 +5,7 @@ import (
 	"errors"
 	sync "sync"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 const baseEncryptor = "__base__"

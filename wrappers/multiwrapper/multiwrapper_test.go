@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/wrappers/aead"
 )
 
 func TestMultiWrapper(t *testing.T) {

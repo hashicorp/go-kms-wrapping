@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-kms-wrapping/internal/xor"
+	"github.com/hashicorp/go-kms-wrapping/v2/internal/xor"
 )
 
 // TestWrapper is a wrapper that can be used for tests
 type TestWrapper struct {
-	wrapperType string
+	wrapperType WrapperType
 	secret      []byte
-	keyID       string
+	keyId       string
 
 	envelope bool
 }
@@ -21,18 +21,18 @@ var _ Wrapper = (*TestWrapper)(nil)
 // NewTestWrapper constructs a test wrapper
 func NewTestWrapper(secret []byte) *TestWrapper {
 	return &TestWrapper{
-		wrapperType: Test,
+		wrapperType: WrapperTypeTest,
 		secret:      secret,
-		keyID:       "static-key",
+		keyId:       "static-key",
 	}
 }
 
 // NewTestWrapper constructs a test wrapper
 func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 	return &TestWrapper{
-		wrapperType: Test,
+		wrapperType: WrapperTypeTest,
 		secret:      secret,
-		keyID:       "static-key",
+		keyId:       "static-key",
 		envelope:    true,
 	}
 }
@@ -48,30 +48,30 @@ func (t *TestWrapper) Finalize(_ context.Context) error {
 }
 
 // Type returns the type of the test wrapper
-func (t *TestWrapper) Type() string {
+func (t *TestWrapper) Type() WrapperType {
 	return t.wrapperType
 }
 
-// KeyID returns the configured key ID
-func (t *TestWrapper) KeyID() string {
-	return t.keyID
+// KeyId returns the configured key ID
+func (t *TestWrapper) KeyId() string {
+	return t.keyId
 }
 
-// HMACKeyID returns the configured HMAC key ID
-func (t *TestWrapper) HMACKeyID() string {
+// HmacKeyId returns the configured HMAC key ID
+func (t *TestWrapper) HmacKeyId() string {
 	return ""
 }
 
 // SetKeyID allows setting the test wrapper's key ID
-func (t *TestWrapper) SetKeyID(k string) {
-	t.keyID = k
+func (t *TestWrapper) SetKeyId(k string) {
+	t.keyId = k
 }
 
 // Encrypt allows encrypting via the test wrapper
-func (t *TestWrapper) Encrypt(_ context.Context, plaintext, _ []byte) (*EncryptedBlobInfo, error) {
+func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...Option) (*BlobInfo, error) {
 	switch t.envelope {
 	case true:
-		env, err := NewEnvelope(nil).Encrypt(plaintext, nil)
+		env, err := EnvelopeEncrypt(plaintext, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
 		}
@@ -80,11 +80,11 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext, _ []byte) (*Encrypte
 			return nil, err
 		}
 
-		return &EncryptedBlobInfo{
+		return &BlobInfo{
 			Ciphertext: env.Ciphertext,
-			IV:         env.IV,
+			Iv:         env.Iv,
 			KeyInfo: &KeyInfo{
-				KeyID:      t.KeyID(),
+				KeyId:      t.KeyId(),
 				WrappedKey: ct,
 			},
 		}, nil
@@ -95,17 +95,17 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext, _ []byte) (*Encrypte
 			return nil, err
 		}
 
-		return &EncryptedBlobInfo{
+		return &BlobInfo{
 			Ciphertext: ct,
 			KeyInfo: &KeyInfo{
-				KeyID: t.KeyID(),
+				KeyId: t.KeyId(),
 			},
 		}, nil
 	}
 }
 
 // Decrypt allows decrypting via the test wrapper
-func (t *TestWrapper) Decrypt(_ context.Context, dwi *EncryptedBlobInfo, _ []byte) ([]byte, error) {
+func (t *TestWrapper) Decrypt(_ context.Context, dwi *BlobInfo, opts ...Option) ([]byte, error) {
 	switch t.envelope {
 	case true:
 		keyPlaintext, err := t.obscureBytes(dwi.KeyInfo.WrappedKey)
@@ -114,10 +114,10 @@ func (t *TestWrapper) Decrypt(_ context.Context, dwi *EncryptedBlobInfo, _ []byt
 		}
 		envInfo := &EnvelopeInfo{
 			Key:        keyPlaintext,
-			IV:         dwi.IV,
+			Iv:         dwi.Iv,
 			Ciphertext: dwi.Ciphertext,
 		}
-		plaintext, err := NewEnvelope(nil).Decrypt(envInfo, nil)
+		plaintext, err := EnvelopeDecrypt(envInfo, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data with envelope: %w", err)
 		}
@@ -140,7 +140,7 @@ func (t *TestWrapper) obscureBytes(in []byte) ([]byte, error) {
 
 		var err error
 
-		out, err = xor.XORBytes(in, localSecret)
+		out, err = xor.XorBytes(in, localSecret)
 		if err != nil {
 			return nil, err
 		}
