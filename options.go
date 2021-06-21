@@ -27,6 +27,7 @@ type Option func(*Options)
 // in wrapper-specific options structs.
 type Options struct {
 	WithAad            []byte
+	WithKeyId          string
 	WithKeyNotRequired bool
 	WithLogger         hclog.Logger
 }
@@ -39,6 +40,13 @@ func getDefaultOptions() Options {
 func WithAad(aad []byte) Option {
 	return func(o *Options) {
 		o.WithAad = aad
+	}
+}
+
+// WithKeyId provides a common way to pass in a key identifier
+func WithKeyId(id string) Option {
+	return func(o *options) {
+		o.WithKeyId = id
 	}
 }
 

@@ -40,7 +40,7 @@ func EnvelopeEncrypt(plaintext []byte, opt ...interface{}) (*EnvelopeInfo, error
 	}, nil
 }
 
-// EnveopeDecrypt takes in EnvelopeInfo and potentially additional options and
+// EnvelopeDecrypt takes in EnvelopeInfo and potentially additional options and
 // decrypts.
 //
 // Supported options:
