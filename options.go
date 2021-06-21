@@ -45,7 +45,7 @@ func WithAad(aad []byte) Option {
 
 // WithKeyId provides a common way to pass in a key identifier
 func WithKeyId(id string) Option {
-	return func(o *options) {
+	return func(o *Options) {
 		o.WithKeyId = id
 	}
 }
