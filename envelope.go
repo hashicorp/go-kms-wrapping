@@ -15,7 +15,7 @@ import (
 // Supported options:
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
-// a separate location, and must also be provided during envelope decryption.
+// a separate location, and must also be provided during envelope decryption
 func EnvelopeEncrypt(plaintext []byte, opt ...interface{}) (*EnvelopeInfo, error) {
 	opts := GetOpts(opt...)
 

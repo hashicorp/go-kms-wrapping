@@ -19,8 +19,8 @@ type InitFinalizer interface {
 	Finalize(context.Context) error
 }
 
-// Wrapper is the embedded implementation of autoSeal that contains logic
-// specific to encrypting and decrypting data, or in this case keys.
+// Wrapper is an an interface where supporting implementations allow for
+// encrypting and decrypting data.
 type Wrapper interface {
 	// Type is the type of Wrapper
 	Type() WrapperType
@@ -31,9 +31,9 @@ type Wrapper interface {
 	// Encrypt encrypts the given byte slice and stores the resulting
 	// information in the returned blob info. Which options are supported
 	// depends on the underlying wrapper.
-	Encrypt(context.Context, []byte, ...Option) (*BlobInfo, error)
+	Encrypt(context.Context, []byte, ...interface{}) (*BlobInfo, error)
 	// Decrypt decrypts the given byte slice and stores the resulting
 	// information in the returned byte slice. Which options are supported
 	// depends on the underlying wrapper.
-	Decrypt(context.Context, *BlobInfo, ...Option) ([]byte, error)
+	Decrypt(context.Context, *BlobInfo, ...interface{}) ([]byte, error)
 }
