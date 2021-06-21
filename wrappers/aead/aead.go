@@ -63,7 +63,7 @@ func NewShamirWrapper(opt ...wrapping.Option) *ShamirWrapper {
 // * WithKeyId: The key ID, if any, to set on the derived wrapper
 //
 // * WithSalt: The salt value, if any, to use in the derivation
-func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
+func (s *Wrapper) NewDerivedWrapper(opt ...Option) (*Wrapper, error) {
 	if len(s.keyBytes) == 0 {
 		return nil, errors.New("cannot create a sub-wrapper when key byte are not set")
 	}

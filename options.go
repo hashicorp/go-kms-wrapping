@@ -5,33 +5,39 @@ import (
 )
 
 // GetOpts iterates the inbound Options and returns a struct
-func GetOpts(opt ...Option) options {
+func GetOpts(opt ...interface{}) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o != nil {
-			o(&opts)
+			switch t := o.(type) {
+			case Option:
+				if t != nil {
+					t(&opts)
+				}
+			}
 		}
 	}
 	return opts
 }
 
-// Option - how Options are passed as arguments
-type Option func(*options)
+// Option - a type for funcs that operate on the shared Options struct
+type Option func(*Options)
 
-// options = how options are represented
-type options struct {
+// Options contains values that are cross-wrapper. It is intended to be embedded
+// in wrapper-specific options structs.
+type Options struct {
 	WithAad            []byte
 	WithKeyNotRequired bool
 	WithLogger         hclog.Logger
 }
 
-func getDefaultOptions() options {
-	return options{}
+func getDefaultOptions() Options {
+	return Options{}
 }
 
 // WithAad provides optional additional authenticated data
 func WithAad(aad []byte) Option {
-	return func(o *options) {
+	return func(o *Options) {
 		o.WithAad = aad
 	}
 }
@@ -39,14 +45,14 @@ func WithAad(aad []byte) Option {
 // WithKeyNotRequired is an option accepted by some wrappers indicating that a
 // key isn't required when creating a wrapper, and will be provided later
 func WithKeyNotRequired(notRequired bool) Option {
-	return func(o *options) {
+	return func(o *Options) {
 		o.WithKeyNotRequired = notRequired
 	}
 }
 
 // WithLogger provides an optional logger for logging any issues
 func WithLogger(logger hclog.Logger) Option {
-	return func(o *options) {
+	return func(o *Options) {
 		o.WithLogger = logger
 	}
 }

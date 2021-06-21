@@ -8,22 +8,32 @@ import (
 )
 
 // GetOpts iterates the inbound Options and returns a struct
-func GetOpts(opt ...Option) options {
+func GetOpts(opt ...interface{}) options {
 	opts := getDefaultOptions()
+	var wrappingOpts []wrapping.Option
 	for _, o := range opt {
 		if o != nil {
-			o(&opts)
+			switch t := o.(type) {
+			case wrapping.Option:
+				wrappingOpts = append(wrappingOpts, t)
+			case Option:
+				if t != nil {
+					t(&opts)
+				}
+			}
 		}
 	}
+	opts.Options = wrapping.GetOpts(wrappingOpts...)
 	return opts
 }
 
-// Option - how Options are passed as arguments
-type Option func(*options)
+// Option - a type for funcs that operate on the shared Options struct
+type Option func(*Options)
 
 // options = how options are represented
 type options struct {
-	WithAad      []byte
+	wrapping.Options
+
 	WithAeadType wrapping.AeadType
 	WithHash     func() hash.Hash
 	WithInfo     []byte
@@ -36,13 +46,6 @@ func getDefaultOptions() options {
 	return options{
 		WithAeadType: wrapping.AeadTypeAesGcm,
 		WithHash:     sha256.New,
-	}
-}
-
-// WithAad provides optional additional authenticated data
-func WithAad(aad []byte) Option {
-	return func(o *options) {
-		o.WithAad = aad
 	}
 }
 
