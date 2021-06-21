@@ -2,6 +2,8 @@ module github.com/hashicorp/go-kms-wrapping/v2
 
 go 1.13
 
+replace github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 => ./wrappers/aead
+
 require (
 	cloud.google.com/go v0.56.0
 	github.com/Azure/azure-sdk-for-go v36.2.0+incompatible

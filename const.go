@@ -63,7 +63,7 @@ type AeadType uint
 
 // These values define supported types of AEADs
 const (
-	AeadTypeDefault AeadType = iota
+	AeadTypeUnknown AeadType = iota
 	AeadTypeAesGcm
 )
 
@@ -71,8 +71,6 @@ func (t AeadType) String() string {
 	switch t {
 	case AeadTypeAesGcm:
 		return "aes-gcm"
-	case AeadTypeDefault:
-		return "default"
 	default:
 		return "unknown"
 	}
