@@ -14,8 +14,8 @@ import (
 func TestStructWrapping(t *testing.T) {
 	wrapper := aead.NewWrapper()
 	_, err := wrapper.SetConfig(
-		wrapping.WithAeadType(wrapping.AeadTypeAesGcm),
-		wrapping.WithKey("QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI="),
+		aead.WithAeadType(wrapping.AeadTypeAesGcm),
+		aead.WithKey("QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI="),
 	)
 	require.Nil(t, err)
 	ctx := context.Background()
