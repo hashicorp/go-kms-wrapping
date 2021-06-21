@@ -68,7 +68,7 @@ func (t *TestWrapper) SetKeyId(k string) {
 }
 
 // Encrypt allows encrypting via the test wrapper
-func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...Option) (*BlobInfo, error) {
+func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...interface{}) (*BlobInfo, error) {
 	switch t.envelope {
 	case true:
 		env, err := EnvelopeEncrypt(plaintext, nil)
@@ -105,7 +105,7 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...Optio
 }
 
 // Decrypt allows decrypting via the test wrapper
-func (t *TestWrapper) Decrypt(_ context.Context, dwi *BlobInfo, opts ...Option) ([]byte, error) {
+func (t *TestWrapper) Decrypt(_ context.Context, dwi *BlobInfo, opts ...interface{}) ([]byte, error) {
 	switch t.envelope {
 	case true:
 		keyPlaintext, err := t.obscureBytes(dwi.KeyInfo.WrappedKey)
