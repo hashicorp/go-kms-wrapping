@@ -20,12 +20,20 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
+	WithAad            []byte
 	WithKeyNotRequired bool
 	WithLogger         hclog.Logger
 }
 
 func getDefaultOptions() options {
 	return options{}
+}
+
+// WithAad provides optional additional authenticated data
+func WithAad(aad []byte) Option {
+	return func(o *options) {
+		o.WithAad = aad
+	}
 }
 
 // WithKeyNotRequired is an option accepted by some wrappers indicating that a
