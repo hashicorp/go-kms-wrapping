@@ -44,8 +44,8 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 
 	sub, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub"),
-		wrapping.WithSalt([]byte("zip")),
-		wrapping.WithInfo([]byte("zap")),
+		WithSalt([]byte("zip")),
+		WithInfo([]byte("zap")),
 	)
 	require.NoError(err)
 	require.Equal("sub", sub.KeyId())
@@ -73,8 +73,8 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	// Ensure that deriving a second subkey with the same params works
 	sub2, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		wrapping.WithSalt([]byte("zip")),
-		wrapping.WithInfo([]byte("zap")),
+		WithSalt([]byte("zip")),
+		WithInfo([]byte("zap")),
 	)
 	require.NoError(err)
 	require.Equal("sub2", sub2.KeyId())
@@ -87,8 +87,8 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	// Ensure that a subkey with different params doesn't work
 	subBad, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		wrapping.WithSalt([]byte("zap")),
-		wrapping.WithInfo([]byte("zip")),
+		WithSalt([]byte("zap")),
+		WithInfo([]byte("zip")),
 	)
 	require.NoError(err)
 	subDecVal, err = subBad.Decrypt(context.Background(), subEncBlob)

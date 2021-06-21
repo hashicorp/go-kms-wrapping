@@ -7,10 +7,10 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// GetOpts iterates the inbound Options and returns a struct
-func GetOpts(opt ...interface{}) options {
+// getOpts iterates the inbound Options and returns a struct
+func getOpts(opt ...interface{}) options {
 	opts := getDefaultOptions()
-	var wrappingOpts []wrapping.Option
+	var wrappingOpts []interface{}
 	for _, o := range opt {
 		if o != nil {
 			switch t := o.(type) {
@@ -28,7 +28,7 @@ func GetOpts(opt ...interface{}) options {
 }
 
 // Option - a type for funcs that operate on the shared Options struct
-type Option func(*Options)
+type Option func(*options)
 
 // options = how options are represented
 type options struct {
@@ -38,7 +38,6 @@ type options struct {
 	WithHash     func() hash.Hash
 	WithInfo     []byte
 	WithKey      string
-	WithKeyId    string
 	WithSalt     []byte
 }
 
@@ -75,13 +74,6 @@ func WithInfo(info []byte) Option {
 func WithKey(key string) Option {
 	return func(o *options) {
 		o.WithKey = key
-	}
-}
-
-// WithKeyId provides a common way to pass in a key identifier
-func WithKeyId(id string) Option {
-	return func(o *options) {
-		o.WithKeyId = id
 	}
 }
 
