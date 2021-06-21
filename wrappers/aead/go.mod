@@ -1,4 +1,4 @@
-module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
+module github.com/hashicorp/go-kms-wrapping/v2/wrappers/aead
 
 go 1.13
 
