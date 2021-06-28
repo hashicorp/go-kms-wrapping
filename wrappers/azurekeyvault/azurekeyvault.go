@@ -14,7 +14,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -42,7 +41,6 @@ type Wrapper struct {
 
 	environment    azure.Environment
 	client         *keyvault.BaseClient
-	logger         hclog.Logger
 	keyNotRequired bool
 	baseURL        string
 }
@@ -57,7 +55,6 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 	}
 	v := &Wrapper{
 		currentKeyID:   new(atomic.Value),
-		logger:         opts.Logger,
 		keyNotRequired: opts.KeyNotRequired,
 	}
 	v.currentKeyID.Store("")
@@ -300,11 +297,6 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 // Client returns the AzureKeyVault client used by the wrapper.
 func (v *Wrapper) Client() *keyvault.BaseClient {
 	return v.client
-}
-
-// Logger returns the logger used by the wrapper.
-func (v *Wrapper) Logger() hclog.Logger {
-	return v.logger
 }
 
 // BaseURL returns the base URL for key management operation requests based

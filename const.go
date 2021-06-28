@@ -1,6 +1,6 @@
 package wrapping
 
-type WrapperType uint
+type WrapperType uint32
 
 // These values define known types of Wrappers
 const (

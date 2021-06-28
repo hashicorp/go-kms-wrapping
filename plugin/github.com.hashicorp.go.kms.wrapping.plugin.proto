@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option go_package = "github.com/hashicorp/go-kms-wrapping/v2/plugin;plugin";
+
+package github.com.hashicorp.go.kms.wrapping.plugin;
+
+import "github.com.hashicorp.go.kms.wrapping.types.proto";
+import "google/protobuf/struct.proto";
+
+message CommonOptions {
+	bytes aad = 1;
+}
+
+message TypeRequest {}
+
+message TypeResponse {
+	uint32 type = 10;
+}
+
+message KeyIdRequest {}
+
+message KeyIdResponse {
+	string key_id = 10 [json_name="key_id"];
+}
+
+message EncryptRequest {
+	bytes plaintext = 10;
+	CommonOptions options = 20;
+}
+
+message EncryptResponse {
+	github.com.hashicorp.go.kms.wrapping.types.BlobInfo ciphertext = 10;
+}
+
+message DecryptRequest {
+	github.com.hashicorp.go.kms.wrapping.types.BlobInfo ciphertext = 10;
+	CommonOptions options = 20;
+}
+
+message DecryptResponse {
+	bytes plaintext = 10;
+}
+
+service Wrap {
+	rpc Type(TypeRequest) returns (TypeResponse);
+	rpc KeyId(KeyIdRequest) returns (KeyIdResponse);
+    rpc Encrypt(EncryptRequest) returns (EncryptResponse);
+    rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+}
+
+message InitRequest {
+	google.protobuf.Struct input = 10;
+}
+
+message InitResponse {};
+
+message FinalizeRequest {
+	google.protobuf.Struct input = 10;
+}
+
+message FinalizeResponse {};
+
+service InitFinalize {
+	rpc Init(InitRequest) returns (InitResponse);
+	rpc Finalize(FinalizeRequest) returns (FinalizeResponse);
+}

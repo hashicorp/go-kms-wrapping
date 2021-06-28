@@ -4,5 +4,6 @@ THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
 proto:
 	protoc github.com.hashicorp.go.kms.wrapping.types.proto --go_out=paths=source_relative:.
+	protoc plugin/github.com.hashicorp.go.kms.wrapping.plugin.proto --go_out=paths=source_relative:. --go-grpc_out=paths=source_relative:.
 
 .PHONY: proto

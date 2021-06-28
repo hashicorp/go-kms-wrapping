@@ -1,9 +1,5 @@
 package wrapping
 
-import (
-	"github.com/hashicorp/go-hclog"
-)
-
 // GetOpts iterates the inbound Options and returns a struct
 func GetOpts(opt ...interface{}) Options {
 	opts := getDefaultOptions()
@@ -29,7 +25,6 @@ type Options struct {
 	WithAad            []byte
 	WithKeyId          string
 	WithKeyNotRequired bool
-	WithLogger         hclog.Logger
 }
 
 func getDefaultOptions() Options {
@@ -55,12 +50,5 @@ func WithKeyId(id string) Option {
 func WithKeyNotRequired(notRequired bool) Option {
 	return func(o *Options) {
 		o.WithKeyNotRequired = notRequired
-	}
-}
-
-// WithLogger provides an optional logger for logging any issues
-func WithLogger(logger hclog.Logger) Option {
-	return func(o *Options) {
-		o.WithLogger = logger
 	}
 }
