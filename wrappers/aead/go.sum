@@ -179,13 +179,9 @@ github.com/hashicorp/go-hclog v0.12.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39
 github.com/hashicorp/go-hclog v0.14.1/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
-github.com/hashicorp/go-kms-wrapping v0.6.2 h1:ryj5jVvecszFG4yL4/0jQxGK6g1LCNVLWRH8ZXjrYbY=
-github.com/hashicorp/go-kms-wrapping v0.6.2/go.mod h1:aUzqzg9WEm5mEcQcNI431QLmxKzGL80cvwGQyVSP15Y=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210621174529-0d821aab830e/go.mod h1:7ABGYXlZtdgHHAVxmeH+jFcGlER+PNITHWoSN+smTNw=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210628204351-9d7ab33115c0 h1:J4W5f3FayQNuqeAw8ONunGKQljA10gwDE80rndE/gqo=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210628204351-9d7ab33115c0/go.mod h1:SQpR7jLzE4+V7a8y2kXuyugYINAUm9NpB6b3ME60a14=
-github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210621202346-13bd4fb0af39/go.mod h1:CFV+A8+rWGVf6w+IWom/g+3oKXX6A3T1fo9asgx+DXU=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210628205405-2edc1dca0fa0 h1:XVvCOMFZOiX8vc6N+hiPHDs6Mo97GBxK5xeCN5qGlBY=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210628205405-2edc1dca0fa0/go.mod h1:uJRXN1htlidI3ic3kxIxCLHrzt8E1ZnMU+DUV+GAjzU=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-multierror v1.1.0/go.mod h1:spPvp8C1qA32ftKqdAHm4hHTbPw+vmowP0z+KUhOZdA=
 github.com/hashicorp/go-plugin v1.0.1/go.mod h1:++UyYGoz3o5w9ZzAdZxtQKrWWP+iqPBn3cQptSMzBuY=
@@ -316,7 +312,6 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
-github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/tencentcloud/tencentcloud-sdk-go v1.0.162/go.mod h1:asUz5BPXxgoPGaRgZaVm1iGcUAuHyYUo1nXqKa83cvI=
