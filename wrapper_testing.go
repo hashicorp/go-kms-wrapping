@@ -57,6 +57,11 @@ func (t *TestWrapper) KeyId() string {
 	return t.keyId
 }
 
+// SetConfig sets config, but there is currently nothing to set on test wrappers
+func (t *TestWrapper) SetConfig(_ context.Context, _ ...Option) (*WrapperConfig, error) {
+	return nil, nil
+}
+
 // HmacKeyId returns the configured HMAC key ID
 func (t *TestWrapper) HmacKeyId() string {
 	return ""
@@ -68,7 +73,7 @@ func (t *TestWrapper) SetKeyId(k string) {
 }
 
 // Encrypt allows encrypting via the test wrapper
-func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...interface{}) (*BlobInfo, error) {
+func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...Option) (*BlobInfo, error) {
 	switch t.envelope {
 	case true:
 		env, err := EnvelopeEncrypt(plaintext, nil)
@@ -105,7 +110,7 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...inter
 }
 
 // Decrypt allows decrypting via the test wrapper
-func (t *TestWrapper) Decrypt(_ context.Context, dwi *BlobInfo, opts ...interface{}) ([]byte, error) {
+func (t *TestWrapper) Decrypt(_ context.Context, dwi *BlobInfo, opts ...Option) ([]byte, error) {
 	switch t.envelope {
 	case true:
 		keyPlaintext, err := t.obscureBytes(dwi.KeyInfo.WrappedKey)

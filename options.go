@@ -1,5 +1,7 @@
 package wrapping
 
+import structpb "google.golang.org/protobuf/types/known/structpb"
+
 // GetOpts iterates the inbound Options and returns a struct
 func GetOpts(opt ...interface{}) Options {
 	opts := getDefaultOptions()
@@ -25,6 +27,7 @@ type Options struct {
 	WithAad            []byte
 	WithKeyId          string
 	WithKeyNotRequired bool
+	WithWrapperOptions *structpb.Struct
 }
 
 func getDefaultOptions() Options {
@@ -50,5 +53,13 @@ func WithKeyId(id string) Option {
 func WithKeyNotRequired(notRequired bool) Option {
 	return func(o *Options) {
 		o.WithKeyNotRequired = notRequired
+	}
+}
+
+// WithWrapperOptions is an option accepted by wrappers at configuration time
+// and/or in other function calls to control wrapper-specific behavior.
+func WithWrapperOptions(options *structpb.Struct) Option {
+	return func(o *Options) {
+		o.WithWrapperOptions = options
 	}
 }

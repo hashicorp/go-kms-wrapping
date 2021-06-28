@@ -28,12 +28,18 @@ type Wrapper interface {
 	// KeyId is the ID of the key currently used for encryption
 	KeyId() string
 
+	// SetConfig applies the given options to a wrapper and returns
+	// configuration information. WithWrapperOptions will almost certainly be
+	// required to be passed in to give wrapper-specific configuration
+	// information to the wrapper.
+	SetConfig(context.Context, ...Option) (*WrapperConfig, error)
+
 	// Encrypt encrypts the given byte slice and stores the resulting
 	// information in the returned blob info. Which options are supported
 	// depends on the underlying wrapper.
-	Encrypt(context.Context, []byte, ...interface{}) (*BlobInfo, error)
+	Encrypt(context.Context, []byte, ...Option) (*BlobInfo, error)
 	// Decrypt decrypts the given byte slice and stores the resulting
 	// information in the returned byte slice. Which options are supported
 	// depends on the underlying wrapper.
-	Decrypt(context.Context, *BlobInfo, ...interface{}) ([]byte, error)
+	Decrypt(context.Context, *BlobInfo, ...Option) ([]byte, error)
 }

@@ -99,7 +99,7 @@ func buildEncDecMap(ctx context.Context, in interface{}) (encDecMap, error) {
 
 // WrapStruct wraps values in the struct. Options are passed through to the
 // wrapper Encrypt function.
-func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, opt ...interface{}) error {
+func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, opt ...wrapping.Option) error {
 	if wrapper == nil {
 		return errors.New("nil wrapper passed in")
 	}
@@ -155,7 +155,7 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, o
 
 // UnwrapStruct unwraps values in the struct. Options are passed through to the
 // wrapper Dencrypt function.
-func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, opt ...interface{}) error {
+func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, opt ...wrapping.Option) error {
 	if wrapper == nil {
 		return errors.New("nil wrapper passed in")
 	}

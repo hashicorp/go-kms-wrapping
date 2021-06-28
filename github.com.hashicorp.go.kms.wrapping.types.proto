@@ -6,6 +6,12 @@ package github.com.hashicorp.go.kms.wrapping.types;
 
 import "google/protobuf/struct.proto";
 
+// WrapperConfig is the result of a call to SetConfig on a wrapper, returning
+// relevant information about the wrapper and its updated configuration
+message WrapperConfig {
+	map<string, string> metadata = 10;
+}
+
 // EnvelopeInfo contains the information necessary to perfom encryption or
 // decryption in an envelope fashion
 message EnvelopeInfo {

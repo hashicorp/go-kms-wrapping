@@ -1,6 +1,7 @@
 package aead_test
 
 import (
+	"context"
 	"crypto/rand"
 	"testing"
 
@@ -19,7 +20,7 @@ func TestMultiWrapper(t *testing.T) {
 		t.Fatal(n)
 	}
 	w1 := aead.NewWrapper(nil)
-	w1.SetConfig(map[string]string{"key_id": "w1"})
+	w1.SetConfig(wrapping.WithKeyId("w1"))
 	if err := w1.SetAesGcmKeyBytes(w1Key); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +34,7 @@ func TestMultiWrapper(t *testing.T) {
 		t.Fatal(n)
 	}
 	w2 := aead.NewWrapper(nil)
-	w2.SetConfig(map[string]string{"key_id": "w2"})
+	w2.SetConfig(wrapping.WithKeyId("w2"))
 	if err := w2.SetAesGcmKeyBytes(w2Key); err != nil {
 		t.Fatal(err)
 	}
@@ -43,14 +44,14 @@ func TestMultiWrapper(t *testing.T) {
 
 	// Start with one and ensure encrypt/decrypt
 	{
-		encBlob, err = multi.Encrypt(nil, []byte("foobar"), nil)
+		encBlob, err = multi.Encrypt(context.Background(), []byte("foobar"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if encBlob.KeyInfo.KeyId != "w1" {
 			t.Fatal(encBlob.KeyInfo.KeyId)
 		}
-		decVal, err := multi.Decrypt(nil, encBlob, nil)
+		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -58,7 +59,7 @@ func TestMultiWrapper(t *testing.T) {
 			t.Fatal("mismatch in multi")
 		}
 
-		decVal, err = w1.Decrypt(nil, encBlob, nil)
+		decVal, err = w1.Decrypt(context.Background(), encBlob, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,7 +74,7 @@ func TestMultiWrapper(t *testing.T) {
 	}
 	{
 		// Verify we can still decrypt the existing blob
-		decVal, err := multi.Decrypt(nil, encBlob, nil)
+		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,14 +83,14 @@ func TestMultiWrapper(t *testing.T) {
 		}
 
 		// Now encrypt again and decrypt against the new base wrapper
-		encBlob, err = multi.Encrypt(nil, []byte("foobar"), nil)
+		encBlob, err = multi.Encrypt(context.Background(), []byte("foobar"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if encBlob.KeyInfo.KeyId != "w2" {
 			t.Fatal(encBlob.KeyInfo.KeyId)
 		}
-		decVal, err = multi.Decrypt(nil, encBlob, nil)
+		decVal, err = multi.Decrypt(context.Background(), encBlob, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +98,7 @@ func TestMultiWrapper(t *testing.T) {
 			t.Fatal("mismatch in multi")
 		}
 
-		decVal, err = w2.Decrypt(nil, encBlob, nil)
+		decVal, err = w2.Decrypt(context.Background(), encBlob, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,7 +131,7 @@ func TestMultiWrapper(t *testing.T) {
 	multi.RemoveWrapper("w1")
 	multi.RemoveWrapper("w2")
 	{
-		decVal, err := multi.Decrypt(nil, encBlob, nil)
+		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -139,14 +140,14 @@ func TestMultiWrapper(t *testing.T) {
 		}
 
 		// Check that w1 is no longer valid
-		encBlob, err = w1.Encrypt(nil, []byte("foobar"), nil)
+		encBlob, err = w1.Encrypt(context.Background(), []byte("foobar"), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if encBlob.KeyInfo.KeyId != "w1" {
 			t.Fatal(encBlob.KeyInfo.KeyId)
 		}
-		decVal, err = multi.Decrypt(nil, encBlob, nil)
+		decVal, err = multi.Decrypt(context.Background(), encBlob, nil)
 		if err != multiwrapper.ErrKeyNotFound {
 			t.Fatal(err)
 		}
