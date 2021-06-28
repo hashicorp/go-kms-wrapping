@@ -28,7 +28,7 @@ type MultiWrapper struct {
 // the one that is passed in. This function will panic if base is nil.
 func NewMultiWrapper(base wrapping.Wrapper) *MultiWrapper {
 	// For safety, no real reason this should happen
-	if base.KeyID() == baseEncryptor {
+	if base.KeyId() == baseEncryptor {
 		panic("invalid key ID")
 	}
 
@@ -36,7 +36,7 @@ func NewMultiWrapper(base wrapping.Wrapper) *MultiWrapper {
 		wrappers: make(map[string]wrapping.Wrapper, 3),
 	}
 	ret.wrappers[baseEncryptor] = base
-	ret.wrappers[base.KeyID()] = base
+	ret.wrappers[base.KeyId()] = base
 	return ret
 }
 
@@ -50,11 +50,11 @@ func (m *MultiWrapper) AddWrapper(w wrapping.Wrapper) (added bool) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	wrapper := m.wrappers[w.KeyID()]
+	wrapper := m.wrappers[w.KeyId()]
 	if wrapper != nil {
 		return false
 	}
-	m.wrappers[w.KeyID()] = w
+	m.wrappers[w.KeyId()] = w
 	return true
 }
 
@@ -72,7 +72,7 @@ func (m *MultiWrapper) RemoveWrapper(keyID string) (removed bool) {
 	defer m.m.Unlock()
 
 	base := m.wrappers[baseEncryptor]
-	if base.KeyID() == keyID {
+	if base.KeyId() == keyID {
 		// Don't allow removing the base encryptor
 		return false
 	}
@@ -87,7 +87,7 @@ func (m *MultiWrapper) RemoveWrapper(keyID string) (removed bool) {
 // the given key ID is already in use.
 func (m *MultiWrapper) SetEncryptingWrapper(w wrapping.Wrapper) (success bool) {
 	// For safety, no real reason this should happen
-	if w.KeyID() == baseEncryptor {
+	if w.KeyId() == baseEncryptor {
 		panic("invalid key ID")
 	}
 
@@ -95,13 +95,13 @@ func (m *MultiWrapper) SetEncryptingWrapper(w wrapping.Wrapper) (success bool) {
 	defer m.m.Unlock()
 
 	m.wrappers[baseEncryptor] = w
-	m.wrappers[w.KeyID()] = w
+	m.wrappers[w.KeyId()] = w
 	return true
 }
 
-// WrapperForKeyID returns the wrapper for the given keyID. Returns nil if no
+// WrapperForKeyId returns the wrapper for the given keyID. Returns nil if no
 // wrapper was found for the given key ID.
-func (m *MultiWrapper) WrapperForKeyID(keyID string) wrapping.Wrapper {
+func (m *MultiWrapper) WrapperForKeyId(keyID string) wrapping.Wrapper {
 	m.m.RLock()
 	defer m.m.RUnlock()
 
@@ -119,18 +119,21 @@ func (m *MultiWrapper) encryptor() wrapping.Wrapper {
 	return wrapper
 }
 
-func (m *MultiWrapper) Type() string {
-	return wrapping.MultiWrapper
+func (m *MultiWrapper) Type() wrapping.WrapperType {
+	return wrapping.WrapperTypeMultiWrapper
 }
 
-// KeyID returns the KeyID of the current encryptor
-func (m *MultiWrapper) KeyID() string {
-	return m.encryptor().KeyID()
+// KeyId returns the KeyId of the current encryptor
+func (m *MultiWrapper) KeyId() string {
+	return m.encryptor().KeyId()
 }
 
-// HMACKeyID returns the HMACKeyID of the current encryptor
-func (m *MultiWrapper) HMACKeyID() string {
-	return m.encryptor().HMACKeyID()
+// HMACKeyId returns the HmacKeyId of the current encryptor
+func (m *MultiWrapper) HmacKeyId() string {
+	if hmacWrapper, ok := m.encryptor().(wrapping.HmacSigner); ok {
+		return hmacWrapper.HmacKeyId()
+	}
+	return ""
 }
 
 // This does nothing; it's up to the user to initialize and finalize any given
@@ -146,23 +149,23 @@ func (m *MultiWrapper) Finalize(context.Context) error {
 }
 
 // Encrypt encrypts using the current encryptor
-func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, aad []byte) (*wrapping.EncryptedBlobInfo, error) {
-	return m.encryptor().Encrypt(ctx, pt, aad)
+func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, opt ...interface{}) (*wrapping.BlobInfo, error) {
+	return m.encryptor().Encrypt(ctx, pt, opt...)
 }
 
-// Decrypt will use the embedded KeyID in the encrypted blob info to select
+// Decrypt will use the embedded KeyId in the encrypted blob info to select
 // which wrapper to use for decryption. If there is no key info it will attempt
 // decryption with the current encryptor. It will return an ErrKeyNotFound if
 // it cannot find a suitable key.
-func (m *MultiWrapper) Decrypt(ctx context.Context, ct *wrapping.EncryptedBlobInfo, aad []byte) ([]byte, error) {
+func (m *MultiWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt ...interface{}) ([]byte, error) {
 	if ct.KeyInfo == nil {
 		enc := m.encryptor()
-		return enc.Decrypt(ctx, ct, aad)
+		return enc.Decrypt(ctx, ct, opt...)
 	}
 
-	wrapper := m.WrapperForKeyID(ct.KeyInfo.KeyID)
+	wrapper := m.WrapperForKeyId(ct.KeyInfo.KeyId)
 	if wrapper == nil {
 		return nil, ErrKeyNotFound
 	}
-	return wrapper.Decrypt(ctx, ct, aad)
+	return wrapper.Decrypt(ctx, ct, opt...)
 }

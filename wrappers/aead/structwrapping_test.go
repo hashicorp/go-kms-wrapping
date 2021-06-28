@@ -1,4 +1,4 @@
-package structwrapping
+package aead_test
 
 import (
 	"context"

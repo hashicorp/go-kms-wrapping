@@ -1,10 +1,11 @@
-package multiwrapper
+package aead_test
 
 import (
 	"crypto/rand"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/multiwrapper"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 )
 
@@ -19,7 +20,7 @@ func TestMultiWrapper(t *testing.T) {
 	}
 	w1 := aead.NewWrapper(nil)
 	w1.SetConfig(map[string]string{"key_id": "w1"})
-	if err := w1.SetAESGCMKeyBytes(w1Key); err != nil {
+	if err := w1.SetAesGcmKeyBytes(w1Key); err != nil {
 		t.Fatal(err)
 	}
 
@@ -33,12 +34,12 @@ func TestMultiWrapper(t *testing.T) {
 	}
 	w2 := aead.NewWrapper(nil)
 	w2.SetConfig(map[string]string{"key_id": "w2"})
-	if err := w2.SetAESGCMKeyBytes(w2Key); err != nil {
+	if err := w2.SetAesGcmKeyBytes(w2Key); err != nil {
 		t.Fatal(err)
 	}
 
-	multi := NewMultiWrapper(w1)
-	var encBlob *wrapping.EncryptedBlobInfo
+	multi := multiwrapper.NewMultiWrapper(w1)
+	var encBlob *wrapping.BlobInfo
 
 	// Start with one and ensure encrypt/decrypt
 	{
@@ -85,8 +86,8 @@ func TestMultiWrapper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if encBlob.KeyInfo.KeyID != "w2" {
-			t.Fatal(encBlob.KeyInfo.KeyID)
+		if encBlob.KeyInfo.KeyId != "w2" {
+			t.Fatal(encBlob.KeyInfo.KeyId)
 		}
 		decVal, err = multi.Decrypt(nil, encBlob, nil)
 		if err != nil {
@@ -142,11 +143,11 @@ func TestMultiWrapper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if encBlob.KeyInfo.KeyID != "w1" {
-			t.Fatal(encBlob.KeyInfo.KeyID)
+		if encBlob.KeyInfo.KeyId != "w1" {
+			t.Fatal(encBlob.KeyInfo.KeyId)
 		}
 		decVal, err = multi.Decrypt(nil, encBlob, nil)
-		if err != ErrKeyNotFound {
+		if err != multiwrapper.ErrKeyNotFound {
 			t.Fatal(err)
 		}
 	}
