@@ -47,8 +47,8 @@ func TestMultiWrapper(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if encBlob.KeyInfo.KeyID != "w1" {
-			t.Fatal(encBlob.KeyInfo.KeyID)
+		if encBlob.KeyInfo.KeyId != "w1" {
+			t.Fatal(encBlob.KeyInfo.KeyId)
 		}
 		decVal, err := multi.Decrypt(nil, encBlob, nil)
 		if err != nil {
@@ -107,21 +107,21 @@ func TestMultiWrapper(t *testing.T) {
 	}
 
 	// Check retriving the wrappers
-	checkW1 := multi.WrapperForKeyID("w1")
+	checkW1 := multi.WrapperForKeyId("w1")
 	if checkW1 == nil {
 		t.Fatal("nil w1")
 	}
-	if checkW1.KeyID() != "w1" {
+	if checkW1.KeyId() != "w1" {
 		t.Fatal("mismatch")
 	}
-	checkW2 := multi.WrapperForKeyID("w2")
+	checkW2 := multi.WrapperForKeyId("w2")
 	if checkW2 == nil {
 		t.Fatal("nil w2")
 	}
-	if checkW2.KeyID() != "w2" {
+	if checkW2.KeyId() != "w2" {
 		t.Fatal("mismatch")
 	}
-	checkW3 := multi.WrapperForKeyID("w3")
+	checkW3 := multi.WrapperForKeyId("w3")
 	if checkW3 != nil {
 		t.Fatal("expected key not found")
 	}
