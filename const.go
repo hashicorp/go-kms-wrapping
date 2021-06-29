@@ -76,6 +76,15 @@ func (t AeadType) String() string {
 	}
 }
 
+func AeadTypeMap(t string) AeadType {
+	switch t {
+	case "aes-gcm":
+		return AeadTypeAesGcm
+	default:
+		return AeadTypeUnknown
+	}
+}
+
 type HashType uint32
 
 // These values define supported types of hashes
@@ -90,5 +99,14 @@ func (t HashType) String() string {
 		return "sha256"
 	default:
 		return "unknown"
+	}
+}
+
+func HashTypeMap(t string) HashType {
+	switch t {
+	case "sha256":
+		return HashTypeSha256
+	default:
+		return HashTypeUnknown
 	}
 }
