@@ -16,7 +16,7 @@ import (
 func TestStructWrapping(t *testing.T) {
 	wrapper := aead.NewWrapper()
 	opts, err := structpb.NewStruct(map[string]interface{}{
-		"aead_type": "aes-gcm",
+		"aead_type": wrapping.AeadTypeAesGcm.String(),
 		"key":       "QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI=",
 	})
 	require.NoError(t, err)

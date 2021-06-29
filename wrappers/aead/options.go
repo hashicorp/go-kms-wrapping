@@ -7,9 +7,22 @@ import (
 )
 
 // getOpts iterates the inbound Options and returns a struct
-func getOpts(opt ...wrapping.Option) options {
+func getOpts(opt ...interface{}) options {
 	opts := getDefaultOptions()
-	opts.Options = wrapping.GetOpts(opt...)
+	var wrappingOptions []wrapping.Option
+	var localOptions []Option
+	for _, o := range opt {
+		if o == nil {
+			continue
+		}
+		switch to := o.(type) {
+		case wrapping.Option:
+			wrappingOptions = append(wrappingOptions, to)
+		case Option:
+			localOptions = append(localOptions, to)
+		}
+	}
+	opts.Options = wrapping.GetOpts(wrappingOptions...)
 	if opts.WithWrapperOptions != nil {
 		for k, v := range opts.WithWrapperOptions.GetFields() {
 			switch k {
@@ -24,6 +37,11 @@ func getOpts(opt ...wrapping.Option) options {
 			case "info":
 				opts.WithInfo, _ = base64.StdEncoding.DecodeString(v.GetStringValue())
 			}
+		}
+	}
+	for _, o := range localOptions {
+		if o != nil {
+			o(&opts)
 		}
 	}
 	return opts

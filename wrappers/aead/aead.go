@@ -70,7 +70,10 @@ func NewShamirWrapper() *ShamirWrapper {
 //
 // ** "salt": The salt value, if any, to use in the derivation, as a
 // base64-encoded byte slice
-func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
+//
+// The values in WithWrapperOptions can also be set via the package's native
+// With* functions.
+func (s *Wrapper) NewDerivedWrapper(opt ...interface{}) (*Wrapper, error) {
 	if len(s.keyBytes) == 0 {
 		return nil, errors.New("cannot create a sub-wrapper when key bytes are not set")
 	}
@@ -122,7 +125,10 @@ func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 // ** "aead_type": The type of AEAD to use, defaults to wrapping.AeadTypeAesGcm
 //
 // ** "key": A base-64 encoded string value containing the key to use
-func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+//
+// The values in WithWrapperOptions can also be set via the package's native
+// With* functions.
+func (s *Wrapper) SetConfig(_ context.Context, opt ...interface{}) (*wrapping.WrapperConfig, error) {
 	opts := getOpts(opt...)
 
 	s.keyId = opts.WithKeyId
@@ -200,7 +206,7 @@ func (s *Wrapper) KeyId() string {
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must also be provided during decryption
-func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
+func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...interface{}) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -232,7 +238,7 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must match what was provided during encryption
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...interface{}) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
