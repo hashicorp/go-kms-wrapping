@@ -32,14 +32,14 @@ type Wrapper interface {
 	// configuration information. WithWrapperOptions will almost certainly be
 	// required to be passed in to give wrapper-specific configuration
 	// information to the wrapper.
-	SetConfig(context.Context, ...Option) (*WrapperConfig, error)
+	SetConfig(ctx context.Context, options ...interface{}) (*WrapperConfig, error)
 
 	// Encrypt encrypts the given byte slice and stores the resulting
 	// information in the returned blob info. Which options are supported
 	// depends on the underlying wrapper.
-	Encrypt(context.Context, []byte, ...Option) (*BlobInfo, error)
+	Encrypt(ctx context.Context, plaintext []byte, options ...interface{}) (*BlobInfo, error)
 	// Decrypt decrypts the given byte slice and stores the resulting
 	// information in the returned byte slice. Which options are supported
 	// depends on the underlying wrapper.
-	Decrypt(context.Context, *BlobInfo, ...Option) ([]byte, error)
+	Decrypt(ctx context.Context, ciphertext *BlobInfo, options ...interface{}) ([]byte, error)
 }
