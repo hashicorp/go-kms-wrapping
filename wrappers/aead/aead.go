@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"hash"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
@@ -35,7 +36,7 @@ var (
 
 // NewWrapper creates a new Wrapper with the provided logger. No options are
 // supported.
-func NewWrapper(opt ...interface{}) *Wrapper {
+func NewWrapper() *Wrapper {
 	seal := new(Wrapper)
 	return seal
 }
@@ -43,9 +44,9 @@ func NewWrapper(opt ...interface{}) *Wrapper {
 // Deprecated: NewShamirWrapper returns a type of "shamir" instead of "aead" and
 // is for backwards compatibility with old versions of Vault. Do not use in new
 // code.
-func NewShamirWrapper(opt ...interface{}) *ShamirWrapper {
+func NewShamirWrapper() *ShamirWrapper {
 	return &ShamirWrapper{
-		Wrapper: NewWrapper(opt...),
+		Wrapper: NewWrapper(),
 	}
 }
 
@@ -56,23 +57,32 @@ func NewShamirWrapper(opt ...interface{}) *ShamirWrapper {
 //
 // * wrapping.WithKeyId: The key ID, if any, to set on the derived wrapper
 //
-// * aead.WithAeadType: The AEAD type to use when encrypting
+// * wrapping.WithWrapperOptions: A struct containing the following:
 //
-// * aead.WithHash: The hash function to use for derivation (defaults to sha256)
+// ** "aead_type": The type of AEAD to use as a string, defaults to
+// wrapping.AeadTypeAesGcm.String()
 //
-// * aead.WithInfo: The info value, if any, to use in the derivation
+// ** "hash": The type of hash function to use for derivation as a string,
+// defaults to wrapping.HashTypeSha256.String()
 //
-// * aead.WithSalt: The salt value, if any, to use in the derivation
-func (s *Wrapper) NewDerivedWrapper(opt ...interface{}) (*Wrapper, error) {
+// ** "info": The info value, if any, to use in the derivation, as a
+// base64-encoded byte slice
+//
+// ** "salt": The salt value, if any, to use in the derivation, as a
+// base64-encoded byte slice
+func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 	if len(s.keyBytes) == 0 {
-		return nil, errors.New("cannot create a sub-wrapper when key byte are not set")
+		return nil, errors.New("cannot create a sub-wrapper when key bytes are not set")
 	}
 
 	opts := getOpts(opt...)
 
-	h := opts.WithHash
-	if h == nil {
+	var h func() hash.Hash
+	switch opts.WithHashType {
+	case wrapping.HashTypeSha256:
 		h = sha256.New
+	default:
+		return nil, fmt.Errorf("not a supported hash type: %d", opts.WithHashType)
 	}
 
 	ret := &Wrapper{
@@ -95,7 +105,7 @@ func (s *Wrapper) NewDerivedWrapper(opt ...interface{}) (*Wrapper, error) {
 		}
 
 	default:
-		return nil, fmt.Errorf("not a supported aead type: %q", opts.WithAeadType.String())
+		return nil, fmt.Errorf("not a supported aead type: %d", opts.WithAeadType)
 	}
 
 	return ret, nil
@@ -107,10 +117,12 @@ func (s *Wrapper) NewDerivedWrapper(opt ...interface{}) (*Wrapper, error) {
 //
 // * wrapping.WithKeyId: The key ID, if any, to set on the wrapper
 //
-// * aead.WithAeadType: The AEAD type to use when encrypting
+// * wrapping.WithWrapperOptions: A struct containing the following:
 //
-// * aead.WithKey: The key bytes (base64-encoded) the wrapper should use
-func (s *Wrapper) SetConfig(opt ...interface{}) (map[string]string, error) {
+// ** "aead_type": The type of AEAD to use, defaults to wrapping.AeadTypeAesGcm
+//
+// ** "key": A base-64 encoded string value containing the key to use
+func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts := getOpts(opt...)
 
 	s.keyId = opts.WithKeyId
@@ -134,10 +146,11 @@ func (s *Wrapper) SetConfig(opt ...interface{}) (map[string]string, error) {
 	}
 
 	// Map that holds non-sensitive configuration info
-	wrappingInfo := make(map[string]string)
-	wrappingInfo["aead_type"] = opts.WithAeadType.String()
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["aead_type"] = opts.WithAeadType.String()
 
-	return wrappingInfo, nil
+	return wrapConfig, nil
 }
 
 // GetKeyBytes returns the current key bytes
@@ -187,7 +200,7 @@ func (s *Wrapper) KeyId() string {
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must also be provided during decryption
-func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...interface{}) (*wrapping.BlobInfo, error) {
+func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -219,7 +232,7 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...interface{
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must match what was provided during encryption
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...interface{}) ([]byte, error) {
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}

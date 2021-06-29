@@ -1,29 +1,31 @@
 package aead
 
 import (
-	"crypto/sha256"
-	"hash"
+	"encoding/base64"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // getOpts iterates the inbound Options and returns a struct
-func getOpts(opt ...interface{}) options {
+func getOpts(opt ...wrapping.Option) options {
 	opts := getDefaultOptions()
-	var wrappingOpts []interface{}
-	for _, o := range opt {
-		if o != nil {
-			switch t := o.(type) {
-			case wrapping.Option:
-				wrappingOpts = append(wrappingOpts, t)
-			case Option:
-				if t != nil {
-					t(&opts)
-				}
+	opts.Options = wrapping.GetOpts(opt...)
+	if opts.WithWrapperOptions != nil {
+		for k, v := range opts.WithWrapperOptions.GetFields() {
+			switch k {
+			case "aead_type":
+				opts.WithAeadType = wrapping.AeadTypeMap(v.GetStringValue())
+			case "hash_type":
+				opts.WithHashType = wrapping.HashTypeMap(v.GetStringValue())
+			case "key":
+				opts.WithKey = v.GetStringValue()
+			case "salt":
+				opts.WithSalt, _ = base64.StdEncoding.DecodeString(v.GetStringValue())
+			case "info":
+				opts.WithInfo, _ = base64.StdEncoding.DecodeString(v.GetStringValue())
 			}
 		}
 	}
-	opts.Options = wrapping.GetOpts(wrappingOpts...)
 	return opts
 }
 
@@ -35,7 +37,7 @@ type options struct {
 	wrapping.Options
 
 	WithAeadType wrapping.AeadType
-	WithHash     func() hash.Hash
+	WithHashType wrapping.HashType
 	WithInfo     []byte
 	WithKey      string
 	WithSalt     []byte
@@ -44,7 +46,7 @@ type options struct {
 func getDefaultOptions() options {
 	return options{
 		WithAeadType: wrapping.AeadTypeAesGcm,
-		WithHash:     sha256.New,
+		WithHashType: wrapping.HashTypeSha256,
 	}
 }
 
@@ -55,10 +57,10 @@ func WithAeadType(aeadType wrapping.AeadType) Option {
 	}
 }
 
-// WithHash provides a hash function to use for derivation
-func WithHash(hash func() hash.Hash) Option {
+// WithHashType provides a wat to choose the type of hash to use for derivation
+func WithHashType(hash wrapping.HashType) Option {
 	return func(o *options) {
-		o.WithHash = hash
+		o.WithHashType = hash
 	}
 }
 

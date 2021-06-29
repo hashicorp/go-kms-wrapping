@@ -7,6 +7,7 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestShamirVsAEAD(t *testing.T) {
@@ -29,7 +30,7 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 		t.Fatal(n)
 	}
 	root := NewWrapper()
-	_, err = root.SetConfig(wrapping.WithKeyId("root"))
+	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId("root"))
 	require.NoError(err)
 	require.NoError(root.SetAesGcmKeyBytes(rootKey))
 	require.Equal(root.KeyId(), "root")
@@ -42,11 +43,14 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	require.NoError(err)
 	require.Equal("foobar", string(decVal))
 
+	opts, err := structpb.NewStruct(map[string]interface{}{
+		"salt": []byte("zip"),
+		"info": []byte("zap"),
+	})
+	require.NoError(err)
 	sub, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub"),
-		WithSalt([]byte("zip")),
-		WithInfo([]byte("zap")),
-	)
+		wrapping.WithWrapperOptions(opts))
 	require.NoError(err)
 	require.Equal("sub", sub.KeyId())
 
@@ -71,10 +75,14 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	require.Nil(decVal)
 
 	// Ensure that deriving a second subkey with the same params works
+	opts, err = structpb.NewStruct(map[string]interface{}{
+		"salt": []byte("zip"),
+		"info": []byte("zap"),
+	})
+	require.NoError(err)
 	sub2, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		WithSalt([]byte("zip")),
-		WithInfo([]byte("zap")),
+		wrapping.WithWrapperOptions(opts),
 	)
 	require.NoError(err)
 	require.Equal("sub2", sub2.KeyId())
@@ -85,10 +93,14 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	require.NotNil(subDecVal)
 
 	// Ensure that a subkey with different params doesn't work
+	opts, err = structpb.NewStruct(map[string]interface{}{
+		"salt": []byte("zap"),
+		"info": []byte("zip"),
+	})
+	require.NoError(err)
 	subBad, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		WithSalt([]byte("zap")),
-		WithInfo([]byte("zip")),
+		wrapping.WithWrapperOptions(opts),
 	)
 	require.NoError(err)
 	subDecVal, err = subBad.Decrypt(context.Background(), subEncBlob)

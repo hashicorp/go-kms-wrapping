@@ -10,14 +10,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestStructWrapping(t *testing.T) {
 	wrapper := aead.NewWrapper()
-	_, err := wrapper.SetConfig(
-		aead.WithAeadType(wrapping.AeadTypeAesGcm),
-		aead.WithKey("QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI="),
-	)
+	opts, err := structpb.NewStruct(map[string]interface{}{
+		"aead_type": "aes-gcm",
+		"key":       "QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI=",
+	})
+	require.NoError(t, err)
+	_, err = wrapper.SetConfig(context.Background(), wrapping.WithWrapperOptions(opts))
 	require.Nil(t, err)
 	ctx := context.Background()
 

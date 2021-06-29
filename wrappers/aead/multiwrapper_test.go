@@ -8,36 +8,33 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/multiwrapper"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMultiWrapper(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+	ctx := context.Background()
+
 	w1Key := make([]byte, 32)
 	n, err := rand.Read(w1Key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n != 32 {
-		t.Fatal(n)
-	}
-	w1 := aead.NewWrapper(nil)
-	w1.SetConfig(wrapping.WithKeyId("w1"))
-	if err := w1.SetAesGcmKeyBytes(w1Key); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
+	require.Equal(n, 32)
+
+	w1 := aead.NewWrapper()
+	_, err = w1.SetConfig(ctx, wrapping.WithKeyId("w1"))
+	require.NoError(err)
+	require.NoError(w1.SetAesGcmKeyBytes(w1Key))
 
 	w2Key := make([]byte, 32)
 	n, err = rand.Read(w2Key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n != 32 {
-		t.Fatal(n)
-	}
-	w2 := aead.NewWrapper(nil)
-	w2.SetConfig(wrapping.WithKeyId("w2"))
-	if err := w2.SetAesGcmKeyBytes(w2Key); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(err)
+	require.Equal(n, 32)
+
+	w2 := aead.NewWrapper()
+	_, err = w2.SetConfig(ctx, wrapping.WithKeyId("w2"))
+	require.NoError(err)
+	require.NoError(w2.SetAesGcmKeyBytes(w2Key))
 
 	multi := multiwrapper.NewMultiWrapper(w1)
 	var encBlob *wrapping.BlobInfo
@@ -45,111 +42,68 @@ func TestMultiWrapper(t *testing.T) {
 	// Start with one and ensure encrypt/decrypt
 	{
 		encBlob, err = multi.Encrypt(context.Background(), []byte("foobar"), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if encBlob.KeyInfo.KeyId != "w1" {
-			t.Fatal(encBlob.KeyInfo.KeyId)
-		}
+		require.NoError(err)
+		assert.Equal("w1", encBlob.KeyInfo.KeyId)
+
 		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(decVal) != "foobar" {
-			t.Fatal("mismatch in multi")
-		}
+		require.NoError(err)
+		assert.Equal("foobar", string(decVal))
 
 		decVal, err = w1.Decrypt(context.Background(), encBlob, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(decVal) != "foobar" {
-			t.Fatal("mismatch in w1")
-		}
+		require.NoError(err)
+		assert.Equal("foobar", string(decVal))
 	}
 
 	// Rotate the encryptor
-	if success := multi.SetEncryptingWrapper(w2); !success {
-		t.Fatal("failed to set encrypting wrapper")
-	}
+	require.True(multi.SetEncryptingWrapper(w2))
 	{
 		// Verify we can still decrypt the existing blob
 		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(decVal) != "foobar" {
-			t.Fatal("mismatch in multi after rotation")
-		}
+		require.NoError(err)
+		assert.Equal("foobar", string(decVal))
 
 		// Now encrypt again and decrypt against the new base wrapper
 		encBlob, err = multi.Encrypt(context.Background(), []byte("foobar"), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if encBlob.KeyInfo.KeyId != "w2" {
-			t.Fatal(encBlob.KeyInfo.KeyId)
-		}
+		require.NoError(err)
+		assert.Equal("w2", encBlob.KeyInfo.KeyId)
+
 		decVal, err = multi.Decrypt(context.Background(), encBlob, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(decVal) != "foobar" {
-			t.Fatal("mismatch in multi")
-		}
+		require.NoError(err)
+		assert.Equal("foobar", string(decVal))
 
 		decVal, err = w2.Decrypt(context.Background(), encBlob, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(decVal) != "foobar" {
-			t.Fatal("mismatch in w2")
-		}
+		require.NoError(err)
+		assert.Equal("foobar", string(decVal))
 	}
 
 	// Check retriving the wrappers
 	checkW1 := multi.WrapperForKeyId("w1")
-	if checkW1 == nil {
-		t.Fatal("nil w1")
-	}
-	if checkW1.KeyId() != "w1" {
-		t.Fatal("mismatch")
-	}
+	require.NotNil(checkW1)
+	require.Equal("w1", checkW1.KeyId())
+
 	checkW2 := multi.WrapperForKeyId("w2")
-	if checkW2 == nil {
-		t.Fatal("nil w2")
-	}
-	if checkW2.KeyId() != "w2" {
-		t.Fatal("mismatch")
-	}
-	checkW3 := multi.WrapperForKeyId("w3")
-	if checkW3 != nil {
-		t.Fatal("expected key not found")
-	}
+	require.NotNil(checkW2)
+	require.Equal("w2", checkW2.KeyId())
+
+	require.Nil(multi.WrapperForKeyId("w3"))
 
 	// Check removing a wrapper, and not removing the base wrapper
-	multi.RemoveWrapper("w1")
-	multi.RemoveWrapper("w2")
+	assert.True(multi.RemoveWrapper("w1"))
+	assert.True(multi.RemoveWrapper("w1"))  // returns false after removal
+	assert.False(multi.RemoveWrapper("w2")) // base
+	assert.True(multi.RemoveWrapper("w3"))  // never existed
 	{
 		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if string(decVal) != "foobar" {
-			t.Fatal("mismatch in multi")
-		}
+		require.NoError(err)
+		assert.Equal("foobar", string(decVal))
 
 		// Check that w1 is no longer valid
 		encBlob, err = w1.Encrypt(context.Background(), []byte("foobar"), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if encBlob.KeyInfo.KeyId != "w1" {
-			t.Fatal(encBlob.KeyInfo.KeyId)
-		}
+		require.NoError(err)
+		require.Equal("w1", encBlob.KeyInfo.KeyId)
+
 		decVal, err = multi.Decrypt(context.Background(), encBlob, nil)
-		if err != multiwrapper.ErrKeyNotFound {
-			t.Fatal(err)
-		}
+		require.Equal(multiwrapper.ErrKeyNotFound, err)
+		assert.Nil(decVal)
 	}
 }
