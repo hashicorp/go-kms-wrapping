@@ -74,15 +74,12 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	require.Error(err)
 	require.Nil(decVal)
 
-	// Ensure that deriving a second subkey with the same params works
-	opts, err = structpb.NewStruct(map[string]interface{}{
-		"salt": []byte("zip"),
-		"info": []byte("zap"),
-	})
-	require.NoError(err)
+	// Ensure that deriving a second subkey with the same params works. Use
+	// direct options values this time.
 	sub2, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		wrapping.WithWrapperOptions(opts),
+		WithSalt([]byte("zip")),
+		WithInfo([]byte("zap")),
 	)
 	require.NoError(err)
 	require.Equal("sub2", sub2.KeyId())
