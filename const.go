@@ -59,7 +59,7 @@ func (t WrapperType) String() string {
 	}
 }
 
-type AeadType uint
+type AeadType uint32
 
 // These values define supported types of AEADs
 const (
@@ -71,6 +71,23 @@ func (t AeadType) String() string {
 	switch t {
 	case AeadTypeAesGcm:
 		return "aes-gcm"
+	default:
+		return "unknown"
+	}
+}
+
+type HashType uint32
+
+// These values define supported types of hashes
+const (
+	HashTypeUnknown HashType = iota
+	HashTypeSha256
+)
+
+func (t HashType) String() string {
+	switch t {
+	case HashTypeSha256:
+		return "sha256"
 	default:
 		return "unknown"
 	}

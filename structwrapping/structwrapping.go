@@ -113,11 +113,11 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, o
 	for _, v := range edMap {
 		encRaw := val.Field(v[0].index).Interface()
 		var enc []byte
-		switch encRaw.(type) {
+		switch t := encRaw.(type) {
 		case []byte:
-			enc = encRaw.([]byte)
+			enc = t
 		case string:
-			enc = []byte(encRaw.(string))
+			enc = []byte(t)
 		default:
 			return errors.New("could not convert value for encryption to []byte")
 		}
