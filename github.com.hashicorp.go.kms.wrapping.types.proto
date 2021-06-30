@@ -81,3 +81,15 @@ message KeyInfo {
 	// Mechanism specific flags
 	uint64 flags = 6;
 }
+
+// Options holds options common to all wrappers
+message Options {
+	// The key ID being specified
+	string with_key_id = 10;
+
+	// The AAD bytes, if any
+	bytes with_aad = 20;
+
+	// Wrapper-specific options to pass along
+	google.protobuf.Struct with_wrapper_options = 30;
+}

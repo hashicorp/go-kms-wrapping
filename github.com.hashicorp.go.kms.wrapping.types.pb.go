@@ -361,6 +361,73 @@ func (x *KeyInfo) GetFlags() uint64 {
 	return 0
 }
 
+// Options holds options common to all wrappers
+type Options struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// The key ID being specified
+	WithKeyId string `protobuf:"bytes,10,opt,name=with_key_id,json=withKeyId,proto3" json:"with_key_id,omitempty"`
+	// The AAD bytes, if any
+	WithAad []byte `protobuf:"bytes,20,opt,name=with_aad,json=withAad,proto3" json:"with_aad,omitempty"`
+	// Wrapper-specific options to pass along
+	WithWrapperOptions *structpb.Struct `protobuf:"bytes,30,opt,name=with_wrapper_options,json=withWrapperOptions,proto3" json:"with_wrapper_options,omitempty"`
+}
+
+func (x *Options) Reset() {
+	*x = Options{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_github_com_hashicorp_go_kms_wrapping_types_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Options) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Options) ProtoMessage() {}
+
+func (x *Options) ProtoReflect() protoreflect.Message {
+	mi := &file_github_com_hashicorp_go_kms_wrapping_types_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Options.ProtoReflect.Descriptor instead.
+func (*Options) Descriptor() ([]byte, []int) {
+	return file_github_com_hashicorp_go_kms_wrapping_types_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Options) GetWithKeyId() string {
+	if x != nil {
+		return x.WithKeyId
+	}
+	return ""
+}
+
+func (x *Options) GetWithAad() []byte {
+	if x != nil {
+		return x.WithAad
+	}
+	return nil
+}
+
+func (x *Options) GetWithWrapperOptions() *structpb.Struct {
+	if x != nil {
+		return x.WithWrapperOptions
+	}
+	return nil
+}
+
 var File_github_com_hashicorp_go_kms_wrapping_types_proto protoreflect.FileDescriptor
 
 var file_github_com_hashicorp_go_kms_wrapping_types_proto_rawDesc = []byte{
@@ -419,11 +486,20 @@ var file_github_com_hashicorp_go_kms_wrapping_types_proto_rawDesc = []byte{
 	0x65, 0x79, 0x49, 0x64, 0x12, 0x1f, 0x0a, 0x0b, 0x77, 0x72, 0x61, 0x70, 0x70, 0x65, 0x64, 0x5f,
 	0x6b, 0x65, 0x79, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x77, 0x72, 0x61, 0x70, 0x70,
 	0x65, 0x64, 0x4b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x66, 0x6c, 0x61, 0x67, 0x73, 0x18, 0x06,
-	0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x66, 0x6c, 0x61, 0x67, 0x73, 0x42, 0x32, 0x5a, 0x30, 0x67,
-	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63,
-	0x6f, 0x72, 0x70, 0x2f, 0x67, 0x6f, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x77, 0x72, 0x61, 0x70, 0x70,
-	0x69, 0x6e, 0x67, 0x2f, 0x76, 0x32, 0x3b, 0x77, 0x72, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x62,
-	0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x66, 0x6c, 0x61, 0x67, 0x73, 0x22, 0x8f, 0x01, 0x0a, 0x07,
+	0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x1e, 0x0a, 0x0b, 0x77, 0x69, 0x74, 0x68, 0x5f,
+	0x6b, 0x65, 0x79, 0x5f, 0x69, 0x64, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x77, 0x69,
+	0x74, 0x68, 0x4b, 0x65, 0x79, 0x49, 0x64, 0x12, 0x19, 0x0a, 0x08, 0x77, 0x69, 0x74, 0x68, 0x5f,
+	0x61, 0x61, 0x64, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x77, 0x69, 0x74, 0x68, 0x41,
+	0x61, 0x64, 0x12, 0x49, 0x0a, 0x14, 0x77, 0x69, 0x74, 0x68, 0x5f, 0x77, 0x72, 0x61, 0x70, 0x70,
+	0x65, 0x72, 0x5f, 0x6f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x17, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2e, 0x53, 0x74, 0x72, 0x75, 0x63, 0x74, 0x52, 0x12, 0x77, 0x69, 0x74, 0x68, 0x57,
+	0x72, 0x61, 0x70, 0x70, 0x65, 0x72, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x42, 0x32, 0x5a,
+	0x30, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68,
+	0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x67, 0x6f, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x77, 0x72, 0x61,
+	0x70, 0x70, 0x69, 0x6e, 0x67, 0x2f, 0x76, 0x32, 0x3b, 0x77, 0x72, 0x61, 0x70, 0x70, 0x69, 0x6e,
+	0x67, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -438,24 +514,26 @@ func file_github_com_hashicorp_go_kms_wrapping_types_proto_rawDescGZIP() []byte 
 	return file_github_com_hashicorp_go_kms_wrapping_types_proto_rawDescData
 }
 
-var file_github_com_hashicorp_go_kms_wrapping_types_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_github_com_hashicorp_go_kms_wrapping_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_github_com_hashicorp_go_kms_wrapping_types_proto_goTypes = []interface{}{
 	(*WrapperConfig)(nil),   // 0: github.com.hashicorp.go.kms.wrapping.types.WrapperConfig
 	(*EnvelopeInfo)(nil),    // 1: github.com.hashicorp.go.kms.wrapping.types.EnvelopeInfo
 	(*BlobInfo)(nil),        // 2: github.com.hashicorp.go.kms.wrapping.types.BlobInfo
 	(*KeyInfo)(nil),         // 3: github.com.hashicorp.go.kms.wrapping.types.KeyInfo
-	nil,                     // 4: github.com.hashicorp.go.kms.wrapping.types.WrapperConfig.MetadataEntry
-	(*structpb.Struct)(nil), // 5: google.protobuf.Struct
+	(*Options)(nil),         // 4: github.com.hashicorp.go.kms.wrapping.types.Options
+	nil,                     // 5: github.com.hashicorp.go.kms.wrapping.types.WrapperConfig.MetadataEntry
+	(*structpb.Struct)(nil), // 6: google.protobuf.Struct
 }
 var file_github_com_hashicorp_go_kms_wrapping_types_proto_depIdxs = []int32{
-	4, // 0: github.com.hashicorp.go.kms.wrapping.types.WrapperConfig.metadata:type_name -> github.com.hashicorp.go.kms.wrapping.types.WrapperConfig.MetadataEntry
+	5, // 0: github.com.hashicorp.go.kms.wrapping.types.WrapperConfig.metadata:type_name -> github.com.hashicorp.go.kms.wrapping.types.WrapperConfig.MetadataEntry
 	3, // 1: github.com.hashicorp.go.kms.wrapping.types.BlobInfo.key_info:type_name -> github.com.hashicorp.go.kms.wrapping.types.KeyInfo
-	5, // 2: github.com.hashicorp.go.kms.wrapping.types.BlobInfo.client_data:type_name -> google.protobuf.Struct
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 2: github.com.hashicorp.go.kms.wrapping.types.BlobInfo.client_data:type_name -> google.protobuf.Struct
+	6, // 3: github.com.hashicorp.go.kms.wrapping.types.Options.with_wrapper_options:type_name -> google.protobuf.Struct
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_github_com_hashicorp_go_kms_wrapping_types_proto_init() }
@@ -512,6 +590,18 @@ func file_github_com_hashicorp_go_kms_wrapping_types_proto_init() {
 				return nil
 			}
 		}
+		file_github_com_hashicorp_go_kms_wrapping_types_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Options); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -519,7 +609,7 @@ func file_github_com_hashicorp_go_kms_wrapping_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_github_com_hashicorp_go_kms_wrapping_types_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

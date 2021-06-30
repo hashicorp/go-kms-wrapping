@@ -16,15 +16,6 @@ func GetOpts(opt ...Option) Options {
 // Option - a type for funcs that operate on the shared Options struct
 type Option func(*Options)
 
-// Options contains values that are cross-wrapper. It is intended to be embedded
-// in wrapper-specific options structs.
-type Options struct {
-	WithAad            []byte
-	WithKeyId          string
-	WithKeyNotRequired bool
-	WithWrapperOptions *structpb.Struct
-}
-
 func getDefaultOptions() Options {
 	return Options{}
 }
