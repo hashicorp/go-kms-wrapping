@@ -18,6 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WrapClient interface {
+	PluginInfo(ctx context.Context, in *PluginInfoRequest, opts ...grpc.CallOption) (*PluginInfoResponse, error)
 	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error)
 	KeyId(ctx context.Context, in *KeyIdRequest, opts ...grpc.CallOption) (*KeyIdResponse, error)
 	SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*SetConfigResponse, error)
@@ -33,9 +34,18 @@ func NewWrapClient(cc grpc.ClientConnInterface) WrapClient {
 	return &wrapClient{cc}
 }
 
+func (c *wrapClient) PluginInfo(ctx context.Context, in *PluginInfoRequest, opts ...grpc.CallOption) (*PluginInfoResponse, error) {
+	out := new(PluginInfoResponse)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/PluginInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *wrapClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error) {
 	out := new(TypeResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/Type", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Type", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +54,7 @@ func (c *wrapClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.Cal
 
 func (c *wrapClient) KeyId(ctx context.Context, in *KeyIdRequest, opts ...grpc.CallOption) (*KeyIdResponse, error) {
 	out := new(KeyIdResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/KeyId", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/KeyId", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +63,7 @@ func (c *wrapClient) KeyId(ctx context.Context, in *KeyIdRequest, opts ...grpc.C
 
 func (c *wrapClient) SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*SetConfigResponse, error) {
 	out := new(SetConfigResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/SetConfig", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/SetConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +72,7 @@ func (c *wrapClient) SetConfig(ctx context.Context, in *SetConfigRequest, opts .
 
 func (c *wrapClient) Encrypt(ctx context.Context, in *EncryptRequest, opts ...grpc.CallOption) (*EncryptResponse, error) {
 	out := new(EncryptResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/Encrypt", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Encrypt", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +81,7 @@ func (c *wrapClient) Encrypt(ctx context.Context, in *EncryptRequest, opts ...gr
 
 func (c *wrapClient) Decrypt(ctx context.Context, in *DecryptRequest, opts ...grpc.CallOption) (*DecryptResponse, error) {
 	out := new(DecryptResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/Decrypt", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Decrypt", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +92,7 @@ func (c *wrapClient) Decrypt(ctx context.Context, in *DecryptRequest, opts ...gr
 // All implementations must embed UnimplementedWrapServer
 // for forward compatibility
 type WrapServer interface {
+	PluginInfo(context.Context, *PluginInfoRequest) (*PluginInfoResponse, error)
 	Type(context.Context, *TypeRequest) (*TypeResponse, error)
 	KeyId(context.Context, *KeyIdRequest) (*KeyIdResponse, error)
 	SetConfig(context.Context, *SetConfigRequest) (*SetConfigResponse, error)
@@ -94,6 +105,9 @@ type WrapServer interface {
 type UnimplementedWrapServer struct {
 }
 
+func (UnimplementedWrapServer) PluginInfo(context.Context, *PluginInfoRequest) (*PluginInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PluginInfo not implemented")
+}
 func (UnimplementedWrapServer) Type(context.Context, *TypeRequest) (*TypeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Type not implemented")
 }
@@ -122,6 +136,24 @@ func RegisterWrapServer(s grpc.ServiceRegistrar, srv WrapServer) {
 	s.RegisterService(&Wrap_ServiceDesc, srv)
 }
 
+func _Wrap_PluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PluginInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WrapServer).PluginInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/PluginInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WrapServer).PluginInfo(ctx, req.(*PluginInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Wrap_Type_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TypeRequest)
 	if err := dec(in); err != nil {
@@ -132,7 +164,7 @@ func _Wrap_Type_Handler(srv interface{}, ctx context.Context, dec func(interface
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/Type",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Type",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WrapServer).Type(ctx, req.(*TypeRequest))
@@ -150,7 +182,7 @@ func _Wrap_KeyId_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/KeyId",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/KeyId",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WrapServer).KeyId(ctx, req.(*KeyIdRequest))
@@ -168,7 +200,7 @@ func _Wrap_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(inte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/SetConfig",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/SetConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WrapServer).SetConfig(ctx, req.(*SetConfigRequest))
@@ -186,7 +218,7 @@ func _Wrap_Encrypt_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/Encrypt",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Encrypt",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WrapServer).Encrypt(ctx, req.(*EncryptRequest))
@@ -204,7 +236,7 @@ func _Wrap_Decrypt_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.Wrap/Decrypt",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Decrypt",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(WrapServer).Decrypt(ctx, req.(*DecryptRequest))
@@ -216,9 +248,13 @@ func _Wrap_Decrypt_Handler(srv interface{}, ctx context.Context, dec func(interf
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Wrap_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.Wrap",
+	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap",
 	HandlerType: (*WrapServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "PluginInfo",
+			Handler:    _Wrap_PluginInfo_Handler,
+		},
 		{
 			MethodName: "Type",
 			Handler:    _Wrap_Type_Handler,
@@ -241,7 +277,7 @@ var Wrap_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.proto",
+	Metadata: "plugin/v1/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
 }
 
 // InitFinalizeClient is the client API for InitFinalize service.
@@ -262,7 +298,7 @@ func NewInitFinalizeClient(cc grpc.ClientConnInterface) InitFinalizeClient {
 
 func (c *initFinalizeClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error) {
 	out := new(InitResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.InitFinalize/Init", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.InitFinalize/Init", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +307,7 @@ func (c *initFinalizeClient) Init(ctx context.Context, in *InitRequest, opts ...
 
 func (c *initFinalizeClient) Finalize(ctx context.Context, in *FinalizeRequest, opts ...grpc.CallOption) (*FinalizeResponse, error) {
 	out := new(FinalizeResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.InitFinalize/Finalize", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.InitFinalize/Finalize", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -320,7 +356,7 @@ func _InitFinalize_Init_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.InitFinalize/Init",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.InitFinalize/Init",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(InitFinalizeServer).Init(ctx, req.(*InitRequest))
@@ -338,7 +374,7 @@ func _InitFinalize_Finalize_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.InitFinalize/Finalize",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.InitFinalize/Finalize",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(InitFinalizeServer).Finalize(ctx, req.(*FinalizeRequest))
@@ -350,7 +386,7 @@ func _InitFinalize_Finalize_Handler(srv interface{}, ctx context.Context, dec fu
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var InitFinalize_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.InitFinalize",
+	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v1.InitFinalize",
 	HandlerType: (*InitFinalizeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -363,5 +399,5 @@ var InitFinalize_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.proto",
+	Metadata: "plugin/v1/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option go_package = "github.com/hashicorp/go-kms-wrapping/v2/plugin;plugin";
 
-package github.com.hashicorp.go.kms.wrapping.plugin;
+package github.com.hashicorp.go.kms.wrapping.plugin.v1;
 
 import "github.com.hashicorp.go.kms.wrapping.types.proto";
 import "google/protobuf/struct.proto";
@@ -51,7 +51,15 @@ message DecryptResponse {
 	bytes plaintext = 10;
 }
 
+message PluginInfoRequest {};
+
+message PluginInfoResponse {
+	// The version of the service schema understood by the plugin
+	uint32 service_version = 10;
+}
+
 service Wrap {
+	rpc PluginInfo(PluginInfoRequest) returns (PluginInfoResponse);
 	rpc Type(TypeRequest) returns (TypeResponse);
 	rpc KeyId(KeyIdRequest) returns (KeyIdResponse);
 	rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
