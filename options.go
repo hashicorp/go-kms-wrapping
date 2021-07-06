@@ -34,14 +34,6 @@ func WithKeyId(id string) Option {
 	}
 }
 
-// WithKeyNotRequired is an option accepted by some wrappers indicating that a
-// key isn't required when creating a wrapper, and will be provided later
-func WithKeyNotRequired(notRequired bool) Option {
-	return func(o *Options) {
-		o.WithKeyNotRequired = notRequired
-	}
-}
-
 // WithWrapperOptions is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
 func WithWrapperOptions(options *structpb.Struct) Option {
