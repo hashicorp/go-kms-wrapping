@@ -8,7 +8,9 @@ import "github.com.hashicorp.go.kms.wrapping.types.proto";
 import "google/protobuf/struct.proto";
 
 message CommonOptions {
-	bytes aad = 1;
+	string key_id = 10;
+	bytes aad = 20;
+	google.protobuf.Struct wrapper_options = 30;
 }
 
 message TypeRequest {}
@@ -21,6 +23,14 @@ message KeyIdRequest {}
 
 message KeyIdResponse {
 	string key_id = 10 [json_name="key_id"];
+}
+
+message SetConfigRequest {
+	CommonOptions options = 20;
+}
+
+message SetConfigResponse {
+	github.com.hashicorp.go.kms.wrapping.types.WrapperConfig wrapper_config = 10;
 }
 
 message EncryptRequest {
@@ -44,18 +54,19 @@ message DecryptResponse {
 service Wrap {
 	rpc Type(TypeRequest) returns (TypeResponse);
 	rpc KeyId(KeyIdRequest) returns (KeyIdResponse);
-    rpc Encrypt(EncryptRequest) returns (EncryptResponse);
-    rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+	rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
+	rpc Encrypt(EncryptRequest) returns (EncryptResponse);
+	rpc Decrypt(DecryptRequest) returns (DecryptResponse);
 }
 
 message InitRequest {
-	google.protobuf.Struct input = 10;
+	CommonOptions options = 20;
 }
 
 message InitResponse {};
 
 message FinalizeRequest {
-	google.protobuf.Struct input = 10;
+	CommonOptions options = 20;
 }
 
 message FinalizeResponse {};

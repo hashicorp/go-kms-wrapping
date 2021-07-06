@@ -12,7 +12,7 @@ type HmacSigner interface {
 type InitFinalizer interface {
 	// Init allows performing any necessary setup calls before using a
 	// Wrapper.
-	Init(context.Context) error
+	Init(context.Context, ...interface{}) error
 
 	// Finalize can be called when all usage of a Wrapper is done if any cleanup
 	// or finalization is required.
