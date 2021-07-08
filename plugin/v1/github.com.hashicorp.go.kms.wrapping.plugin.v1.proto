@@ -5,13 +5,6 @@ option go_package = "github.com/hashicorp/go-kms-wrapping/v2/plugin;plugin";
 package github.com.hashicorp.go.kms.wrapping.plugin.v1;
 
 import "github.com.hashicorp.go.kms.wrapping.types.proto";
-import "google/protobuf/struct.proto";
-
-message CommonOptions {
-	string key_id = 10;
-	bytes aad = 20;
-	google.protobuf.Struct wrapper_options = 30;
-}
 
 message TypeRequest {}
 
@@ -26,7 +19,7 @@ message KeyIdResponse {
 }
 
 message SetConfigRequest {
-	CommonOptions options = 20;
+	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
 }
 
 message SetConfigResponse {
@@ -35,7 +28,7 @@ message SetConfigResponse {
 
 message EncryptRequest {
 	bytes plaintext = 10;
-	CommonOptions options = 20;
+	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
 }
 
 message EncryptResponse {
@@ -44,7 +37,7 @@ message EncryptResponse {
 
 message DecryptRequest {
 	github.com.hashicorp.go.kms.wrapping.types.BlobInfo ciphertext = 10;
-	CommonOptions options = 20;
+	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
 }
 
 message DecryptResponse {
@@ -68,13 +61,13 @@ service Wrap {
 }
 
 message InitRequest {
-	CommonOptions options = 20;
+	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
 }
 
 message InitResponse {};
 
 message FinalizeRequest {
-	CommonOptions options = 20;
+	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
 }
 
 message FinalizeResponse {};

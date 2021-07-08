@@ -6,7 +6,7 @@ import (
 
 type HmacSigner interface {
 	// HmacKeyID is the ID of the key currently used for HMACing (if any)
-	HmacKeyId() string
+	HmacKeyId(context.Context) string
 }
 
 type InitFinalizer interface {
@@ -23,10 +23,10 @@ type InitFinalizer interface {
 // encrypting and decrypting data.
 type Wrapper interface {
 	// Type is the type of Wrapper
-	Type() WrapperType
+	Type(context.Context) WrapperType
 
 	// KeyId is the ID of the key currently used for encryption
-	KeyId() string
+	KeyId(context.Context) string
 
 	// SetConfig applies the given options to a wrapper and returns
 	// configuration information. WithWrapperOptions will almost certainly be

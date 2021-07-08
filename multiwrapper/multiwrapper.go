@@ -26,9 +26,9 @@ type MultiWrapper struct {
 
 // NewMultiWrapper creates a MultiWrapper and sets its encrypting wrapper to
 // the one that is passed in. This function will panic if base is nil.
-func NewMultiWrapper(base wrapping.Wrapper) *MultiWrapper {
+func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) *MultiWrapper {
 	// For safety, no real reason this should happen
-	if base.KeyId() == baseEncryptor {
+	if base.KeyId(ctx) == baseEncryptor {
 		panic("invalid key ID")
 	}
 
@@ -36,7 +36,7 @@ func NewMultiWrapper(base wrapping.Wrapper) *MultiWrapper {
 		wrappers: make(map[string]wrapping.Wrapper, 3),
 	}
 	ret.wrappers[baseEncryptor] = base
-	ret.wrappers[base.KeyId()] = base
+	ret.wrappers[base.KeyId(ctx)] = base
 	return ret
 }
 
@@ -46,15 +46,15 @@ func NewMultiWrapper(base wrapping.Wrapper) *MultiWrapper {
 // is, it will be false if an existing wrapper would have been overridden. If
 // you want to change the encrypting wrapper, create a new MultiWrapper or call
 // SetEncryptingWrapper. This function will panic if w is nil.
-func (m *MultiWrapper) AddWrapper(w wrapping.Wrapper) (added bool) {
+func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (added bool) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	wrapper := m.wrappers[w.KeyId()]
+	wrapper := m.wrappers[w.KeyId(ctx)]
 	if wrapper != nil {
 		return false
 	}
-	m.wrappers[w.KeyId()] = w
+	m.wrappers[w.KeyId(ctx)] = w
 	return true
 }
 
@@ -62,7 +62,7 @@ func (m *MultiWrapper) AddWrapper(w wrapping.Wrapper) (added bool) {
 // It will not remove the encrypting wrapper; use SetEncryptingWrapper for
 // that. Returns whether or not a wrapper was removed, which will always be
 // true unless it was the base encryptor.
-func (m *MultiWrapper) RemoveWrapper(keyID string) (removed bool) {
+func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyID string) (removed bool) {
 	// For safety, no real reason this should happen
 	if keyID == baseEncryptor {
 		panic("invalid key ID")
@@ -72,7 +72,7 @@ func (m *MultiWrapper) RemoveWrapper(keyID string) (removed bool) {
 	defer m.m.Unlock()
 
 	base := m.wrappers[baseEncryptor]
-	if base.KeyId() == keyID {
+	if base.KeyId(ctx) == keyID {
 		// Don't allow removing the base encryptor
 		return false
 	}
@@ -85,9 +85,9 @@ func (m *MultiWrapper) RemoveWrapper(keyID string) (removed bool) {
 // wrappers; it can then be removed via its key ID and RemoveWrapper if
 // desired. It will panic if w is nil. It will return false (not successful) if
 // the given key ID is already in use.
-func (m *MultiWrapper) SetEncryptingWrapper(w wrapping.Wrapper) (success bool) {
+func (m *MultiWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrapper) (success bool) {
 	// For safety, no real reason this should happen
-	if w.KeyId() == baseEncryptor {
+	if w.KeyId(ctx) == baseEncryptor {
 		panic("invalid key ID")
 	}
 
@@ -95,7 +95,7 @@ func (m *MultiWrapper) SetEncryptingWrapper(w wrapping.Wrapper) (success bool) {
 	defer m.m.Unlock()
 
 	m.wrappers[baseEncryptor] = w
-	m.wrappers[w.KeyId()] = w
+	m.wrappers[w.KeyId(ctx)] = w
 	return true
 }
 
@@ -119,13 +119,13 @@ func (m *MultiWrapper) encryptor() wrapping.Wrapper {
 	return wrapper
 }
 
-func (m *MultiWrapper) Type() wrapping.WrapperType {
+func (m *MultiWrapper) Type(_ context.Context) wrapping.WrapperType {
 	return wrapping.WrapperTypeMultiWrapper
 }
 
 // KeyId returns the KeyId of the current encryptor
-func (m *MultiWrapper) KeyId() string {
-	return m.encryptor().KeyId()
+func (m *MultiWrapper) KeyId(ctx context.Context) string {
+	return m.encryptor().KeyId(ctx)
 }
 
 // SetConfig sets config, but there is currently nothing to set on
@@ -135,9 +135,9 @@ func (m *MultiWrapper) SetConfig(_ context.Context, _ ...interface{}) (*wrapping
 }
 
 // HmacKeyId returns the HmacKeyId of the current encryptor
-func (m *MultiWrapper) HmacKeyId() string {
+func (m *MultiWrapper) HmacKeyId(ctx context.Context) string {
 	if hmacWrapper, ok := m.encryptor().(wrapping.HmacSigner); ok {
-		return hmacWrapper.HmacKeyId()
+		return hmacWrapper.HmacKeyId(ctx)
 	}
 	return ""
 }

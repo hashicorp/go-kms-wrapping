@@ -48,12 +48,12 @@ func (t *TestWrapper) Finalize(_ context.Context) error {
 }
 
 // Type returns the type of the test wrapper
-func (t *TestWrapper) Type() WrapperType {
+func (t *TestWrapper) Type(_ context.Context) WrapperType {
 	return t.wrapperType
 }
 
 // KeyId returns the configured key ID
-func (t *TestWrapper) KeyId() string {
+func (t *TestWrapper) KeyId(_ context.Context) string {
 	return t.keyId
 }
 
@@ -63,7 +63,7 @@ func (t *TestWrapper) SetConfig(_ context.Context, _ ...interface{}) (*WrapperCo
 }
 
 // HmacKeyId returns the configured HMAC key ID
-func (t *TestWrapper) HmacKeyId() string {
+func (t *TestWrapper) HmacKeyId(_ context.Context) string {
 	return ""
 }
 
@@ -73,7 +73,7 @@ func (t *TestWrapper) SetKeyId(k string) {
 }
 
 // Encrypt allows encrypting via the test wrapper
-func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...interface{}) (*BlobInfo, error) {
+func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...interface{}) (*BlobInfo, error) {
 	switch t.envelope {
 	case true:
 		env, err := EnvelopeEncrypt(plaintext, nil)
@@ -89,7 +89,7 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...inter
 			Ciphertext: env.Ciphertext,
 			Iv:         env.Iv,
 			KeyInfo: &KeyInfo{
-				KeyId:      t.KeyId(),
+				KeyId:      t.KeyId(ctx),
 				WrappedKey: ct,
 			},
 		}, nil
@@ -103,7 +103,7 @@ func (t *TestWrapper) Encrypt(_ context.Context, plaintext []byte, opts ...inter
 		return &BlobInfo{
 			Ciphertext: ct,
 			KeyInfo: &KeyInfo{
-				KeyId: t.KeyId(),
+				KeyId: t.KeyId(ctx),
 			},
 		}, nil
 	}
