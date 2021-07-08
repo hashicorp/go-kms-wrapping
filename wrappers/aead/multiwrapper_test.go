@@ -36,7 +36,7 @@ func TestMultiWrapper(t *testing.T) {
 	require.NoError(err)
 	require.NoError(w2.SetAesGcmKeyBytes(w2Key))
 
-	multi := multiwrapper.NewMultiWrapper(w1)
+	multi := multiwrapper.NewMultiWrapper(ctx, w1)
 	var encBlob *wrapping.BlobInfo
 
 	// Start with one and ensure encrypt/decrypt
@@ -55,7 +55,7 @@ func TestMultiWrapper(t *testing.T) {
 	}
 
 	// Rotate the encryptor
-	require.True(multi.SetEncryptingWrapper(w2))
+	require.True(multi.SetEncryptingWrapper(ctx, w2))
 	{
 		// Verify we can still decrypt the existing blob
 		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
@@ -79,19 +79,19 @@ func TestMultiWrapper(t *testing.T) {
 	// Check retriving the wrappers
 	checkW1 := multi.WrapperForKeyId("w1")
 	require.NotNil(checkW1)
-	require.Equal("w1", checkW1.KeyId())
+	require.Equal("w1", checkW1.KeyId(ctx))
 
 	checkW2 := multi.WrapperForKeyId("w2")
 	require.NotNil(checkW2)
-	require.Equal("w2", checkW2.KeyId())
+	require.Equal("w2", checkW2.KeyId(ctx))
 
 	require.Nil(multi.WrapperForKeyId("w3"))
 
 	// Check removing a wrapper, and not removing the base wrapper
-	assert.True(multi.RemoveWrapper("w1"))
-	assert.True(multi.RemoveWrapper("w1"))  // returns false after removal
-	assert.False(multi.RemoveWrapper("w2")) // base
-	assert.True(multi.RemoveWrapper("w3"))  // never existed
+	assert.True(multi.RemoveWrapper(ctx, "w1"))
+	assert.True(multi.RemoveWrapper(ctx, "w1"))  // returns false after removal
+	assert.False(multi.RemoveWrapper(ctx, "w2")) // base
+	assert.True(multi.RemoveWrapper(ctx, "w3"))  // never existed
 	{
 		decVal, err := multi.Decrypt(context.Background(), encBlob, nil)
 		require.NoError(err)

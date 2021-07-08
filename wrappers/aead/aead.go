@@ -187,16 +187,16 @@ func (s *Wrapper) SetAesGcmKeyBytes(key []byte) error {
 }
 
 // Type returns the seal type for this particular Wrapper implementation
-func (s *Wrapper) Type() wrapping.WrapperType {
+func (s *Wrapper) Type(_ context.Context) wrapping.WrapperType {
 	return wrapping.WrapperTypeAead
 }
 
-func (s *ShamirWrapper) Type() wrapping.WrapperType {
+func (s *ShamirWrapper) Type(_ context.Context) wrapping.WrapperType {
 	return wrapping.WrapperTypeShamir
 }
 
 // KeyId returns the last known key id
-func (s *Wrapper) KeyId() string {
+func (s *Wrapper) KeyId(_ context.Context) string {
 	return s.keyId
 }
 
