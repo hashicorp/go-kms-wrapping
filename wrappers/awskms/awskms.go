@@ -14,7 +14,7 @@ import (
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping"
-	"github.com/hashicorp/vault/sdk/helper/awsutil"
+	"github.com/hashicorp/go-secure-stdlib/awsutil"
 )
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
