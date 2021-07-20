@@ -13,10 +13,10 @@ require (
 	github.com/aws/aws-sdk-go v1.30.27
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1
-	github.com/hashicorp/go-hclog v0.14.1
+	github.com/hashicorp/go-hclog v0.16.2
+	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.1
 	github.com/hashicorp/go-uuid v1.0.2
-	github.com/hashicorp/vault/api v1.0.5-0.20200805123347-1ef507638af6
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200916184745-5576096032f8
+	github.com/hashicorp/vault/api v1.1.1
 	github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4
 	github.com/oracle/oci-go-sdk v12.5.0+incompatible
 	github.com/stretchr/testify v1.7.0
