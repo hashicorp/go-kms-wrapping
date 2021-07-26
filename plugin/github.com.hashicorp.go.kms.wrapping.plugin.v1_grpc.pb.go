@@ -277,7 +277,7 @@ var Wrap_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/v1/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
+	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
 }
 
 // InitFinalizeClient is the client API for InitFinalize service.
@@ -399,5 +399,5 @@ var InitFinalize_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/v1/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
+	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
 }
