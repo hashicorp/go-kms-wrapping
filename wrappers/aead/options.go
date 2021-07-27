@@ -9,7 +9,7 @@ import (
 // getOpts iterates the inbound Options and returns a struct
 func getOpts(opt ...interface{}) options {
 	opts := getDefaultOptions()
-	var wrappingOptions []wrapping.Option
+	var wrappingOptions []interface{}
 	var localOptions []Option
 	for _, o := range opt {
 		if o == nil {

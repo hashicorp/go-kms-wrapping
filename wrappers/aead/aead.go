@@ -187,17 +187,17 @@ func (s *Wrapper) SetAesGcmKeyBytes(key []byte) error {
 }
 
 // Type returns the seal type for this particular Wrapper implementation
-func (s *Wrapper) Type(_ context.Context) wrapping.WrapperType {
-	return wrapping.WrapperTypeAead
+func (s *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeAead, nil
 }
 
-func (s *ShamirWrapper) Type(_ context.Context) wrapping.WrapperType {
-	return wrapping.WrapperTypeShamir
+func (s *ShamirWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeShamir, nil
 }
 
 // KeyId returns the last known key id
-func (s *Wrapper) KeyId(_ context.Context) string {
-	return s.keyId
+func (s *Wrapper) KeyId(_ context.Context) (string, error) {
+	return s.keyId, nil
 }
 
 // Encrypt is used to encrypt the plaintext using the AEAD held by the wrapper

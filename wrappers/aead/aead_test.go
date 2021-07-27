@@ -13,10 +13,14 @@ import (
 func TestShamirVsAEAD(t *testing.T) {
 	ctx := context.Background()
 	a := NewWrapper()
-	require.Equal(t, a.Type(ctx), wrapping.WrapperTypeAead)
+	typ, err := a.Type(ctx)
+	require.NoError(t, err)
+	require.Equal(t, typ, wrapping.WrapperTypeAead)
 
 	s := NewShamirWrapper()
-	require.Equal(t, s.Type(ctx), wrapping.WrapperTypeShamir)
+	typ, err = s.Type(ctx)
+	require.NoError(t, err)
+	require.Equal(t, typ, wrapping.WrapperTypeShamir)
 }
 
 func TestWrapperAndDerivedWrapper(t *testing.T) {
@@ -35,7 +39,9 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId("root"))
 	require.NoError(err)
 	require.NoError(root.SetAesGcmKeyBytes(rootKey))
-	require.Equal(root.KeyId(ctx), "root")
+	keyId, err := root.KeyId(ctx)
+	require.NoError(err)
+	require.Equal(keyId, "root")
 
 	encBlob, err := root.Encrypt(context.Background(), []byte("foobar"))
 	require.NoError(err)
@@ -54,7 +60,9 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 		wrapping.WithKeyId("sub"),
 		wrapping.WithWrapperOptions(opts))
 	require.NoError(err)
-	require.Equal("sub", sub.KeyId(ctx))
+	keyId, err = sub.KeyId(ctx)
+	require.NoError(err)
+	require.Equal("sub", keyId)
 
 	// This should fail as it should be a different key
 	decVal, err = sub.Decrypt(context.Background(), encBlob)
@@ -84,7 +92,9 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 		WithInfo([]byte("zap")),
 	)
 	require.NoError(err)
-	require.Equal("sub2", sub2.KeyId(ctx))
+	keyId, err = sub2.KeyId(ctx)
+	require.NoError(err)
+	require.Equal("sub2", keyId)
 
 	subDecVal, err = sub2.Decrypt(context.Background(), subEncBlob)
 	require.NoError(err)

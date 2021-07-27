@@ -36,7 +36,8 @@ func TestMultiWrapper(t *testing.T) {
 	require.NoError(err)
 	require.NoError(w2.SetAesGcmKeyBytes(w2Key))
 
-	multi := multiwrapper.NewMultiWrapper(ctx, w1)
+	multi, err := multiwrapper.NewMultiWrapper(ctx, w1)
+	require.NoError(err)
 	var encBlob *wrapping.BlobInfo
 
 	// Start with one and ensure encrypt/decrypt
@@ -79,11 +80,15 @@ func TestMultiWrapper(t *testing.T) {
 	// Check retriving the wrappers
 	checkW1 := multi.WrapperForKeyId("w1")
 	require.NotNil(checkW1)
-	require.Equal("w1", checkW1.KeyId(ctx))
+	keyId, err := checkW1.KeyId(ctx)
+	require.NoError(err)
+	require.Equal("w1", keyId)
 
 	checkW2 := multi.WrapperForKeyId("w2")
 	require.NotNil(checkW2)
-	require.Equal("w2", checkW2.KeyId(ctx))
+	keyId, err = checkW2.KeyId(ctx)
+	require.NoError(err)
+	require.Equal("w2", keyId)
 
 	require.Nil(multi.WrapperForKeyId("w3"))
 
