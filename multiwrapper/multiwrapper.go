@@ -3,6 +3,7 @@ package multiwrapper
 import (
 	"context"
 	"errors"
+	"fmt"
 	sync "sync"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -27,17 +28,22 @@ type MultiWrapper struct {
 // NewMultiWrapper creates a MultiWrapper and sets its encrypting wrapper to
 // the one that is passed in.
 func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) (*MultiWrapper, error) {
+	baseKeyId, err := base.KeyId(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// For safety, no real reason this should happen
-	if base.KeyId(ctx) == baseEncryptor {
-		panic("invalid key ID")
+	if baseKeyId == baseEncryptor {
+		return nil, fmt.Errorf("base wrapper cannot have a key ID of built-in base encryptor")
 	}
 
 	ret := &MultiWrapper{
 		wrappers: make(map[string]wrapping.Wrapper, 3),
 	}
 	ret.wrappers[baseEncryptor] = base
-	ret.wrappers[base.KeyId(ctx)] = base
-	return ret
+	ret.wrappers[baseKeyId] = base
+	return ret, nil
 }
 
 // AddWrapper adds a wrapper to the MultiWrapper. For safety, it will refuse to
@@ -47,37 +53,43 @@ func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) (*MultiWrapper,
 // you want to change the encrypting wrapper, create a new MultiWrapper or call
 // SetEncryptingWrapper.
 func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
+	keyId, err := w.KeyId(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	wrapper := m.wrappers[w.KeyId(ctx)]
+	wrapper := m.wrappers[keyId]
 	if wrapper != nil {
-		return false
+		return false, nil
 	}
-	m.wrappers[w.KeyId(ctx)] = w
-	return true
+	m.wrappers[keyId] = w
+	return true, nil
 }
 
 // RemoveWrapper removes a wrapper from the MultiWrapper, identified by key ID.
 // It will not remove the encrypting wrapper; use SetEncryptingWrapper for
 // that. Returns whether or not a wrapper was removed, which will always be
 // true unless it was the base encryptor.
-func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyID string) (bool, error) {
-	// For safety, no real reason this should happen
-	if keyID == baseEncryptor {
-		panic("invalid key ID")
-	}
-
+func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyId string) (bool, error) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
 	base := m.wrappers[baseEncryptor]
-	if base.KeyId(ctx) == keyID {
-		// Don't allow removing the base encryptor
-		return false
+
+	baseKeyId, err := base.KeyId(ctx)
+	if err != nil {
+		return false, err
 	}
-	delete(m.wrappers, keyID)
-	return true
+
+	if baseKeyId == keyId {
+		// Don't allow removing the base encryptor
+		return false, fmt.Errorf("cannot remove the base encryptor")
+	}
+	delete(m.wrappers, keyId)
+	return true, nil
 }
 
 // SetEncryptingWrapper resets the encrypting wrapper to the one passed in. It
@@ -85,17 +97,22 @@ func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyID string) (bool, e
 // wrappers; it can then be removed via its key ID and RemoveWrapper if desired.
 // It will return false (not successful) if the given key ID is already in use.
 func (m *MultiWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
+	keyId, err := w.KeyId(ctx)
+	if err != nil {
+		return false, err
+	}
+
 	// For safety, no real reason this should happen
-	if w.KeyId(ctx) == baseEncryptor {
-		panic("invalid key ID")
+	if keyId == baseEncryptor {
+		return false, fmt.Errorf("encrypting wrapper cannot have a key ID of built-in base encryptor")
 	}
 
 	m.m.Lock()
 	defer m.m.Unlock()
 
 	m.wrappers[baseEncryptor] = w
-	m.wrappers[w.KeyId(ctx)] = w
-	return true
+	m.wrappers[keyId] = w
+	return true, nil
 }
 
 // WrapperForKeyId returns the wrapper for the given keyID. Returns nil if no
