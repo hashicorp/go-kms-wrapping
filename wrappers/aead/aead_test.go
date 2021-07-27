@@ -3,6 +3,7 @@ package aead
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -23,7 +24,16 @@ func TestShamirVsAEAD(t *testing.T) {
 	require.Equal(t, typ, wrapping.WrapperTypeShamir)
 }
 
-func TestWrapperAndDerivedWrapper(t *testing.T) {
+func TestDirectWrapper(t *testing.T) {
+	root := NewWrapper()
+	encBlob := testWrapper(t, root)
+	testDerivation(t, root, encBlob)
+}
+
+func TestPluginWrapper(t *testing.T) {
+}
+
+func testWrapper(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
 	require := require.New(t)
 	ctx := context.Background()
 
@@ -35,10 +45,18 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	if n != 32 {
 		t.Fatal(n)
 	}
-	root := NewWrapper()
-	_, err = root.SetConfig(context.Background(), wrapping.WithKeyId("root"))
+
+	setConfigOpts, err := structpb.NewStruct(map[string]interface{}{
+		"key": base64.StdEncoding.EncodeToString(rootKey),
+	})
 	require.NoError(err)
-	require.NoError(root.SetAesGcmKeyBytes(rootKey))
+	_, err = root.SetConfig(
+		context.Background(),
+		wrapping.WithKeyId("root"),
+		wrapping.WithWrapperOptions(setConfigOpts),
+	)
+	require.NoError(err)
+
 	keyId, err := root.KeyId(ctx)
 	require.NoError(err)
 	require.Equal(keyId, "root")
@@ -51,6 +69,12 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 	require.NoError(err)
 	require.Equal("foobar", string(decVal))
 
+	return encBlob
+}
+
+func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
+	ctx := context.Background()
+	require := require.New(t)
 	opts, err := structpb.NewStruct(map[string]interface{}{
 		"salt": []byte("zip"),
 		"info": []byte("zap"),
@@ -60,12 +84,12 @@ func TestWrapperAndDerivedWrapper(t *testing.T) {
 		wrapping.WithKeyId("sub"),
 		wrapping.WithWrapperOptions(opts))
 	require.NoError(err)
-	keyId, err = sub.KeyId(ctx)
+	keyId, err := sub.KeyId(ctx)
 	require.NoError(err)
 	require.Equal("sub", keyId)
 
 	// This should fail as it should be a different key
-	decVal, err = sub.Decrypt(context.Background(), encBlob)
+	decVal, err := sub.Decrypt(context.Background(), encBlob)
 	require.Error(err)
 	require.Nil(decVal)
 

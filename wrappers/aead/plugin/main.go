@@ -16,9 +16,7 @@ func main() {
 	gp.Serve(&gp.ServeConfig{
 		HandshakeConfig: HandshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
-			1: gp.PluginSet{
-				"wrapping": gkwp.NewWrapper(aead.NewWrapper()),
-			},
+			1: {"wrapping": gkwp.NewWrapper(aead.NewWrapper())},
 		},
 		GRPCServer: gp.DefaultGRPCServer,
 	})
