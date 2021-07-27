@@ -2,6 +2,8 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 
 go 1.13
 
+replace github.com/hashicorp/go-kms-wrapping/plugin => ../../plugin
+
 require (
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210708223249-b5f4602d6ffd
 	github.com/hashicorp/go-uuid v1.0.2

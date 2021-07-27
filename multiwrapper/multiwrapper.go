@@ -25,8 +25,8 @@ type MultiWrapper struct {
 }
 
 // NewMultiWrapper creates a MultiWrapper and sets its encrypting wrapper to
-// the one that is passed in. This function will panic if base is nil.
-func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) *MultiWrapper {
+// the one that is passed in.
+func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) (*MultiWrapper, error) {
 	// For safety, no real reason this should happen
 	if base.KeyId(ctx) == baseEncryptor {
 		panic("invalid key ID")
@@ -45,8 +45,8 @@ func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) *MultiWrapper {
 // The return parameter indicates if the wrapper was successfully added, that
 // is, it will be false if an existing wrapper would have been overridden. If
 // you want to change the encrypting wrapper, create a new MultiWrapper or call
-// SetEncryptingWrapper. This function will panic if w is nil.
-func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (added bool) {
+// SetEncryptingWrapper.
+func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
@@ -62,7 +62,7 @@ func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (adde
 // It will not remove the encrypting wrapper; use SetEncryptingWrapper for
 // that. Returns whether or not a wrapper was removed, which will always be
 // true unless it was the base encryptor.
-func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyID string) (removed bool) {
+func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyID string) (bool, error) {
 	// For safety, no real reason this should happen
 	if keyID == baseEncryptor {
 		panic("invalid key ID")
@@ -82,10 +82,9 @@ func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyID string) (removed
 
 // SetEncryptingWrapper resets the encrypting wrapper to the one passed in. It
 // will also add the previous encrypting wrapper to the set of decrypting
-// wrappers; it can then be removed via its key ID and RemoveWrapper if
-// desired. It will panic if w is nil. It will return false (not successful) if
-// the given key ID is already in use.
-func (m *MultiWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrapper) (success bool) {
+// wrappers; it can then be removed via its key ID and RemoveWrapper if desired.
+// It will return false (not successful) if the given key ID is already in use.
+func (m *MultiWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
 	// For safety, no real reason this should happen
 	if w.KeyId(ctx) == baseEncryptor {
 		panic("invalid key ID")
@@ -119,12 +118,12 @@ func (m *MultiWrapper) encryptor() wrapping.Wrapper {
 	return wrapper
 }
 
-func (m *MultiWrapper) Type(_ context.Context) wrapping.WrapperType {
-	return wrapping.WrapperTypeMultiWrapper
+func (m *MultiWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeMultiWrapper, nil
 }
 
 // KeyId returns the KeyId of the current encryptor
-func (m *MultiWrapper) KeyId(ctx context.Context) string {
+func (m *MultiWrapper) KeyId(ctx context.Context) (string, error) {
 	return m.encryptor().KeyId(ctx)
 }
 

@@ -3,11 +3,15 @@ package wrapping
 import structpb "google.golang.org/protobuf/types/known/structpb"
 
 // GetOpts iterates the inbound Options and returns a struct
-func GetOpts(opt ...Option) Options {
+func GetOpts(opt ...interface{}) Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
-		if o != nil {
-			o(&opts)
+		if o == nil {
+			continue
+		}
+		switch to := o.(type) {
+		case Option:
+			to(&opts)
 		}
 	}
 	return opts

@@ -44,15 +44,7 @@ message DecryptResponse {
 	bytes plaintext = 10;
 }
 
-message PluginInfoRequest {};
-
-message PluginInfoResponse {
-	// The version of the service schema understood by the plugin
-	uint32 service_version = 10;
-}
-
-service Wrap {
-	rpc PluginInfo(PluginInfoRequest) returns (PluginInfoResponse);
+service Wrapping {
 	rpc Type(TypeRequest) returns (TypeResponse);
 	rpc KeyId(KeyIdRequest) returns (KeyIdResponse);
 	rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);

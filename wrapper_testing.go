@@ -48,13 +48,13 @@ func (t *TestWrapper) Finalize(_ context.Context) error {
 }
 
 // Type returns the type of the test wrapper
-func (t *TestWrapper) Type(_ context.Context) WrapperType {
-	return t.wrapperType
+func (t *TestWrapper) Type(_ context.Context) (WrapperType, error) {
+	return t.wrapperType, nil
 }
 
 // KeyId returns the configured key ID
-func (t *TestWrapper) KeyId(_ context.Context) string {
-	return t.keyId
+func (t *TestWrapper) KeyId(_ context.Context) (string, error) {
+	return t.keyId, nil
 }
 
 // SetConfig sets config, but there is currently nothing to set on test wrappers
@@ -85,11 +85,16 @@ func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...int
 			return nil, err
 		}
 
+		keyId, err := t.KeyId(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		return &BlobInfo{
 			Ciphertext: env.Ciphertext,
 			Iv:         env.Iv,
 			KeyInfo: &KeyInfo{
-				KeyId:      t.KeyId(ctx),
+				KeyId:      keyId,
 				WrappedKey: ct,
 			},
 		}, nil
@@ -100,10 +105,15 @@ func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...int
 			return nil, err
 		}
 
+		keyId, err := t.KeyId(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		return &BlobInfo{
 			Ciphertext: ct,
 			KeyInfo: &KeyInfo{
-				KeyId: t.KeyId(ctx),
+				KeyId: keyId,
 			},
 		}, nil
 	}

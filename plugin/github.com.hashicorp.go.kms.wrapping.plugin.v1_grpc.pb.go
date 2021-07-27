@@ -14,11 +14,10 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// WrapClient is the client API for Wrap service.
+// WrappingClient is the client API for Wrapping service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type WrapClient interface {
-	PluginInfo(ctx context.Context, in *PluginInfoRequest, opts ...grpc.CallOption) (*PluginInfoResponse, error)
+type WrappingClient interface {
 	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error)
 	KeyId(ctx context.Context, in *KeyIdRequest, opts ...grpc.CallOption) (*KeyIdResponse, error)
 	SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*SetConfigResponse, error)
@@ -26,254 +25,219 @@ type WrapClient interface {
 	Decrypt(ctx context.Context, in *DecryptRequest, opts ...grpc.CallOption) (*DecryptResponse, error)
 }
 
-type wrapClient struct {
+type wrappingClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewWrapClient(cc grpc.ClientConnInterface) WrapClient {
-	return &wrapClient{cc}
+func NewWrappingClient(cc grpc.ClientConnInterface) WrappingClient {
+	return &wrappingClient{cc}
 }
 
-func (c *wrapClient) PluginInfo(ctx context.Context, in *PluginInfoRequest, opts ...grpc.CallOption) (*PluginInfoResponse, error) {
-	out := new(PluginInfoResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/PluginInfo", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *wrapClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error) {
+func (c *wrappingClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*TypeResponse, error) {
 	out := new(TypeResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Type", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/Type", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *wrapClient) KeyId(ctx context.Context, in *KeyIdRequest, opts ...grpc.CallOption) (*KeyIdResponse, error) {
+func (c *wrappingClient) KeyId(ctx context.Context, in *KeyIdRequest, opts ...grpc.CallOption) (*KeyIdResponse, error) {
 	out := new(KeyIdResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/KeyId", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/KeyId", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *wrapClient) SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*SetConfigResponse, error) {
+func (c *wrappingClient) SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*SetConfigResponse, error) {
 	out := new(SetConfigResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/SetConfig", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/SetConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *wrapClient) Encrypt(ctx context.Context, in *EncryptRequest, opts ...grpc.CallOption) (*EncryptResponse, error) {
+func (c *wrappingClient) Encrypt(ctx context.Context, in *EncryptRequest, opts ...grpc.CallOption) (*EncryptResponse, error) {
 	out := new(EncryptResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Encrypt", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/Encrypt", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *wrapClient) Decrypt(ctx context.Context, in *DecryptRequest, opts ...grpc.CallOption) (*DecryptResponse, error) {
+func (c *wrappingClient) Decrypt(ctx context.Context, in *DecryptRequest, opts ...grpc.CallOption) (*DecryptResponse, error) {
 	out := new(DecryptResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Decrypt", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/Decrypt", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// WrapServer is the server API for Wrap service.
-// All implementations must embed UnimplementedWrapServer
+// WrappingServer is the server API for Wrapping service.
+// All implementations must embed UnimplementedWrappingServer
 // for forward compatibility
-type WrapServer interface {
-	PluginInfo(context.Context, *PluginInfoRequest) (*PluginInfoResponse, error)
+type WrappingServer interface {
 	Type(context.Context, *TypeRequest) (*TypeResponse, error)
 	KeyId(context.Context, *KeyIdRequest) (*KeyIdResponse, error)
 	SetConfig(context.Context, *SetConfigRequest) (*SetConfigResponse, error)
 	Encrypt(context.Context, *EncryptRequest) (*EncryptResponse, error)
 	Decrypt(context.Context, *DecryptRequest) (*DecryptResponse, error)
-	mustEmbedUnimplementedWrapServer()
+	mustEmbedUnimplementedWrappingServer()
 }
 
-// UnimplementedWrapServer must be embedded to have forward compatible implementations.
-type UnimplementedWrapServer struct {
+// UnimplementedWrappingServer must be embedded to have forward compatible implementations.
+type UnimplementedWrappingServer struct {
 }
 
-func (UnimplementedWrapServer) PluginInfo(context.Context, *PluginInfoRequest) (*PluginInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PluginInfo not implemented")
-}
-func (UnimplementedWrapServer) Type(context.Context, *TypeRequest) (*TypeResponse, error) {
+func (UnimplementedWrappingServer) Type(context.Context, *TypeRequest) (*TypeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Type not implemented")
 }
-func (UnimplementedWrapServer) KeyId(context.Context, *KeyIdRequest) (*KeyIdResponse, error) {
+func (UnimplementedWrappingServer) KeyId(context.Context, *KeyIdRequest) (*KeyIdResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method KeyId not implemented")
 }
-func (UnimplementedWrapServer) SetConfig(context.Context, *SetConfigRequest) (*SetConfigResponse, error) {
+func (UnimplementedWrappingServer) SetConfig(context.Context, *SetConfigRequest) (*SetConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetConfig not implemented")
 }
-func (UnimplementedWrapServer) Encrypt(context.Context, *EncryptRequest) (*EncryptResponse, error) {
+func (UnimplementedWrappingServer) Encrypt(context.Context, *EncryptRequest) (*EncryptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Encrypt not implemented")
 }
-func (UnimplementedWrapServer) Decrypt(context.Context, *DecryptRequest) (*DecryptResponse, error) {
+func (UnimplementedWrappingServer) Decrypt(context.Context, *DecryptRequest) (*DecryptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Decrypt not implemented")
 }
-func (UnimplementedWrapServer) mustEmbedUnimplementedWrapServer() {}
+func (UnimplementedWrappingServer) mustEmbedUnimplementedWrappingServer() {}
 
-// UnsafeWrapServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to WrapServer will
+// UnsafeWrappingServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WrappingServer will
 // result in compilation errors.
-type UnsafeWrapServer interface {
-	mustEmbedUnimplementedWrapServer()
+type UnsafeWrappingServer interface {
+	mustEmbedUnimplementedWrappingServer()
 }
 
-func RegisterWrapServer(s grpc.ServiceRegistrar, srv WrapServer) {
-	s.RegisterService(&Wrap_ServiceDesc, srv)
+func RegisterWrappingServer(s grpc.ServiceRegistrar, srv WrappingServer) {
+	s.RegisterService(&Wrapping_ServiceDesc, srv)
 }
 
-func _Wrap_PluginInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PluginInfoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WrapServer).PluginInfo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/PluginInfo",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WrapServer).PluginInfo(ctx, req.(*PluginInfoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Wrap_Type_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Wrapping_Type_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TypeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WrapServer).Type(ctx, in)
+		return srv.(WrappingServer).Type(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Type",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/Type",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WrapServer).Type(ctx, req.(*TypeRequest))
+		return srv.(WrappingServer).Type(ctx, req.(*TypeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Wrap_KeyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Wrapping_KeyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(KeyIdRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WrapServer).KeyId(ctx, in)
+		return srv.(WrappingServer).KeyId(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/KeyId",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/KeyId",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WrapServer).KeyId(ctx, req.(*KeyIdRequest))
+		return srv.(WrappingServer).KeyId(ctx, req.(*KeyIdRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Wrap_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Wrapping_SetConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetConfigRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WrapServer).SetConfig(ctx, in)
+		return srv.(WrappingServer).SetConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/SetConfig",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/SetConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WrapServer).SetConfig(ctx, req.(*SetConfigRequest))
+		return srv.(WrappingServer).SetConfig(ctx, req.(*SetConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Wrap_Encrypt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Wrapping_Encrypt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EncryptRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WrapServer).Encrypt(ctx, in)
+		return srv.(WrappingServer).Encrypt(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Encrypt",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/Encrypt",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WrapServer).Encrypt(ctx, req.(*EncryptRequest))
+		return srv.(WrappingServer).Encrypt(ctx, req.(*EncryptRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Wrap_Decrypt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _Wrapping_Decrypt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DecryptRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(WrapServer).Decrypt(ctx, in)
+		return srv.(WrappingServer).Decrypt(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap/Decrypt",
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping/Decrypt",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WrapServer).Decrypt(ctx, req.(*DecryptRequest))
+		return srv.(WrappingServer).Decrypt(ctx, req.(*DecryptRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Wrap_ServiceDesc is the grpc.ServiceDesc for Wrap service.
+// Wrapping_ServiceDesc is the grpc.ServiceDesc for Wrapping service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Wrap_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrap",
-	HandlerType: (*WrapServer)(nil),
+var Wrapping_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v1.Wrapping",
+	HandlerType: (*WrappingServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "PluginInfo",
-			Handler:    _Wrap_PluginInfo_Handler,
-		},
-		{
 			MethodName: "Type",
-			Handler:    _Wrap_Type_Handler,
+			Handler:    _Wrapping_Type_Handler,
 		},
 		{
 			MethodName: "KeyId",
-			Handler:    _Wrap_KeyId_Handler,
+			Handler:    _Wrapping_KeyId_Handler,
 		},
 		{
 			MethodName: "SetConfig",
-			Handler:    _Wrap_SetConfig_Handler,
+			Handler:    _Wrapping_SetConfig_Handler,
 		},
 		{
 			MethodName: "Encrypt",
-			Handler:    _Wrap_Encrypt_Handler,
+			Handler:    _Wrapping_Encrypt_Handler,
 		},
 		{
 			MethodName: "Decrypt",
-			Handler:    _Wrap_Decrypt_Handler,
+			Handler:    _Wrapping_Decrypt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
