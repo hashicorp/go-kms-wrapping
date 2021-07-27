@@ -42,3 +42,27 @@ func (wc *wrapClient) SetConfig(ctx context.Context, options ...interface{}) (*w
 	}
 	return resp.WrapperConfig, nil
 }
+
+func (wc *wrapClient) Encrypt(ctx context.Context, pt []byte, options ...interface{}) (*wrapping.BlobInfo, error) {
+	opts := wrapping.GetOpts(options...)
+	resp, err := wc.impl.Encrypt(ctx, &EncryptRequest{
+		Plaintext: pt,
+		Options:   &opts,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Ciphertext, nil
+}
+
+func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, options ...interface{}) ([]byte, error) {
+	opts := wrapping.GetOpts(options...)
+	resp, err := wc.impl.Decrypt(ctx, &DecryptRequest{
+		Ciphertext: ct,
+		Options:    &opts,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp.Plaintext, nil
+}

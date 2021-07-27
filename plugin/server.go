@@ -19,11 +19,19 @@ func (w *wrapper) GRPCServer(broker *gp.GRPCBroker, s *grpc.Server) error {
 }
 
 func (ws *wrapServer) Type(ctx context.Context, req *TypeRequest) (*TypeResponse, error) {
-	return &TypeResponse{Type: uint32(ws.impl.Type(ctx))}, nil
+	typ, err := ws.impl.Type(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &TypeResponse{Type: uint32(typ)}, nil
 }
 
 func (ws *wrapServer) KeyId(ctx context.Context, req *KeyIdRequest) (*KeyIdResponse, error) {
-	return &KeyIdResponse{KeyId: ws.impl.KeyId(ctx)}, nil
+	keyId, err := ws.impl.KeyId(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &KeyIdResponse{KeyId: keyId}, nil
 }
 
 func (ws *wrapServer) SetConfig(ctx context.Context, req *SetConfigRequest) (*SetConfigResponse, error) {
