@@ -1,20 +1,14 @@
 package main
 
 import (
-	gkwp "github.com/hashicorp/go-kms-wrapping/plugin"
+	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
 	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
-	"github.com/hashicorp/go-plugin"
 	gp "github.com/hashicorp/go-plugin"
 )
 
-var HandshakeConfig = plugin.HandshakeConfig{
-	MagicCookieKey:   "HASHICORP_GKMS_AEAD_PLUGIN",
-	MagicCookieValue: "Hi there!",
-}
-
 func main() {
 	gp.Serve(&gp.ServeConfig{
-		HandshakeConfig: HandshakeConfig,
+		HandshakeConfig: aead.PluginHandshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
 			1: {"wrapping": gkwp.NewWrapper(aead.NewWrapper())},
 		},
