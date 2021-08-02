@@ -3,7 +3,7 @@ package wrapping
 import structpb "google.golang.org/protobuf/types/known/structpb"
 
 // GetOpts iterates the inbound Options and returns a struct
-func GetOpts(opt ...interface{}) Options {
+func GetOpts(opt ...interface{}) *Options {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o == nil {
@@ -11,7 +11,7 @@ func GetOpts(opt ...interface{}) Options {
 		}
 		switch to := o.(type) {
 		case Option:
-			to(&opts)
+			to(opts)
 		}
 	}
 	return opts
@@ -20,8 +20,8 @@ func GetOpts(opt ...interface{}) Options {
 // Option - a type for funcs that operate on the shared Options struct
 type Option func(*Options)
 
-func getDefaultOptions() Options {
-	return Options{}
+func getDefaultOptions() *Options {
+	return &Options{}
 }
 
 // WithAad provides optional additional authenticated data
