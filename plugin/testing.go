@@ -57,7 +57,12 @@ func TestPlugin(
 			gp.ProtocolGRPC,
 		},
 	})
-	defer client.Kill()
+
+	// Now that we have a client, ensure it's killed at cleanup time
+	cleanup = func() {
+		defer client.Kill()
+		cleanup()
+	}
 
 	rpcClient, err := client.Client()
 	require.NoError(err)
