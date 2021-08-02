@@ -4,16 +4,10 @@ import (
 	context "context"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	gp "github.com/hashicorp/go-plugin"
-	grpc "google.golang.org/grpc"
 )
 
 type wrapClient struct {
 	impl WrappingClient
-}
-
-func (w *wrapper) GRPCClient(ctx context.Context, broker *gp.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	return &wrapClient{impl: NewWrappingClient(c)}, nil
 }
 
 func (wc *wrapClient) Type(ctx context.Context) (wrapping.WrapperType, error) {

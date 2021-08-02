@@ -4,18 +4,11 @@ import (
 	context "context"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	gp "github.com/hashicorp/go-plugin"
-	grpc "google.golang.org/grpc"
 )
 
 type wrapServer struct {
 	UnimplementedWrappingServer
 	impl wrapping.Wrapper
-}
-
-func (w *wrapper) GRPCServer(broker *gp.GRPCBroker, s *grpc.Server) error {
-	RegisterWrappingServer(s, &wrapServer{impl: w.impl})
-	return nil
 }
 
 func (ws *wrapServer) Type(ctx context.Context, req *TypeRequest) (*TypeResponse, error) {

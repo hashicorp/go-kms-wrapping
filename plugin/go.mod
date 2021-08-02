@@ -1,4 +1,4 @@
-module github.com/hashicorp/go-kms-wrapping/plugin
+module github.com/hashicorp/go-kms-wrapping/v2/plugin
 
 go 1.16
 
