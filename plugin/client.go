@@ -29,7 +29,7 @@ func (wc *wrapClient) KeyId(ctx context.Context) (string, error) {
 func (wc *wrapClient) SetConfig(ctx context.Context, options ...interface{}) (*wrapping.WrapperConfig, error) {
 	opts := wrapping.GetOpts(options...)
 	resp, err := wc.impl.SetConfig(ctx, &SetConfigRequest{
-		Options: &opts,
+		Options: opts,
 	})
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (wc *wrapClient) Encrypt(ctx context.Context, pt []byte, options ...interfa
 	opts := wrapping.GetOpts(options...)
 	resp, err := wc.impl.Encrypt(ctx, &EncryptRequest{
 		Plaintext: pt,
-		Options:   &opts,
+		Options:   opts,
 	})
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, option
 	opts := wrapping.GetOpts(options...)
 	resp, err := wc.impl.Decrypt(ctx, &DecryptRequest{
 		Ciphertext: ct,
-		Options:    &opts,
+		Options:    opts,
 	})
 	if err != nil {
 		return nil, err
