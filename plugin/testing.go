@@ -59,9 +59,10 @@ func TestPlugin(
 	})
 
 	// Now that we have a client, ensure it's killed at cleanup time
+	origCleanup := cleanup
 	cleanup = func() {
 		defer client.Kill()
-		cleanup()
+		origCleanup()
 	}
 
 	rpcClient, err := client.Client()
