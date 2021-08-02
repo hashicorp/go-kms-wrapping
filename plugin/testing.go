@@ -26,7 +26,6 @@ import (
 func TestPlugin(
 	t *testing.T,
 	pluginLoc string,
-	inWrapper wrapping.Wrapper,
 	handshakeConfig gp.HandshakeConfig) (pluginWrapper wrapping.Wrapper, cleanup func()) {
 	t.Helper()
 	require := require.New(t)
@@ -50,7 +49,7 @@ func TestPlugin(
 	client := gp.NewClient(&gp.ClientConfig{
 		HandshakeConfig: handshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": NewWrapper(inWrapper)},
+			1: {"wrapping": NewWrapper(nil)},
 		},
 		Cmd: exec.Command(pluginPath),
 		AllowedProtocols: []gp.Protocol{
