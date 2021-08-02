@@ -8,6 +8,7 @@ import (
 
 // getOpts iterates the inbound Options and returns a struct
 func getOpts(opt ...interface{}) options {
+	// First, separate out options into local and global
 	opts := getDefaultOptions()
 	var wrappingOptions []interface{}
 	var localOptions []Option
@@ -22,7 +23,17 @@ func getOpts(opt ...interface{}) options {
 			localOptions = append(localOptions, to)
 		}
 	}
+
+	// Parse the global options
 	opts.Options = wrapping.GetOpts(wrappingOptions...)
+	// Don't ever return blank options
+	if opts.Options == nil {
+		opts.Options = new(wrapping.Options)
+	}
+
+	// Local options can be provided either via the WithWrapperOptions field
+	// (for over the plugin barrier or embedding) or via local option functions
+	// (for embedding). First pull from the option.
 	if opts.WithWrapperOptions != nil {
 		for k, v := range opts.WithWrapperOptions.GetFields() {
 			switch k {
@@ -39,11 +50,15 @@ func getOpts(opt ...interface{}) options {
 			}
 		}
 	}
+
+	// Now run the local options functions. This may overwrite options set by
+	// the options above.
 	for _, o := range localOptions {
 		if o != nil {
 			o(&opts)
 		}
 	}
+
 	return opts
 }
 
@@ -52,7 +67,7 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	wrapping.Options
+	*wrapping.Options
 
 	WithAeadType wrapping.AeadType
 	WithHashType wrapping.HashType

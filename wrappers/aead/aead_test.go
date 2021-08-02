@@ -4,16 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"io/fs"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 
 	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	gp "github.com/hashicorp/go-plugin"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 )
@@ -40,44 +35,18 @@ func TestDirectWrapper(t *testing.T) {
 func TestPluginWrapper(t *testing.T) {
 	require := require.New(t)
 
-	pluginDir := os.Getenv("PLUGIN_TMP_DIR")
-	require.NotEmpty(pluginDir)
+	pluginPath := os.Getenv("PLUGIN_PATH")
+	if pluginPath == "" {
+		t.Skipf("skipping plugin test as no PLUGIN_PATH specified")
+	}
 
-	tmpDir, err := ioutil.TempDir("", "*")
-	require.NoError(err)
-	defer func() {
-		require.NoError(os.RemoveAll(tmpDir))
-	}()
+	wrapper, cleanup := gkwp.TestPlugin(t, pluginPath, NewWrapper(), PluginHandshakeConfig)
 
-	pluginBytes, err := ioutil.ReadFile(filepath.Join(pluginDir, "plugin"))
-	require.NoError(err)
+	require.NotNil(cleanup)
+	defer cleanup()
 
-	pluginPath := filepath.Join(tmpDir, "plugin")
-	require.NoError(ioutil.WriteFile(pluginPath, pluginBytes, fs.FileMode(0700)))
-
-	client := gp.NewClient(&gp.ClientConfig{
-		HandshakeConfig: PluginHandshakeConfig,
-		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": gkwp.NewWrapper(NewWrapper())},
-		},
-		Cmd: exec.Command(pluginPath),
-		AllowedProtocols: []gp.Protocol{
-			gp.ProtocolGRPC,
-		},
-	})
-	defer client.Kill()
-
-	rpcClient, err := client.Client()
-	require.NoError(err)
-
-	raw, err := rpcClient.Dispense("wrapping")
-	require.NoError(err)
-
-	root, ok := raw.(wrapping.Wrapper)
-	require.True(ok)
-	require.NotNil(root)
-
-	testWrapper(t, root)
+	require.NotNil(wrapper)
+	testWrapper(t, wrapper)
 }
 
 func testWrapper(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
