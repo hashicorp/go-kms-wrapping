@@ -3,7 +3,7 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 go 1.13
 
 require (
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210802175701-2730c7841f1b
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210802180908-84467829250f
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210802174213-3dc1affe9b57
 	github.com/hashicorp/go-plugin v1.0.1
 	github.com/hashicorp/go-uuid v1.0.2
