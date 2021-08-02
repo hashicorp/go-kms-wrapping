@@ -55,6 +55,7 @@ func TestPlugin(
 		AllowedProtocols: []gp.Protocol{
 			gp.ProtocolGRPC,
 		},
+		AutoMTLS: true,
 	})
 
 	// Now that we have a client, ensure it's killed at cleanup time
