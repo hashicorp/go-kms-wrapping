@@ -303,3 +303,8 @@ func (s *Wrapper) createClient() (*cloudkms.KeyManagementClient, error) {
 
 	return client, nil
 }
+
+// KeyRingResourceName returns the relative resource name of the configured key ring.
+func (s *Wrapper) KeyRingResourceName() string {
+	return fmt.Sprintf("projects/%s/locations/%s/keyRings/%s", s.project, s.location, s.keyRing)
+}
