@@ -7,6 +7,10 @@ import (
 )
 
 func main() {
+	ServePlugin()
+}
+
+func ServePlugin() {
 	gp.Serve(&gp.ServeConfig{
 		HandshakeConfig: aead.PluginHandshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
