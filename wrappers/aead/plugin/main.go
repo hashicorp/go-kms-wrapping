@@ -1,21 +1,9 @@
 package main
 
 import (
-	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
-	gp "github.com/hashicorp/go-plugin"
+	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
 )
 
 func main() {
-	ServePlugin()
-}
-
-func ServePlugin() {
-	gp.Serve(&gp.ServeConfig{
-		HandshakeConfig: aead.PluginHandshakeConfig,
-		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": gkwp.NewWrapper(aead.NewWrapper())},
-		},
-		GRPCServer: gp.DefaultGRPCServer,
-	})
+	aead.ServePlugin()
 }
