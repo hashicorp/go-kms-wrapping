@@ -1,62 +1,29 @@
 package wrapping
 
-type WrapperType uint32
+type WrapperType string
 
 // These values define known types of Wrappers
 const (
-	WrapperTypeUnknown WrapperType = iota
-	WrapperTypeAead
-	WrapperTypeAliCloudKms
-	WrapperTypeAwsKms
-	WrapperTypeAzureKeyVault
-	WrapperTypeGcpCkms
-	WrapperTypeHsmAuto
-	WrapperTypeHuaweiCloudKms
-	WrapperTypeMultiWrapper
-	WrapperTypeOciKms
-	WrapperTypePkcs11
-	WrapperTypeShamir
-	WrapperTypeTencentCloudKms
-	WrapperTypeTransit
-	WrapperTypeYandexCloudKms
-	WrapperTypeTest
+	WrapperTypeUnknown         WrapperType = "unknown"
+	WrapperTypeAead            WrapperType = "aead"
+	WrapperTypeAliCloudKms     WrapperType = "alicloudkms"
+	WrapperTypeAwsKms          WrapperType = "awskms"
+	WrapperTypeAzureKeyVault   WrapperType = "azurekeyvault"
+	WrapperTypeGcpCkms         WrapperType = "gcpckms"
+	WrapperTypeHsmAuto         WrapperType = "hsm-auto"
+	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
+	WrapperTypeMultiWrapper    WrapperType = "multiwrapper"
+	WrapperTypeOciKms          WrapperType = "ocikms"
+	WrapperTypePkcs11          WrapperType = "pkcs11"
+	WrapperTypeShamir          WrapperType = "shamir"
+	WrapperTypeTencentCloudKms WrapperType = "tencentcloudkms"
+	WrapperTypeTransit         WrapperType = "transit"
+	WrapperTypeYandexCloudKms  WrapperType = "yandexcloudkms"
+	WrapperTypeTest            WrapperType = "test-auto"
 )
 
 func (t WrapperType) String() string {
-	switch t {
-	case WrapperTypeAead:
-		return "aead"
-	case WrapperTypeAliCloudKms:
-		return "alicloudkms"
-	case WrapperTypeAwsKms:
-		return "awskms"
-	case WrapperTypeAzureKeyVault:
-		return "azurekeyvault"
-	case WrapperTypeGcpCkms:
-		return "gcpckms"
-	case WrapperTypeHsmAuto:
-		return "hsm-auto"
-	case WrapperTypeHuaweiCloudKms:
-		return "huaweicloudkms"
-	case WrapperTypeMultiWrapper:
-		return "multiwrapper"
-	case WrapperTypeOciKms:
-		return "ocikms"
-	case WrapperTypePkcs11:
-		return "pkcs11"
-	case WrapperTypeShamir:
-		return "shamir"
-	case WrapperTypeTencentCloudKms:
-		return "tencentcloudkms"
-	case WrapperTypeTransit:
-		return "transit"
-	case WrapperTypeYandexCloudKms:
-		return "yandexcloudkms"
-	case WrapperTypeTest:
-		return "test-auto"
-	default:
-		return "unknown"
-	}
+	return string(t)
 }
 
 type AeadType uint32

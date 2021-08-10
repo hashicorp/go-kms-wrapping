@@ -135,8 +135,8 @@ func (m *MultiWrapper) encryptor() wrapping.Wrapper {
 	return wrapper
 }
 
-func (m *MultiWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
-	return wrapping.WrapperTypeMultiWrapper, nil
+func (m *MultiWrapper) Type(_ context.Context) (string, error) {
+	return wrapping.WrapperTypeMultiWrapper.String(), nil
 }
 
 // KeyId returns the KeyId of the current encryptor

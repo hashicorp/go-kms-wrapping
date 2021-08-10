@@ -23,7 +23,7 @@ type InitFinalizer interface {
 // encrypting and decrypting data.
 type Wrapper interface {
 	// Type is the type of Wrapper
-	Type(context.Context) (WrapperType, error)
+	Type(context.Context) (string, error)
 
 	// KeyId is the ID of the key currently used for encryption
 	KeyId(context.Context) (string, error)

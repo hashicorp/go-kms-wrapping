@@ -48,8 +48,8 @@ func (t *TestWrapper) Finalize(_ context.Context) error {
 }
 
 // Type returns the type of the test wrapper
-func (t *TestWrapper) Type(_ context.Context) (WrapperType, error) {
-	return t.wrapperType, nil
+func (t *TestWrapper) Type(_ context.Context) (string, error) {
+	return t.wrapperType.String(), nil
 }
 
 // KeyId returns the configured key ID
