@@ -40,7 +40,7 @@ func TestPluginWrapper(t *testing.T) {
 		t.Skipf("skipping plugin test as no PLUGIN_PATH specified")
 	}
 
-	wrapper, cleanup := gkwp.TestPlugin(t, pluginPath, PluginHandshakeConfig)
+	wrapper, cleanup := gkwp.TestPlugin(t, pluginPath, gkwp.HandshakeConfig)
 
 	require.NotNil(cleanup)
 	defer cleanup()
