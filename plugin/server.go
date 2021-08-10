@@ -16,7 +16,7 @@ func (ws *wrapServer) Type(ctx context.Context, req *TypeRequest) (*TypeResponse
 	if err != nil {
 		return nil, err
 	}
-	return &TypeResponse{Type: typ}, nil
+	return &TypeResponse{Type: typ.String()}, nil
 }
 
 func (ws *wrapServer) KeyId(ctx context.Context, req *KeyIdRequest) (*KeyIdResponse, error) {
