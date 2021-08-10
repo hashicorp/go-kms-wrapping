@@ -8,6 +8,13 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
+// HandshakeConfig is a shared config that can be used regardless of wrapper, to
+// avoid having to know type-specific things about each plugin
+var HandshakeConfig = gp.HandshakeConfig{
+	MagicCookieKey:   "HASHICORP_GKW_PLUGIN",
+	MagicCookieValue: "wrapper",
+}
+
 // wrapper embeds Plugin and is used as the top-level
 type wrapper struct {
 	gp.Plugin
