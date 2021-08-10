@@ -9,7 +9,7 @@ import "github.com.hashicorp.go.kms.wrapping.types.proto";
 message TypeRequest {}
 
 message TypeResponse {
-	uint32 type = 10;
+	string type = 10;
 }
 
 message KeyIdRequest {}
