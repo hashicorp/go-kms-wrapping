@@ -19,7 +19,8 @@ var HandshakeConfig = gp.HandshakeConfig{
 type wrapper struct {
 	gp.Plugin
 
-	impl wrapping.Wrapper
+	impl          wrapping.Wrapper
+	initFinalizer bool
 }
 
 func NewWrapper(impl wrapping.Wrapper) *wrapper {
@@ -28,11 +29,25 @@ func NewWrapper(impl wrapping.Wrapper) *wrapper {
 	}
 }
 
+func NewInitFinalizerWrapper(impl wrapping.Wrapper) *wrapper {
+	return &wrapper{
+		impl:          impl,
+		initFinalizer: true,
+	}
+}
+
 func (w *wrapper) GRPCServer(broker *gp.GRPCBroker, s *grpc.Server) error {
 	RegisterWrappingServer(s, &wrapServer{impl: w.impl})
+	if initFinalizer, ok := w.impl.(wrapping.InitFinalizer); ok {
+		RegisterInitFinalizeServer(s, &initFinalizeServer{impl: initFinalizer})
+	}
 	return nil
 }
 
 func (w *wrapper) GRPCClient(ctx context.Context, broker *gp.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	return &wrapClient{impl: NewWrappingClient(c)}, nil
+	ret := &wrapClient{impl: NewWrappingClient(c)}
+	if w.initFinalizer {
+		return &wrapInitFinalizerClient{wrapClient: ret, impl: NewInitFinalizeClient(c)}, nil
+	}
+	return ret, nil
 }

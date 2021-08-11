@@ -6,6 +6,11 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
+type wrapInitFinalizerClient struct {
+	*wrapClient
+	impl InitFinalizeClient
+}
+
 type wrapClient struct {
 	impl WrappingClient
 }
@@ -59,4 +64,17 @@ func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, option
 		return nil, err
 	}
 	return resp.Plaintext, nil
+}
+
+func (ifc *wrapInitFinalizerClient) Init(ctx context.Context, options ...interface{}) error {
+	opts := wrapping.GetOpts(options...)
+	_, err := ifc.impl.Init(ctx, &InitRequest{
+		Options: opts,
+	})
+	return err
+}
+
+func (ifc *wrapInitFinalizerClient) Finalize(ctx context.Context) error {
+	_, err := ifc.impl.Finalize(ctx, &FinalizeRequest{})
+	return err
 }
