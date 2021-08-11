@@ -9,11 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"hash"
-	"log"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
-	"github.com/kr/pretty"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -131,11 +129,7 @@ func (s *Wrapper) NewDerivedWrapper(opt ...interface{}) (*Wrapper, error) {
 // The values in WithWrapperOptions can also be set via the package's native
 // With* functions.
 func (s *Wrapper) SetConfig(_ context.Context, opt ...interface{}) (*wrapping.WrapperConfig, error) {
-	log.Println(pretty.Sprint(opt))
-
 	opts := getOpts(opt...)
-
-	log.Println(pretty.Sprint(opts))
 
 	s.keyId = opts.WithKeyId
 
