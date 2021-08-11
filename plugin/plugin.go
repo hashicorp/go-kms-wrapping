@@ -2,6 +2,7 @@ package plugin
 
 import (
 	context "context"
+	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	gp "github.com/hashicorp/go-plugin"
@@ -23,15 +24,21 @@ type wrapper struct {
 	initFinalizer bool
 }
 
-func NewWrapper(impl wrapping.Wrapper) *wrapper {
+func NewWrapperServer(impl wrapping.Wrapper) (*wrapper, error) {
+	if impl == nil {
+		return nil, fmt.Errorf("empty underlying wrapper passed in")
+	}
 	return &wrapper{
 		impl: impl,
-	}
+	}, nil
 }
 
-func NewInitFinalizerWrapper(impl wrapping.Wrapper) *wrapper {
+func NewWrapperClient() *wrapper {
+	return &wrapper{}
+}
+
+func NewInitFinalizerWrapperClient() *wrapper {
 	return &wrapper{
-		impl:          impl,
 		initFinalizer: true,
 	}
 }

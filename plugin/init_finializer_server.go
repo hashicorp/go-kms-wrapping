@@ -26,10 +26,6 @@ func (ifs *initFinalizeServer) Init(ctx context.Context, req *InitRequest) (*Ini
 }
 
 func (ifs *initFinalizeServer) Finalize(ctx context.Context, req *FinalizeRequest) (*FinalizeResponse, error) {
-	opts := req.Options
-	if opts == nil {
-		opts = new(wrapping.Options)
-	}
 	if err := ifs.impl.Finalize(
 		ctx,
 	); err != nil {

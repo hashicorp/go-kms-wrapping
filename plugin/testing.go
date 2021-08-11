@@ -49,7 +49,7 @@ func TestPlugin(
 	client := gp.NewClient(&gp.ClientConfig{
 		HandshakeConfig: handshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": NewWrapper(nil)},
+			1: {"wrapping": NewWrapperClient()},
 		},
 		Cmd: exec.Command(pluginPath),
 		AllowedProtocols: []gp.Protocol{
