@@ -2,10 +2,8 @@ package plugin
 
 import (
 	context "context"
-	"log"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/kr/pretty"
 )
 
 type wrapServer struct {
@@ -34,7 +32,6 @@ func (ws *wrapServer) SetConfig(ctx context.Context, req *SetConfigRequest) (*Se
 	if opts == nil {
 		opts = new(wrapping.Options)
 	}
-	log.Println("wrapServer", pretty.Sprint(opts))
 	wc, err := ws.impl.SetConfig(
 		ctx,
 		wrapping.WithKeyId(opts.WithKeyId),

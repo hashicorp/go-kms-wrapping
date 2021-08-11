@@ -2,10 +2,8 @@ package plugin
 
 import (
 	context "context"
-	"log"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/kr/pretty"
 )
 
 type wrapInitFinalizerClient struct {
@@ -34,9 +32,7 @@ func (wc *wrapClient) KeyId(ctx context.Context) (string, error) {
 }
 
 func (wc *wrapClient) SetConfig(ctx context.Context, options ...interface{}) (*wrapping.WrapperConfig, error) {
-	log.Println("wrapClient", pretty.Sprint(options))
 	opts := wrapping.GetOpts(options...)
-	log.Println("wrapClient", pretty.Sprint(opts))
 	resp, err := wc.impl.SetConfig(ctx, &SetConfigRequest{
 		Options: opts,
 	})
