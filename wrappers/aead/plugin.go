@@ -1,17 +1,12 @@
 package aead
 
 import (
-	"github.com/hashicorp/go-hclog"
 	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
 	"github.com/hashicorp/go-plugin"
 )
 
 func ServePlugin(opt ...interface{}) error {
 	opts := getOpts(opt...)
-	logger := opts.withLogger
-	if logger == nil {
-		logger = hclog.NewNullLogger()
-	}
 	wrapServer, err := gkwp.NewWrapperServer(NewWrapper())
 	if err != nil {
 		return err
@@ -21,7 +16,7 @@ func ServePlugin(opt ...interface{}) error {
 		VersionedPlugins: map[int]plugin.PluginSet{
 			1: {"wrapping": wrapServer},
 		},
-		Logger:     logger,
+		Logger:     opts.withLogger,
 		GRPCServer: plugin.DefaultGRPCServer,
 	})
 	return nil
