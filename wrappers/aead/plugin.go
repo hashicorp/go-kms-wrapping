@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/go-plugin"
 )
 
-func ServePlugin(opt ...Option) error {
+func ServePlugin(opt ...interface{}) error {
 	opts := getOpts(opt...)
 	logger := opts.withLogger
 	if logger == nil {
