@@ -4,8 +4,8 @@ go 1.13
 
 require (
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210811205010-28fc41829617
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210811205010-28fc41829617
+	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.0-20210811210646-d22b5e179031
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210811210616-0aaf8919030a
 	github.com/hashicorp/go-plugin v1.4.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/kr/pretty v0.2.0
