@@ -9,7 +9,7 @@ import (
 
 func main() {
 	if err := aead.ServePlugin(); err != nil {
-		fmt.Print("Error serving plugin: %v", err)
+		fmt.Println("Error serving plugin", err)
 		os.Exit(1)
 	}
 	os.Exit(0)
