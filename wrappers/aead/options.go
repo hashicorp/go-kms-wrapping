@@ -3,6 +3,7 @@ package aead
 import (
 	"encoding/base64"
 
+	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
@@ -74,6 +75,8 @@ type options struct {
 	WithInfo     []byte
 	WithKey      string
 	WithSalt     []byte
+
+	withLogger hclog.Logger
 }
 
 func getDefaultOptions() options {
@@ -116,5 +119,13 @@ func WithKey(key string) Option {
 func WithSalt(salt []byte) Option {
 	return func(o *options) {
 		o.WithSalt = salt
+	}
+}
+
+// WithLogger provides a way to override default logger for some purposes (e.g.
+// running as a plugin)
+func WithLogger(logger hclog.Logger) Option {
+	return func(o *options) {
+		o.withLogger = logger
 	}
 }
