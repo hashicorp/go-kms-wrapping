@@ -10,6 +10,10 @@ func GetOpts(opt ...interface{}) *Options {
 			continue
 		}
 		switch to := o.(type) {
+		case []byte:
+			// This is legacy from when AAD was not an option. Panic here so
+			// that it can easily be caught in tests.
+			panic("aad must be input via WithAad")
 		case Option:
 			to(opts)
 		}

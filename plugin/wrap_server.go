@@ -37,7 +37,6 @@ func (ws *wrapServer) SetConfig(ctx context.Context, req *SetConfigRequest) (*Se
 	log.Println("wrapServer", pretty.Sprint(opts))
 	wc, err := ws.impl.SetConfig(
 		ctx,
-		wrapping.WithAad(opts.WithAad),
 		wrapping.WithKeyId(opts.WithKeyId),
 		wrapping.WithWrapperOptions(opts.WithWrapperOptions),
 	)
