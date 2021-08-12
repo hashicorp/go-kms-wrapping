@@ -12,7 +12,7 @@ type HmacSigner interface {
 type InitFinalizer interface {
 	// Init allows performing any necessary setup calls before using a
 	// Wrapper.
-	Init(ctx context.Context, options ...interface{}) error
+	Init(ctx context.Context, options ...Option) error
 
 	// Finalize can be called when all usage of a Wrapper is done if any cleanup
 	// or finalization is required.
@@ -32,14 +32,14 @@ type Wrapper interface {
 	// configuration information. WithWrapperOptions will almost certainly be
 	// required to be passed in to give wrapper-specific configuration
 	// information to the wrapper.
-	SetConfig(ctx context.Context, options ...interface{}) (*WrapperConfig, error)
+	SetConfig(ctx context.Context, options ...Option) (*WrapperConfig, error)
 
 	// Encrypt encrypts the given byte slice and stores the resulting
 	// information in the returned blob info. Which options are supported
 	// depends on the underlying wrapper.
-	Encrypt(ctx context.Context, plaintext []byte, options ...interface{}) (*BlobInfo, error)
+	Encrypt(ctx context.Context, plaintext []byte, options ...Option) (*BlobInfo, error)
 	// Decrypt decrypts the given byte slice and stores the resulting
 	// information in the returned byte slice. Which options are supported
 	// depends on the underlying wrapper.
-	Decrypt(ctx context.Context, ciphertext *BlobInfo, options ...interface{}) ([]byte, error)
+	Decrypt(ctx context.Context, ciphertext *BlobInfo, options ...Option) ([]byte, error)
 }
