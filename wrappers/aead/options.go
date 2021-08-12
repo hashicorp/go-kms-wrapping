@@ -12,15 +12,16 @@ func getOpts(opt ...wrapping.Option) options {
 	// First, separate out options into local and global
 	opts := getDefaultOptions()
 	var wrappingOptions []wrapping.Option
-	var localOptions []Option
+	var localOptions []OptionFunc
 	for _, o := range opt {
 		if o == nil {
 			continue
 		}
-		switch to := o.(type) {
+		iface := o()
+		switch to := iface.(type) {
 		case wrapping.OptionFunc:
-			wrappingOptions = append(wrappingOptions, to)
-		case Option:
+			wrappingOptions = append(wrappingOptions, o)
+		case OptionFunc:
 			localOptions = append(localOptions, to)
 		}
 	}
@@ -63,8 +64,8 @@ func getOpts(opt ...wrapping.Option) options {
 	return opts
 }
 
-// Option - a type for funcs that operate on the shared Options struct
-type Option func(*options)
+// OptionFunc holds a function with local options
+type OptionFunc func(*options)
 
 // options = how options are represented
 type options struct {
@@ -87,45 +88,57 @@ func getDefaultOptions() options {
 }
 
 // WithAeadType provides a way to chose the type of AEAD to use
-func WithAeadType(aeadType wrapping.AeadType) Option {
-	return func(o *options) {
-		o.WithAeadType = aeadType
+func WithAeadType(aeadType wrapping.AeadType) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.WithAeadType = aeadType
+		})
 	}
 }
 
 // WithHashType provides a wat to choose the type of hash to use for derivation
-func WithHashType(hash wrapping.HashType) Option {
-	return func(o *options) {
-		o.WithHashType = hash
+func WithHashType(hash wrapping.HashType) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.WithHashType = hash
+		})
 	}
 }
 
 // WithInfo provides optional info for deriving wrappers
-func WithInfo(info []byte) Option {
-	return func(o *options) {
-		o.WithInfo = info
+func WithInfo(info []byte) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.WithInfo = info
+		})
 	}
 }
 
 // WithKey provides a common way to pass in a key. The key should be base64'd
 // with standard encoding.
-func WithKey(key string) Option {
-	return func(o *options) {
-		o.WithKey = key
+func WithKey(key string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.WithKey = key
+		})
 	}
 }
 
 // WithSalt provides optional salt for deriving wrappers
-func WithSalt(salt []byte) Option {
-	return func(o *options) {
-		o.WithSalt = salt
+func WithSalt(salt []byte) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.WithSalt = salt
+		})
 	}
 }
 
 // WithLogger provides a way to override default logger for some purposes (e.g.
 // running as a plugin)
-func WithLogger(logger hclog.Logger) Option {
-	return func(o *options) {
-		o.withLogger = logger
+func WithLogger(logger hclog.Logger) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.withLogger = logger
+		})
 	}
 }
