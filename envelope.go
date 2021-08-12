@@ -16,7 +16,7 @@ import (
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must also be provided during envelope decryption
-func EnvelopeEncrypt(plaintext []byte, opt ...interface{}) (*EnvelopeInfo, error) {
+func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 	opts := GetOpts(opt...)
 
 	// Generate DEK
@@ -48,7 +48,7 @@ func EnvelopeEncrypt(plaintext []byte, opt ...interface{}) (*EnvelopeInfo, error
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must match what was provided during envelope
 // encryption.
-func EnvelopeDecrypt(data *EnvelopeInfo, opt ...interface{}) ([]byte, error) {
+func EnvelopeDecrypt(data *EnvelopeInfo, opt ...Option) ([]byte, error) {
 	opts := GetOpts(opt...)
 
 	aead, err := aeadEncrypter(data.Key)
