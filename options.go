@@ -9,7 +9,8 @@ func GetOpts(opt ...Option) *Options {
 		if o == nil {
 			continue
 		}
-		switch to := o.(type) {
+		iface := o()
+		switch to := iface.(type) {
 		case OptionFunc:
 			to(opts)
 		}
@@ -20,7 +21,7 @@ func GetOpts(opt ...Option) *Options {
 // Option - a type that wraps an interface for compile-time safety but can
 // contain an option for this package or for wrappers implementing this
 // interface.
-type Option interface{}
+type Option func() interface{}
 
 // OptionFunc - a type for funcs that operate on the shared Options struct. The
 // options below explicitly wrap this so that we can switch on it when parsing
@@ -33,22 +34,28 @@ func getDefaultOptions() *Options {
 
 // WithAad provides optional additional authenticated data
 func WithAad(aad []byte) Option {
-	return OptionFunc(func(o *Options) {
-		o.WithAad = aad
-	})
+	return func() interface{} {
+		return func(o *Options) {
+			o.WithAad = aad
+		}
+	}
 }
 
 // WithKeyId provides a common way to pass in a key identifier
 func WithKeyId(id string) Option {
-	return OptionFunc(func(o *Options) {
-		o.WithKeyId = id
-	})
+	return func() interface{} {
+		return func(o *Options) {
+			o.WithKeyId = id
+		}
+	}
 }
 
 // WithWrapperOptions is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
 func WithWrapperOptions(options *structpb.Struct) Option {
-	return OptionFunc(func(o *Options) {
-		o.WithWrapperOptions = options
-	})
+	return func() interface{} {
+		return func(o *Options) {
+			o.WithWrapperOptions = options
+		}
+	}
 }
