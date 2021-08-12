@@ -35,18 +35,18 @@ func getDefaultOptions() *Options {
 // WithAad provides optional additional authenticated data
 func WithAad(aad []byte) Option {
 	return func() interface{} {
-		return func(o *Options) {
+		return OptionFunc(func(o *Options) {
 			o.WithAad = aad
-		}
+		})
 	}
 }
 
 // WithKeyId provides a common way to pass in a key identifier
 func WithKeyId(id string) Option {
 	return func() interface{} {
-		return func(o *Options) {
+		return OptionFunc(func(o *Options) {
 			o.WithKeyId = id
-		}
+		})
 	}
 }
 
@@ -54,8 +54,8 @@ func WithKeyId(id string) Option {
 // and/or in other function calls to control wrapper-specific behavior.
 func WithWrapperOptions(options *structpb.Struct) Option {
 	return func() interface{} {
-		return func(o *Options) {
+		return OptionFunc(func(o *Options) {
 			o.WithWrapperOptions = options
-		}
+		})
 	}
 }
