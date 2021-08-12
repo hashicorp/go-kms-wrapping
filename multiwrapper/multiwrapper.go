@@ -146,7 +146,7 @@ func (m *MultiWrapper) KeyId(ctx context.Context) (string, error) {
 
 // SetConfig sets config, but there is currently nothing to set on
 // multiwrappers; set configuration on the chosen underlying wrappers instead.
-func (m *MultiWrapper) SetConfig(_ context.Context, _ ...interface{}) (*wrapping.WrapperConfig, error) {
+func (m *MultiWrapper) SetConfig(_ context.Context, _ ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	return nil, nil
 }
 
@@ -171,7 +171,7 @@ func (m *MultiWrapper) Finalize(context.Context) error {
 }
 
 // Encrypt encrypts using the current encryptor
-func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, opt ...interface{}) (*wrapping.BlobInfo, error) {
+func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	return m.encryptor().Encrypt(ctx, pt, opt...)
 }
 
@@ -179,7 +179,7 @@ func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, opt ...interface{
 // which wrapper to use for decryption. If there is no key info it will attempt
 // decryption with the current encryptor. It will return an ErrKeyNotFound if
 // it cannot find a suitable key.
-func (m *MultiWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt ...interface{}) ([]byte, error) {
+func (m *MultiWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if ct.KeyInfo == nil {
 		enc := m.encryptor()
 		return enc.Decrypt(ctx, ct, opt...)
