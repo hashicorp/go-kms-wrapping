@@ -31,7 +31,7 @@ func (wc *wrapClient) KeyId(ctx context.Context) (string, error) {
 	return resp.KeyId, nil
 }
 
-func (wc *wrapClient) SetConfig(ctx context.Context, options ...interface{}) (*wrapping.WrapperConfig, error) {
+func (wc *wrapClient) SetConfig(ctx context.Context, options ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts := wrapping.GetOpts(options...)
 	resp, err := wc.impl.SetConfig(ctx, &SetConfigRequest{
 		Options: opts,
@@ -42,7 +42,7 @@ func (wc *wrapClient) SetConfig(ctx context.Context, options ...interface{}) (*w
 	return resp.WrapperConfig, nil
 }
 
-func (wc *wrapClient) Encrypt(ctx context.Context, pt []byte, options ...interface{}) (*wrapping.BlobInfo, error) {
+func (wc *wrapClient) Encrypt(ctx context.Context, pt []byte, options ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	opts := wrapping.GetOpts(options...)
 	resp, err := wc.impl.Encrypt(ctx, &EncryptRequest{
 		Plaintext: pt,
@@ -54,7 +54,7 @@ func (wc *wrapClient) Encrypt(ctx context.Context, pt []byte, options ...interfa
 	return resp.Ciphertext, nil
 }
 
-func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, options ...interface{}) ([]byte, error) {
+func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, options ...wrapping.Option) ([]byte, error) {
 	opts := wrapping.GetOpts(options...)
 	resp, err := wc.impl.Decrypt(ctx, &DecryptRequest{
 		Ciphertext: ct,
@@ -66,7 +66,7 @@ func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, option
 	return resp.Plaintext, nil
 }
 
-func (ifc *wrapInitFinalizerClient) Init(ctx context.Context, options ...interface{}) error {
+func (ifc *wrapInitFinalizerClient) Init(ctx context.Context, options ...wrapping.Option) error {
 	opts := wrapping.GetOpts(options...)
 	_, err := ifc.impl.Init(ctx, &InitRequest{
 		Options: opts,
