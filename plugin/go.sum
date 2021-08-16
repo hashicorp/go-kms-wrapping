@@ -191,10 +191,11 @@ github.com/hashicorp/go-hclog v0.16.2/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.1.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816210308-05fe86fd2e10 h1:V0Nuz49y2Vca5uHPP/IDU+cC0ceL5PvsaVQcNJMoDo0=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816210308-05fe86fd2e10/go.mod h1:Olw7KdpYy9/BSTJct3j0GEw5QdmpwQH7KhyjH4x2ymU=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816211207-3a0aba35c33c h1:ECgO0uKCVpHhDnRioUW9uWlUgSCPV529902xR+kdR3s=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816211207-3a0aba35c33c/go.mod h1:Olw7KdpYy9/BSTJct3j0GEw5QdmpwQH7KhyjH4x2ymU=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816211618-c3cfc6e0e3fe/go.mod h1:Olw7KdpYy9/BSTJct3j0GEw5QdmpwQH7KhyjH4x2ymU=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816213204-2ad416791c91 h1:fCWQNAEngHTt1nVXr4B9UjE0ng/9Vrizc8NutAozpHk=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816213204-2ad416791c91/go.mod h1:Olw7KdpYy9/BSTJct3j0GEw5QdmpwQH7KhyjH4x2ymU=
+github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210816213204-2ad416791c91 h1:Y8Wof0gTqnMzKQBN0MZT5eiliKkwdSfNfantNJchWMo=
+github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210816213204-2ad416791c91/go.mod h1:Azhlq0Cj2y4r/gyGOw5v3uR0fIQuoR2KTnFDaU4sEO4=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-multierror v1.1.0/go.mod h1:spPvp8C1qA32ftKqdAHm4hHTbPw+vmowP0z+KUhOZdA=
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
@@ -357,6 +358,7 @@ golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5/go.mod h1:yigFU9vqHzYiE8U
 golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
 golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e h1:gsTQYXdTw2Gq7RBsWvlQ91b+aEQ6bXFUngBGuR8sPpI=
 golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/exp v0.0.0-20190306152737-a1d7652674e8/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=

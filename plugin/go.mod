@@ -4,7 +4,8 @@ go 1.16
 
 require (
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816211207-3a0aba35c33c
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20210816213204-2ad416791c91
+	github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20210816213204-2ad416791c91
 	github.com/hashicorp/go-plugin v1.4.2
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.38.0
