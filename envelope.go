@@ -17,7 +17,10 @@ import (
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must also be provided during envelope decryption
 func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
-	opts := GetOpts(opt...)
+	opts, err := GetOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
 
 	// Generate DEK
 	key, err := uuid.GenerateRandomBytes(32)
@@ -49,7 +52,10 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 // a separate location, and must match what was provided during envelope
 // encryption.
 func EnvelopeDecrypt(data *EnvelopeInfo, opt ...Option) ([]byte, error) {
-	opts := GetOpts(opt...)
+	opts, err := GetOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
 
 	aead, err := aeadEncrypter(data.Key)
 	if err != nil {

@@ -1,9 +1,13 @@
 package wrapping
 
-import structpb "google.golang.org/protobuf/types/known/structpb"
+import (
+	"errors"
+
+	structpb "google.golang.org/protobuf/types/known/structpb"
+)
 
 // GetOpts iterates the inbound Options and returns a struct
-func GetOpts(opt ...Option) *Options {
+func GetOpts(opt ...Option) (*Options, error) {
 	opts := getDefaultOptions()
 	for _, o := range opt {
 		if o == nil {
@@ -13,9 +17,15 @@ func GetOpts(opt ...Option) *Options {
 		switch to := iface.(type) {
 		case OptionFunc:
 			to(opts)
+		default:
+			return nil, errors.New("Option passed into top-level wrapping options handler" +
+				" that is not from this package; options from specific wrappers must be passed" +
+				" to functions directly on that wrapper. This is likely due to the wrapper being" +
+				" invoked as a plugin but options being sent from a specific wrapper package." +
+				" Use WithWrapperOptions to send options via the plugin interface.")
 		}
 	}
-	return opts
+	return opts, nil
 }
 
 // Option - a type that wraps an interface for compile-time safety but can
