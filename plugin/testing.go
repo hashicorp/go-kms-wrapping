@@ -46,10 +46,12 @@ func TestPlugin(
 	pluginPath := filepath.Join(tmpDir, "plugin")
 	require.NoError(ioutil.WriteFile(pluginPath, pluginBytes, fs.FileMode(0700)))
 
+	wrapperClient, err := NewWrapperClient()
+	require.NoError(err)
 	client := gp.NewClient(&gp.ClientConfig{
 		HandshakeConfig: handshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": NewWrapperClient()},
+			1: {"wrapping": wrapperClient},
 		},
 		Cmd: exec.Command(pluginPath),
 		AllowedProtocols: []gp.Protocol{

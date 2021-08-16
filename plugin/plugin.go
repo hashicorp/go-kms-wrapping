@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-plugin"
 	gp "github.com/hashicorp/go-plugin"
 	grpc "google.golang.org/grpc"
 )
@@ -14,6 +15,27 @@ import (
 var HandshakeConfig = gp.HandshakeConfig{
 	MagicCookieKey:   "HASHICORP_GKW_PLUGIN",
 	MagicCookieValue: "wrapper",
+}
+
+// ServePlugin is a generic function to start serving a wrapper as a plugin
+func ServePlugin(wrapper wrapping.Wrapper, opt ...Option) error {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return err
+	}
+	wrapServer, err := NewWrapperServer(wrapper)
+	if err != nil {
+		return err
+	}
+	plugin.Serve(&plugin.ServeConfig{
+		HandshakeConfig: HandshakeConfig,
+		VersionedPlugins: map[int]plugin.PluginSet{
+			1: {"wrapping": wrapServer},
+		},
+		Logger:     opts.withLogger,
+		GRPCServer: plugin.DefaultGRPCServer,
+	})
+	return nil
 }
 
 // wrapper embeds Plugin and is used as the top-level
@@ -33,14 +55,14 @@ func NewWrapperServer(impl wrapping.Wrapper) (*wrapper, error) {
 	}, nil
 }
 
-func NewWrapperClient() *wrapper {
-	return &wrapper{}
-}
-
-func NewInitFinalizerWrapperClient() *wrapper {
-	return &wrapper{
-		initFinalizer: true,
+func NewWrapperClient(opt ...Option) (*wrapper, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
 	}
+	return &wrapper{
+		initFinalizer: opts.withInitFinalizeInterface,
+	}, nil
 }
 
 func (w *wrapper) GRPCServer(broker *gp.GRPCBroker, s *grpc.Server) error {
