@@ -18,11 +18,10 @@ func GetOpts(opt ...Option) (*Options, error) {
 		case OptionFunc:
 			to(opts)
 		default:
-			return nil, errors.New("Option passed into top-level wrapping options handler" +
-				" that is not from this package; options from specific wrappers must be passed" +
-				" to functions directly on that wrapper. This is likely due to the wrapper being" +
-				" invoked as a plugin but options being sent from a specific wrapper package." +
-				" Use WithWrapperOptions to send options via the plugin interface.")
+			return nil, errors.New("option passed into top-level wrapping options handler" +
+				" that is not from this package; this is likely due to the wrapper being" +
+				" invoked as a plugin but options being sent from a specific wrapper package;" +
+				" use WithWrapperOptions to send options via the plugin interface")
 		}
 	}
 	return opts, nil
