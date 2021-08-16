@@ -4,10 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"os"
 	"testing"
 
-	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -26,30 +24,13 @@ func TestShamirVsAEAD(t *testing.T) {
 	require.Equal(t, typ, wrapping.WrapperTypeShamir)
 }
 
-func TestDirectWrapper(t *testing.T) {
+func TestWrapper(t *testing.T) {
 	root := NewWrapper()
-	encBlob := testWrapper(t, root)
+	encBlob := testWrapperBasic(t, root)
 	testDerivation(t, root, encBlob)
 }
 
-func TestPluginWrapper(t *testing.T) {
-	require := require.New(t)
-
-	pluginPath := os.Getenv("PLUGIN_PATH")
-	if pluginPath == "" {
-		t.Skipf("skipping plugin test as no PLUGIN_PATH specified")
-	}
-
-	wrapper, cleanup := gkwp.TestPlugin(t, pluginPath, gkwp.HandshakeConfig)
-
-	require.NotNil(cleanup)
-	defer cleanup()
-
-	require.NotNil(wrapper)
-	testWrapper(t, wrapper)
-}
-
-func testWrapper(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
+func testWrapperBasic(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
 	require := require.New(t)
 	ctx := context.Background()
 

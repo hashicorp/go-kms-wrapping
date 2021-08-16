@@ -8,7 +8,7 @@ import (
 )
 
 // getOpts iterates the inbound Options and returns a struct
-func getOpts(opt ...wrapping.Option) options {
+func getOpts(opt ...wrapping.Option) (*options, error) {
 	// First, separate out options into local and global
 	opts := getDefaultOptions()
 	var wrappingOptions []wrapping.Option
@@ -27,7 +27,12 @@ func getOpts(opt ...wrapping.Option) options {
 	}
 
 	// Parse the global options
-	opts.Options = wrapping.GetOpts(wrappingOptions...)
+	var err error
+	opts.Options, err = wrapping.GetOpts(wrappingOptions...)
+	if err != nil {
+		return nil, err
+	}
+
 	// Don't ever return blank options
 	if opts.Options == nil {
 		opts.Options = new(wrapping.Options)
@@ -61,7 +66,7 @@ func getOpts(opt ...wrapping.Option) options {
 		}
 	}
 
-	return opts
+	return &opts, nil
 }
 
 // OptionFunc holds a function with local options

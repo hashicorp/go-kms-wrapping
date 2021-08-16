@@ -78,7 +78,10 @@ func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 		return nil, errors.New("cannot create a sub-wrapper when key bytes are not set")
 	}
 
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
 
 	var h func() hash.Hash
 	switch opts.WithHashType {
@@ -129,7 +132,10 @@ func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 // The values in WithWrapperOptions can also be set via the package's native
 // With* functions.
 func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
-	opts := getOpts(opt...)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
 
 	s.keyId = opts.WithKeyId
 
@@ -215,12 +221,15 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, errors.New("aead is not configured in the seal")
 	}
 
-	iv, err := uuid.GenerateRandomBytes(12)
+	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
 
-	opts := getOpts(opt...)
+	iv, err := uuid.GenerateRandomBytes(12)
+	if err != nil {
+		return nil, err
+	}
 
 	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
 
@@ -247,9 +256,12 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, errors.New("aead is not configured in the seal")
 	}
 
-	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
 
-	opts := getOpts(opt...)
+	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
 
 	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
 	if err != nil {
