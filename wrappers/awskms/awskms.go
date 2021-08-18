@@ -34,13 +34,18 @@ const (
 // Wrapper represents credentials and Key information for the KMS Key used to
 // encryption and decryption
 type Wrapper struct {
-	accessKey      string
-	secretKey      string
-	sessionToken   string
-	region         string
-	keyID          string
-	endpoint       string
-	keyNotRequired bool
+	accessKey            string
+	secretKey            string
+	sessionToken         string
+	region               string
+	keyID                string
+	endpoint             string
+	filename             string
+	profile              string
+	roleArn              string
+	roleSessionName      string
+	webIdentityTokenFile string
+	keyNotRequired       bool
 
 	currentKeyID *atomic.Value
 
@@ -104,6 +109,11 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	k.accessKey = config["access_key"]
 	k.secretKey = config["secret_key"]
 	k.sessionToken = config["session_token"]
+	k.filename = config["shared_creds_filename"]
+	k.profile = config["shared_creds_profile"]
+	k.webIdentityTokenFile = config["web_identity_token_file"]
+	k.roleSessionName = config["role_session_name"]
+	k.roleArn = config["role_arn"]
 
 	k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
 	if k.endpoint == "" {
@@ -290,6 +300,11 @@ func (k *Wrapper) GetAWSKMSClient() (*kms.KMS, error) {
 	credsConfig.AccessKey = k.accessKey
 	credsConfig.SecretKey = k.secretKey
 	credsConfig.SessionToken = k.sessionToken
+	credsConfig.Filename = k.filename
+	credsConfig.Profile = k.profile
+	credsConfig.RoleARN = k.roleArn
+	credsConfig.RoleSessionName = k.roleSessionName
+	credsConfig.WebIdentityTokenFile = k.webIdentityTokenFile
 	credsConfig.Region = k.region
 	credsConfig.Logger = k.logger
 

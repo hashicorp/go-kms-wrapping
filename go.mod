@@ -14,7 +14,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1
 	github.com/hashicorp/go-hclog v0.16.2
-	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.1
+	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/vault/api v1.1.1
 	github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4
