@@ -2,6 +2,7 @@ package wrapping
 
 import (
 	"errors"
+	fmt "fmt"
 
 	structpb "google.golang.org/protobuf/types/known/structpb"
 )
@@ -16,7 +17,9 @@ func GetOpts(opt ...Option) (*Options, error) {
 		iface := o()
 		switch to := iface.(type) {
 		case OptionFunc:
-			to(opts)
+			if err := to(opts); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, errors.New("option passed into top-level wrapping options handler" +
 				" that is not from this package; this is likely due to the wrapper being" +
@@ -35,7 +38,7 @@ type Option func() interface{}
 // OptionFunc - a type for funcs that operate on the shared Options struct. The
 // options below explicitly wrap this so that we can switch on it when parsing
 // opts for various wrappers.
-type OptionFunc func(*Options)
+type OptionFunc func(*Options) error
 
 func getDefaultOptions() *Options {
 	return &Options{}
@@ -44,8 +47,9 @@ func getDefaultOptions() *Options {
 // WithAad provides optional additional authenticated data
 func WithAad(aad []byte) Option {
 	return func() interface{} {
-		return OptionFunc(func(o *Options) {
+		return OptionFunc(func(o *Options) error {
 			o.WithAad = aad
+			return nil
 		})
 	}
 }
@@ -53,18 +57,24 @@ func WithAad(aad []byte) Option {
 // WithKeyId provides a common way to pass in a key identifier
 func WithKeyId(id string) Option {
 	return func() interface{} {
-		return OptionFunc(func(o *Options) {
+		return OptionFunc(func(o *Options) error {
 			o.WithKeyId = id
+			return nil
 		})
 	}
 }
 
 // WithWrapperOptions is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
-func WithWrapperOptions(options *structpb.Struct) Option {
+func WithWrapperOptions(options map[string]interface{}) Option {
 	return func() interface{} {
-		return OptionFunc(func(o *Options) {
-			o.WithWrapperOptions = options
+		return OptionFunc(func(o *Options) error {
+			s, err := structpb.NewStruct(options)
+			if err != nil {
+				return fmt.Errorf("error parsing input options into proto struct: %w", err)
+			}
+			o.WithWrapperOptions = s
+			return nil
 		})
 	}
 }
