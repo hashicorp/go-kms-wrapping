@@ -8,7 +8,6 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestShamirVsAEAD(t *testing.T) {
@@ -43,14 +42,12 @@ func testWrapperBasic(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
 		t.Fatal(n)
 	}
 
-	setConfigOpts, err := structpb.NewStruct(map[string]interface{}{
-		"key": base64.StdEncoding.EncodeToString(rootKey),
-	})
-	require.NoError(err)
 	_, err = root.SetConfig(
 		context.Background(),
 		wrapping.WithKeyId("root"),
-		wrapping.WithWrapperOptions(setConfigOpts),
+		wrapping.WithWrapperOptions(map[string]interface{}{
+			"key": base64.StdEncoding.EncodeToString(rootKey),
+		}),
 	)
 	require.NoError(err)
 
@@ -72,14 +69,14 @@ func testWrapperBasic(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
 func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	ctx := context.Background()
 	require := require.New(t)
-	opts, err := structpb.NewStruct(map[string]interface{}{
-		"salt": []byte("zip"),
-		"info": []byte("zap"),
-	})
-	require.NoError(err)
+
 	sub, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub"),
-		wrapping.WithWrapperOptions(opts))
+		wrapping.WithWrapperOptions(map[string]interface{}{
+			"salt": []byte("zip"),
+			"info": []byte("zap"),
+		}),
+	)
 	require.NoError(err)
 	keyId, err := sub.KeyId(ctx)
 	require.NoError(err)
@@ -123,14 +120,12 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	require.NotNil(subDecVal)
 
 	// Ensure that a subkey with different params doesn't work
-	opts, err = structpb.NewStruct(map[string]interface{}{
-		"salt": []byte("zap"),
-		"info": []byte("zip"),
-	})
-	require.NoError(err)
 	subBad, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		wrapping.WithWrapperOptions(opts),
+		wrapping.WithWrapperOptions(map[string]interface{}{
+			"salt": []byte("zap"),
+			"info": []byte("zip"),
+		}),
 	)
 	require.NoError(err)
 	subDecVal, err = subBad.Decrypt(context.Background(), subEncBlob)

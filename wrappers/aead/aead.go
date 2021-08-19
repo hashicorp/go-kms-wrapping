@@ -5,7 +5,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"hash"
@@ -34,8 +33,7 @@ var (
 	_ wrapping.Wrapper = (*ShamirWrapper)(nil)
 )
 
-// NewWrapper creates a new Wrapper with the provided logger. No options are
-// supported.
+// NewWrapper creates a new Wrapper. No options are supported.
 func NewWrapper() *Wrapper {
 	seal := new(Wrapper)
 	return seal
@@ -139,17 +137,13 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 	s.keyId = opts.WithKeyId
 
-	if opts.WithKey == "" {
+	if len(opts.WithKey) == 0 {
 		return nil, nil
 	}
 
 	switch opts.WithAeadType {
 	case wrapping.AeadTypeAesGcm:
-		keyRaw, err := base64.StdEncoding.DecodeString(opts.WithKey)
-		if err != nil {
-			return nil, fmt.Errorf("error base64-decoding key: %w", err)
-		}
-		if err := s.SetAesGcmKeyBytes(keyRaw); err != nil {
+		if err := s.SetAesGcmKeyBytes(opts.WithKey); err != nil {
 			return nil, fmt.Errorf("error setting AES GCM key: %w", err)
 		}
 
