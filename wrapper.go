@@ -31,15 +31,15 @@ type Wrapper interface {
 	// SetConfig applies the given options to a wrapper and returns
 	// configuration information. WithWrapperOptions will almost certainly be
 	// required to be passed in to give wrapper-specific configuration
-	// information to the wrapper.
+	// information to the wrapper. WithKeyId is also supported.
 	SetConfig(ctx context.Context, options ...Option) (*WrapperConfig, error)
 
 	// Encrypt encrypts the given byte slice and stores the resulting
-	// information in the returned blob info. Which options are supported
-	// depends on the underlying wrapper.
+	// information in the returned blob info. Which options are used depends on
+	// the underlying wrapper. Supported options: WithAad.
 	Encrypt(ctx context.Context, plaintext []byte, options ...Option) (*BlobInfo, error)
 	// Decrypt decrypts the given byte slice and stores the resulting
-	// information in the returned byte slice. Which options are supported
-	// depends on the underlying wrapper.
+	// information in the returned byte slice. Which options are used depends on
+	// the underlying wrapper. Supported options: WithAad.
 	Decrypt(ctx context.Context, ciphertext *BlobInfo, options ...Option) ([]byte, error)
 }
