@@ -3,6 +3,7 @@ package plugin
 import (
 	context "context"
 	"fmt"
+	"os/exec"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-plugin"
@@ -55,14 +56,27 @@ func NewWrapperServer(impl wrapping.Wrapper) (*wrapper, error) {
 	}, nil
 }
 
-func NewWrapperClient(opt ...Option) (*wrapper, error) {
+func NewWrapperClient(pluginPath string, opt ...Option) (*gp.Client, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
-	return &wrapper{
+	wrapPlugin := &wrapper{
 		initFinalizer: opts.withInitFinalizeInterface,
-	}, nil
+	}
+
+	return gp.NewClient(&gp.ClientConfig{
+		HandshakeConfig: HandshakeConfig,
+		VersionedPlugins: map[int]gp.PluginSet{
+			1: {"wrapping": wrapPlugin},
+		},
+		Cmd: exec.Command(pluginPath),
+		AllowedProtocols: []gp.Protocol{
+			gp.ProtocolGRPC,
+		},
+		Logger:   opts.withLogger,
+		AutoMTLS: true,
+	}), nil
 }
 
 func (w *wrapper) GRPCServer(broker *gp.GRPCBroker, s *grpc.Server) error {

@@ -9,7 +9,6 @@ import (
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAeadPluginWrapper(t *testing.T) {
@@ -35,14 +34,12 @@ func TestAeadPluginWrapper(t *testing.T) {
 		t.Fatal(n)
 	}
 
-	setConfigOpts, err := structpb.NewStruct(map[string]interface{}{
-		"key": base64.StdEncoding.EncodeToString(rootKey),
-	})
-	require.NoError(err)
 	_, err = wrapper.SetConfig(
 		context.Background(),
 		wrapping.WithKeyId("root"),
-		wrapping.WithWrapperOptions(setConfigOpts),
+		wrapping.WithWrapperOptions(map[string]string{
+			"key": base64.StdEncoding.EncodeToString(rootKey),
+		}),
 	)
 	require.NoError(err)
 

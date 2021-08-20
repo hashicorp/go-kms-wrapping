@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -46,19 +45,8 @@ func TestPlugin(
 	pluginPath := filepath.Join(tmpDir, "plugin")
 	require.NoError(ioutil.WriteFile(pluginPath, pluginBytes, fs.FileMode(0700)))
 
-	wrapperClient, err := NewWrapperClient()
+	client, err := NewWrapperClient(pluginPath)
 	require.NoError(err)
-	client := gp.NewClient(&gp.ClientConfig{
-		HandshakeConfig: handshakeConfig,
-		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": wrapperClient},
-		},
-		Cmd: exec.Command(pluginPath),
-		AllowedProtocols: []gp.Protocol{
-			gp.ProtocolGRPC,
-		},
-		AutoMTLS: true,
-	})
 
 	// Now that we have a client, ensure it's killed at cleanup time
 	origCleanup := cleanup
