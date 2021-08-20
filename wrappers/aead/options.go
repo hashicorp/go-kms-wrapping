@@ -43,24 +43,24 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 	// (for embedding). First pull from the option.
 	if opts.WithWrapperOptions != nil {
 		var err error
-		for k, v := range opts.WithWrapperOptions.GetFields() {
+		for k, v := range opts.WithWrapperOptions {
 			switch k {
 			case "aead_type":
-				opts.WithAeadType = wrapping.AeadTypeMap(v.GetStringValue())
+				opts.WithAeadType = wrapping.AeadTypeMap(v)
 			case "hash_type":
-				opts.WithHashType = wrapping.HashTypeMap(v.GetStringValue())
+				opts.WithHashType = wrapping.HashTypeMap(v)
 			case "key":
-				opts.WithKey, err = base64.StdEncoding.DecodeString(v.GetStringValue())
+				opts.WithKey, err = base64.StdEncoding.DecodeString(v)
 				if err != nil {
 					return nil, fmt.Errorf("error base64-decoding key value: %w", err)
 				}
 			case "salt":
-				opts.WithSalt, err = base64.StdEncoding.DecodeString(v.GetStringValue())
+				opts.WithSalt, err = base64.StdEncoding.DecodeString(v)
 				if err != nil {
 					return nil, fmt.Errorf("error base64-decoding salt value: %w", err)
 				}
 			case "info":
-				opts.WithInfo, err = base64.StdEncoding.DecodeString(v.GetStringValue())
+				opts.WithInfo, err = base64.StdEncoding.DecodeString(v)
 				if err != nil {
 					return nil, fmt.Errorf("error base64-decoding info value: %w", err)
 				}
