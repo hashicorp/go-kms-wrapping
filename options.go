@@ -2,9 +2,6 @@ package wrapping
 
 import (
 	"errors"
-	fmt "fmt"
-
-	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // GetOpts iterates the inbound Options and returns a struct
@@ -66,14 +63,10 @@ func WithKeyId(id string) Option {
 
 // WithWrapperOptions is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
-func WithWrapperOptions(options map[string]interface{}) Option {
+func WithWrapperOptions(options map[string]string) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			s, err := structpb.NewStruct(options)
-			if err != nil {
-				return fmt.Errorf("error parsing input options into proto struct: %w", err)
-			}
-			o.WithWrapperOptions = s
+			o.WithWrapperOptions = options
 			return nil
 		})
 	}

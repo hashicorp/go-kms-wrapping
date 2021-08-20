@@ -91,5 +91,5 @@ message Options {
 	bytes with_aad = 20;
 
 	// Wrapper-specific options to pass along
-	google.protobuf.Struct with_wrapper_options = 30;
+	map<string, string> with_wrapper_options = 30;
 }
