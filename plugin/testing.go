@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	gp "github.com/hashicorp/go-plugin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,14 +19,16 @@ import (
 //
 // * pluginLoc: The binary location of the plugin
 // * root: The wrapper
-// * handshakeConfig: The shared handshake config used by the plugin and the client here
 
 func TestPlugin(
 	t *testing.T,
 	pluginLoc string,
-	handshakeConfig gp.HandshakeConfig) (pluginWrapper wrapping.Wrapper, cleanup func()) {
+	opt ...Option) (pluginWrapper wrapping.Wrapper, cleanup func()) {
 	t.Helper()
 	require := require.New(t)
+
+	opts, err := getOpts(opt...)
+	require.NoError(err)
 
 	require.NotEmpty(pluginLoc, "plugin location cannot be empty")
 
@@ -45,7 +46,7 @@ func TestPlugin(
 	pluginPath := filepath.Join(tmpDir, "plugin")
 	require.NoError(ioutil.WriteFile(pluginPath, pluginBytes, fs.FileMode(0700)))
 
-	client, err := NewWrapperClient(pluginPath)
+	client, err := NewWrapperClient(pluginPath, opt...)
 	require.NoError(err)
 
 	// Now that we have a client, ensure it's killed at cleanup time
@@ -64,6 +65,10 @@ func TestPlugin(
 	var ok bool
 	pluginWrapper, ok = raw.(wrapping.Wrapper)
 	require.True(ok)
+	if opts.withInitFinalizeInterface {
+		_, ok := raw.(wrapping.InitFinalizer)
+		require.True(ok)
+	}
 	require.NotNil(pluginWrapper)
 
 	return

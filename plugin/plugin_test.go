@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"os"
+	"path/filepath"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +22,7 @@ func TestAeadPluginWrapper(t *testing.T) {
 		t.Skipf("skipping plugin test as no PLUGIN_PATH specified")
 	}
 
-	wrapper, cleanup := TestPlugin(t, pluginPath, HandshakeConfig)
+	wrapper, cleanup := TestPlugin(t, pluginPath)
 
 	require.NotNil(cleanup)
 	defer cleanup()
@@ -54,4 +56,28 @@ func TestAeadPluginWrapper(t *testing.T) {
 	decVal, err := wrapper.Decrypt(context.Background(), encBlob)
 	require.NoError(err)
 	require.Equal("foobar", string(decVal))
+}
+
+func TestInterfaces(t *testing.T) {
+	assert := assert.New(t)
+
+	pluginPath := os.Getenv("PLUGIN_PATH")
+	if pluginPath == "" {
+		t.Skipf("skipping plugin test as no PLUGIN_PATH specified")
+	}
+
+	var ok bool
+	wrapper, wrapperCleanup := TestPlugin(t, filepath.Join(pluginPath, "wrapperplugin"))
+	if wrapperCleanup != nil {
+		defer wrapperCleanup()
+	}
+	_, ok = wrapper.(wrapping.InitFinalizer)
+	assert.False(ok)
+
+	initFinalizer, initFinalizerCleanup := TestPlugin(t, filepath.Join(pluginPath, "initfinalizerplugin"), WithInitFinalizeInterface(true))
+	if initFinalizerCleanup != nil {
+		defer initFinalizerCleanup()
+	}
+	_, ok = initFinalizer.(wrapping.InitFinalizer)
+	assert.True(ok)
 }
