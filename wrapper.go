@@ -16,7 +16,7 @@ type InitFinalizer interface {
 
 	// Finalize can be called when all usage of a Wrapper is done if any cleanup
 	// or finalization is required.
-	Finalize(context.Context) error
+	Finalize(ctx context.Context, options ...Option) error
 }
 
 // Wrapper is an an interface where supporting implementations allow for

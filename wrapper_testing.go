@@ -16,7 +16,14 @@ type TestWrapper struct {
 	envelope bool
 }
 
-var _ Wrapper = (*TestWrapper)(nil)
+type TestInitFinalizer struct {
+	*TestWrapper
+}
+
+var (
+	_ Wrapper       = (*TestWrapper)(nil)
+	_ InitFinalizer = (*TestInitFinalizer)(nil)
+)
 
 // NewTestWrapper constructs a test wrapper
 func NewTestWrapper(secret []byte) *TestWrapper {
@@ -24,6 +31,17 @@ func NewTestWrapper(secret []byte) *TestWrapper {
 		wrapperType: WrapperTypeTest,
 		secret:      secret,
 		keyId:       "static-key",
+	}
+}
+
+// NewTestInitFinalizer constructs a test wrapper
+func NewTestInitFinalizer(secret []byte) *TestInitFinalizer {
+	return &TestInitFinalizer{
+		TestWrapper: &TestWrapper{
+			wrapperType: WrapperTypeTest,
+			secret:      secret,
+			keyId:       "static-key",
+		},
 	}
 }
 
@@ -38,12 +56,12 @@ func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 }
 
 // Init initializes the test wrapper
-func (t *TestWrapper) Init(_ context.Context) error {
+func (t *TestInitFinalizer) Init(_ context.Context, _ ...Option) error {
 	return nil
 }
 
 // Finalize finalizes the test wrapper
-func (t *TestWrapper) Finalize(_ context.Context) error {
+func (t *TestInitFinalizer) Finalize(_ context.Context, _ ...Option) error {
 	return nil
 }
 
