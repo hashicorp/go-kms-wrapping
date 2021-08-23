@@ -152,7 +152,7 @@ func (m *MultiWrapper) SetConfig(_ context.Context, _ ...wrapping.Option) (*wrap
 
 // HmacKeyId returns the HmacKeyId of the current encryptor
 func (m *MultiWrapper) HmacKeyId(ctx context.Context) (string, error) {
-	if hmacWrapper, ok := m.encryptor().(wrapping.HmacSigner); ok {
+	if hmacWrapper, ok := m.encryptor().(wrapping.HmacComputer); ok {
 		return hmacWrapper.HmacKeyId(ctx)
 	}
 	return "", nil
