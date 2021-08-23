@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type HmacSigner interface {
+type HmacComputer interface {
 	// HmacKeyID is the ID of the key currently used for HMACing (if any)
 	HmacKeyId(context.Context) (string, error)
 }
