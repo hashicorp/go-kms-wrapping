@@ -85,19 +85,22 @@ type mockTencentCloudKMSWrapperClient struct {
 }
 
 // Encrypt is a mocked call that returns a base64 encoded string.
-func (m *mockTencentCloudKMSWrapperClient) Encrypt(request *kms.EncryptRequest) (response *kms.EncryptResponse, err error) {
+func (m *mockTencentCloudKMSWrapperClient) Encrypt(request *kms.EncryptRequest) (
+	response *kms.EncryptResponse, err error) {
 	m.keyID = request.KeyId
 
 	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(*request.Plaintext)))
 	base64.StdEncoding.Encode(encoded, []byte(*request.Plaintext))
 
 	output := &kms.EncryptResponse{}
-	_ = output.FromJsonString(`{"Response": {"KeyId": "` + *request.KeyId + `", "CiphertextBlob": "` + string(encoded) + `"}}`)
+	_ = output.FromJsonString(`{"Response": {"KeyId": "` + *request.KeyId +
+		`", "CiphertextBlob": "` + string(encoded) + `"}}`)
 	return output, nil
 }
 
 // Decrypt is a mocked call that returns a decoded base64 string.
-func (m *mockTencentCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) (response *kms.DecryptResponse, err error) {
+func (m *mockTencentCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) (
+	response *kms.DecryptResponse, err error) {
 	decLen := base64.StdEncoding.DecodedLen(len(*request.CiphertextBlob))
 	decoded := make([]byte, decLen)
 	len, err := base64.StdEncoding.Decode(decoded, []byte(*request.CiphertextBlob))
@@ -115,7 +118,8 @@ func (m *mockTencentCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) 
 }
 
 // DescribeKey is a mocked call that returns the keyID.
-func (m *mockTencentCloudKMSWrapperClient) DescribeKey(request *kms.DescribeKeyRequest) (response *kms.DescribeKeyResponse, err error) {
+func (m *mockTencentCloudKMSWrapperClient) DescribeKey(request *kms.DescribeKeyRequest) (
+	response *kms.DescribeKeyResponse, err error) {
 	if *m.keyID == "" {
 		return nil, errors.New("key not found")
 	}
