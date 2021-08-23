@@ -7,6 +7,7 @@ test-plugin-aead:
 test-plugin-interfaces:
 	go build -o "${PLUGIN_TMP_DIR}/wrapperplugin" testplugins/wrapper/main.go
 	go build -o "${PLUGIN_TMP_DIR}/initfinalizerplugin" testplugins/initfinalizer/main.go
+	go build -o "${PLUGIN_TMP_DIR}/initfinalizerhmaccomputerplugin" testplugins/initfinalizerhmaccomputer/main.go
 	PLUGIN_PATH="${PLUGIN_TMP_DIR}" go test -v -run TestInterfaces
 
 

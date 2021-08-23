@@ -68,3 +68,14 @@ service InitFinalize {
 	rpc Init(InitRequest) returns (InitResponse);
 	rpc Finalize(FinalizeRequest) returns (FinalizeResponse);
 }
+
+message HmacKeyIdRequest {
+}
+
+message HmacKeyIdResponse {
+	string key_id = 10 [json_name="key_id"];
+}
+
+service HmacComputer {
+	rpc HmacKeyId(HmacKeyIdRequest) returns (HmacKeyIdResponse);
+}

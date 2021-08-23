@@ -65,8 +65,12 @@ func TestPlugin(
 	var ok bool
 	pluginWrapper, ok = raw.(wrapping.Wrapper)
 	require.True(ok)
-	if opts.withInitFinalizeInterface {
+	if opts.withInitFinalizerInterface {
 		_, ok := raw.(wrapping.InitFinalizer)
+		require.True(ok)
+	}
+	if opts.withHmacComputerInterface {
+		_, ok := raw.(wrapping.HmacComputer)
 		require.True(ok)
 	}
 	require.NotNil(pluginWrapper)

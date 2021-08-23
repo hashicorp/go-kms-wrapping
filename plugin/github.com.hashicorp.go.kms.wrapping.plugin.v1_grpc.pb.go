@@ -365,3 +365,89 @@ var InitFinalize_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
 }
+
+// HmacComputerClient is the client API for HmacComputer service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type HmacComputerClient interface {
+	HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error)
+}
+
+type hmacComputerClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewHmacComputerClient(cc grpc.ClientConnInterface) HmacComputerClient {
+	return &hmacComputerClient{cc}
+}
+
+func (c *hmacComputerClient) HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error) {
+	out := new(HmacKeyIdResponse)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v1.HmacComputer/HmacKeyId", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// HmacComputerServer is the server API for HmacComputer service.
+// All implementations must embed UnimplementedHmacComputerServer
+// for forward compatibility
+type HmacComputerServer interface {
+	HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error)
+	mustEmbedUnimplementedHmacComputerServer()
+}
+
+// UnimplementedHmacComputerServer must be embedded to have forward compatible implementations.
+type UnimplementedHmacComputerServer struct {
+}
+
+func (UnimplementedHmacComputerServer) HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HmacKeyId not implemented")
+}
+func (UnimplementedHmacComputerServer) mustEmbedUnimplementedHmacComputerServer() {}
+
+// UnsafeHmacComputerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to HmacComputerServer will
+// result in compilation errors.
+type UnsafeHmacComputerServer interface {
+	mustEmbedUnimplementedHmacComputerServer()
+}
+
+func RegisterHmacComputerServer(s grpc.ServiceRegistrar, srv HmacComputerServer) {
+	s.RegisterService(&HmacComputer_ServiceDesc, srv)
+}
+
+func _HmacComputer_HmacKeyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HmacKeyIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(HmacComputerServer).HmacKeyId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v1.HmacComputer/HmacKeyId",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(HmacComputerServer).HmacKeyId(ctx, req.(*HmacKeyIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// HmacComputer_ServiceDesc is the grpc.ServiceDesc for HmacComputer service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var HmacComputer_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v1.HmacComputer",
+	HandlerType: (*HmacComputerServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "HmacKeyId",
+			Handler:    _HmacComputer_HmacKeyId_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v1.proto",
+}

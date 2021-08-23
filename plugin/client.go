@@ -9,6 +9,8 @@ import (
 var (
 	_ wrapping.Wrapper       = (*wrapClient)(nil)
 	_ wrapping.InitFinalizer = (*wrapInitFinalizerClient)(nil)
+	_ wrapping.InitFinalizer = (*wrapInitFinalizerHmacComputerClient)(nil)
+	_ wrapping.HmacComputer  = (*wrapInitFinalizerHmacComputerClient)(nil)
 )
 
 type wrapClient struct {
@@ -100,4 +102,17 @@ func (ifc *wrapInitFinalizerClient) Finalize(ctx context.Context, options ...wra
 		Options: opts,
 	})
 	return err
+}
+
+type wrapInitFinalizerHmacComputerClient struct {
+	*wrapInitFinalizerClient
+	impl HmacComputerClient
+}
+
+func (wc *wrapInitFinalizerHmacComputerClient) HmacKeyId(ctx context.Context) (string, error) {
+	resp, err := wc.impl.HmacKeyId(ctx, new(HmacKeyIdRequest))
+	if err != nil {
+		return "", err
+	}
+	return resp.KeyId, nil
 }

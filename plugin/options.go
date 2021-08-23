@@ -25,8 +25,9 @@ func getOpts(opt ...Option) (*options, error) {
 }
 
 type options struct {
-	withLogger                hclog.Logger
-	withInitFinalizeInterface bool
+	withLogger                 hclog.Logger
+	withInitFinalizerInterface bool
+	withHmacComputerInterface  bool
 }
 
 // Option - a type that wraps an interface for compile-time safety but can
@@ -43,12 +44,22 @@ func getDefaultOptions() *options {
 	return &options{}
 }
 
-// WithInitFinalizeInterface controls whether the client should expose
+// WithInitFinalizerInterface controls whether the client should expose
 // wrapping.InitFinalizer
-func WithInitFinalizeInterface(initFinalize bool) Option {
+func WithInitFinalizerInterface(initFinalizer bool) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) {
-			o.withInitFinalizeInterface = initFinalize
+			o.withInitFinalizerInterface = initFinalizer
+		})
+	}
+}
+
+// WithHmacComputerInterface controls whether the client should expose
+// wrapping.HmacComputer
+func WithHmacComputerInterface(hmacComputer bool) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) {
+			o.withHmacComputerInterface = hmacComputer
 		})
 	}
 }

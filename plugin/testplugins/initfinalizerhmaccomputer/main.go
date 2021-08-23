@@ -11,8 +11,9 @@ import (
 
 func main() {
 	if err := gkwp.ServePlugin(
-		wrapping.NewTestInitFinalizer([]byte("foo")),
-		plugin.WithInitFinalizerInterface(true)); err != nil {
+		wrapping.NewTestInitFinalizerHmacComputer([]byte("foo")),
+		plugin.WithInitFinalizerInterface(true),
+		plugin.WithHmacComputerInterface(true)); err != nil {
 		fmt.Println("Error serving plugin", err)
 		os.Exit(1)
 	}
