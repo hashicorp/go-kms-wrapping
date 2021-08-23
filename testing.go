@@ -22,7 +22,6 @@ type TestInitFinalizer struct {
 
 type TestInitFinalizerHmacComputer struct {
 	*TestInitFinalizer
-	*TestWrapper
 }
 
 var (
