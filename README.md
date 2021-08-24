@@ -1,6 +1,6 @@
 # Go-KMS-Wrapping - Go library for encrypting values through various KMS providers
 
-[![Godoc](https://godoc.org/github.com/hashicorp/go-kms-wrapping?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping)
+[![Godoc](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2)
 
 *NOTE*: Currently no compatibility guarantees are provided for this library; we
 expect tags to remain in the `0.x.y` range. Function signatures, interfaces,
@@ -51,13 +51,13 @@ as they may have been used for past encryption operations.
   * Supports Additional Authenticated Data (AAD) for all KMSes except Vault Transit.
 
 A
-[`multiwrapper`](https://github.com/hashicorp/go-kms-wrapping/tree/master/wrappers/multiwrapper)
+[`multiwrapper`](https://github.com/hashicorp/go-kms-wrapping/tree/v2/wrappers/multiwrapper)
 KMS is also included, capable of encrypting to a specified wrapper and
 decrypting using one of several wrappers switched on key ID. This can allow
 easy key rotation for KMSes that do not natively support it.
 
 The
-[`structwrapping`](https://github.com/hashicorp/go-kms-wrapping/tree/master/structwrapping)
+[`structwrapping`](https://github.com/hashicorp/go-kms-wrapping/tree/v2/structwrapping)
 package allows for structs to have members encrypted and decrypted in a single
 pass via a single wrapper. This can be used for workflows such as database
 library callback functions to easily encrypt/decrypt data as it goes to/from

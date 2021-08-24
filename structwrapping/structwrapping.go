@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -63,7 +63,7 @@ func buildEncDecMap(ctx context.Context, in interface{}) (encDecMap, error) {
 		case "ct":
 			switch fieldKind {
 			case reflect.Ptr:
-				if !field.Type.ConvertibleTo(reflect.TypeOf((*wrapping.EncryptedBlobInfo)(nil))) {
+				if !field.Type.ConvertibleTo(reflect.TypeOf((*wrapping.BlobInfo)(nil))) {
 					return nil, errors.New("ciphertext pointer value is not the expected type")
 				}
 			case reflect.String, reflect.Slice:
@@ -97,7 +97,9 @@ func buildEncDecMap(ctx context.Context, in interface{}) (encDecMap, error) {
 	return edMap, nil
 }
 
-func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, aad []byte) error {
+// WrapStruct wraps values in the struct. Options are passed through to the
+// wrapper Encrypt function.
+func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, opt ...wrapping.Option) error {
 	if wrapper == nil {
 		return errors.New("nil wrapper passed in")
 	}
@@ -111,25 +113,25 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, a
 	for _, v := range edMap {
 		encRaw := val.Field(v[0].index).Interface()
 		var enc []byte
-		switch encRaw.(type) {
+		switch t := encRaw.(type) {
 		case []byte:
-			enc = encRaw.([]byte)
+			enc = t
 		case string:
-			enc = []byte(encRaw.(string))
+			enc = []byte(t)
 		default:
 			return errors.New("could not convert value for encryption to []byte")
 		}
 		if enc == nil {
 			return errors.New("plaintext byte slice is nil")
 		}
-		blobInfo, err := wrapper.Encrypt(ctx, enc, aad)
+		blobInfo, err := wrapper.Encrypt(ctx, enc, opt...)
 		if err != nil {
 			return fmt.Errorf("error wrapping value: %w", err)
 		}
 
 		field := val.Field(v[1].index)
 		switch field.Interface().(type) {
-		case *wrapping.EncryptedBlobInfo:
+		case *wrapping.BlobInfo:
 			field.Set(reflect.ValueOf(blobInfo))
 		case []byte:
 			protoBytes, err := proto.Marshal(blobInfo)
@@ -151,7 +153,9 @@ func WrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, a
 	return nil
 }
 
-func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, aad []byte) error {
+// UnwrapStruct unwraps values in the struct. Options are passed through to the
+// wrapper Dencrypt function.
+func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{}, opt ...wrapping.Option) error {
 	if wrapper == nil {
 		return errors.New("nil wrapper passed in")
 	}
@@ -164,10 +168,10 @@ func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{},
 	val := reflect.Indirect(reflect.ValueOf(in))
 	for _, v := range edMap {
 		decRaw := val.Field(v[1].index).Interface()
-		var dec *wrapping.EncryptedBlobInfo
+		var dec *wrapping.BlobInfo
 		var decBytes []byte
 		switch typedDec := decRaw.(type) {
-		case *wrapping.EncryptedBlobInfo:
+		case *wrapping.BlobInfo:
 			dec = typedDec
 		case string:
 			decBytes = []byte(typedDec)
@@ -178,7 +182,7 @@ func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{},
 		}
 		if dec == nil {
 			if decBytes != nil {
-				dec = new(wrapping.EncryptedBlobInfo)
+				dec = new(wrapping.BlobInfo)
 				if err := proto.Unmarshal(decBytes, dec); err != nil {
 					return fmt.Errorf("error unmarshaling encrypted blob info: %w", err)
 				}
@@ -186,7 +190,7 @@ func UnwrapStruct(ctx context.Context, wrapper wrapping.Wrapper, in interface{},
 				return errors.New("ciphertext pointer is nil")
 			}
 		}
-		bs, err := wrapper.Decrypt(ctx, dec, aad)
+		bs, err := wrapper.Decrypt(ctx, dec, opt...)
 		if err != nil {
 			return fmt.Errorf("error unwrapping value: %w", err)
 		}
