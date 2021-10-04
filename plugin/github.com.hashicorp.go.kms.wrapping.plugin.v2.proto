@@ -2,9 +2,9 @@ syntax = "proto3";
 
 option go_package = "github.com/hashicorp/go-kms-wrapping/v2/plugin;plugin";
 
-package github.com.hashicorp.go.kms.wrapping.plugin.v1;
+package github.com.hashicorp.go.kms.wrapping.plugin.v2;
 
-import "github.com.hashicorp.go.kms.wrapping.types.proto";
+import "github.com.hashicorp.go.kms.wrapping.v2.types.proto";
 
 message TypeRequest {}
 
@@ -19,25 +19,25 @@ message KeyIdResponse {
 }
 
 message SetConfigRequest {
-	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message SetConfigResponse {
-	github.com.hashicorp.go.kms.wrapping.types.WrapperConfig wrapper_config = 10;
+	github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig wrapper_config = 10;
 }
 
 message EncryptRequest {
 	bytes plaintext = 10;
-	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message EncryptResponse {
-	github.com.hashicorp.go.kms.wrapping.types.BlobInfo ciphertext = 10;
+	github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
 }
 
 message DecryptRequest {
-	github.com.hashicorp.go.kms.wrapping.types.BlobInfo ciphertext = 10;
-	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
+	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message DecryptResponse {
@@ -53,13 +53,13 @@ service Wrapping {
 }
 
 message InitRequest {
-	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message InitResponse {};
 
 message FinalizeRequest {
-	github.com.hashicorp.go.kms.wrapping.types.Options options = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message FinalizeResponse {};

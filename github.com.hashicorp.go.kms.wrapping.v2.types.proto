@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option go_package = "github.com/hashicorp/go-kms-wrapping/v2;wrapping";
 
-package github.com.hashicorp.go.kms.wrapping.types;
+package github.com.hashicorp.go.kms.wrapping.v2.types;
 
 import "google/protobuf/struct.proto";
 
