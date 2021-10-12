@@ -41,6 +41,7 @@ type Wrapper struct {
 	currentKeyID *atomic.Value
 
 	environment    azure.Environment
+	resource       string
 	client         *keyvault.BaseClient
 	logger         hclog.Logger
 	keyNotRequired bool
@@ -111,6 +112,17 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		}
 	}
 
+	azResource := os.Getenv("AZURE_AD_RESOURCE")
+	if azResource == "" {
+		azResource = config["resource"]
+		if azResource == "" {
+			azResource = v.environment.KeyVaultDNSSuffix
+		}
+	}
+	v.environment.KeyVaultDNSSuffix = azResource
+	v.resource = "https://" + azResource + "/"
+	v.environment.KeyVaultEndpoint = v.resource
+
 	switch {
 	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "":
 		v.vaultName = os.Getenv(EnvAzureKeyVaultWrapperVaultName)
@@ -164,6 +176,7 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	wrapperInfo["environment"] = v.environment.Name
 	wrapperInfo["vault_name"] = v.vaultName
 	wrapperInfo["key_name"] = v.keyName
+	wrapperInfo["resource"] = v.resource
 
 	return wrapperInfo, nil
 }
@@ -257,6 +270,7 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 	if err != nil {
 		return nil, err
 	}
+
 	envInfo := &wrapping.EnvelopeInfo{
 		Key:        keyBytes,
 		IV:         in.IV,
@@ -277,7 +291,7 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 	case v.clientID != "" && v.clientSecret != "":
 		config := auth.NewClientCredentialsConfig(v.clientID, v.clientSecret, v.tenantID)
 		config.AADEndpoint = v.environment.ActiveDirectoryEndpoint
-		config.Resource = strings.TrimSuffix(v.environment.KeyVaultEndpoint, "/")
+		config.Resource = strings.TrimSuffix(v.resource, "/")
 		authorizer, err = config.Authorizer()
 		if err != nil {
 			return nil, err
@@ -285,7 +299,7 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 	// By default use MSI
 	default:
 		config := auth.NewMSIConfig()
-		config.Resource = strings.TrimSuffix(v.environment.KeyVaultEndpoint, "/")
+		config.Resource = strings.TrimSuffix(v.resource, "/")
 		authorizer, err = config.Authorizer()
 		if err != nil {
 			return nil, err
