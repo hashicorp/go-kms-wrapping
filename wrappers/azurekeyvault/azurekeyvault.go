@@ -222,7 +222,7 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 	// Encrypt the DEK using Key Vault
 	params := keyvault.KeyOperationsParameters{
 		Algorithm: keyvault.RSAOAEP256,
-		Value:     to.StringPtr(base64.URLEncoding.EncodeToString(env.Key)),
+		Value:     to.StringPtr(base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(env.Key)),
 	}
 	// Wrap key with the latest version for the key name
 	resp, err := v.client.WrapKey(ctx, v.buildBaseURL(), v.keyName, "", params)
@@ -269,6 +269,24 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 	keyBytes, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(to.String(resp.Result))
 	if err != nil {
 		return nil, err
+	}
+
+	// XXX: Workaround: Azure Managed HSM KeyVault's REST API request parser
+	// changes the encrypted key to include an extra NULL byte at the end.
+	// This looks like the base64 of the symmetric AES wrapping key above is
+	// changed from ...= to ...A. You'll get the error (when running Vault
+	// init / unseal operation):
+	// > failed to unseal barrier: failed to check for keyring: failed to create cipher: crypto/aes: invalid key size 33
+	// until this is fixed.
+	//  -> 16-byte / 128-bit AES key gets two padding characters, resulting
+	//     in two null bytes.
+	//  -> 24-byte / 196-bit AES key gets no padding and no null bytes.
+	//  -> 32-byte / 256-bit AES key (default) gets one padding character,
+	//     resulting in one null bytes.
+	if len(keyBytes) == 18 && keyBytes[16] == 0 && keyBytes[17] == 0 {
+		keyBytes = keyBytes[:16]
+	} else if len(keyBytes) == 33 && keyBytes[32] == 0 {
+		keyBytes = keyBytes[:32]
 	}
 
 	envInfo := &wrapping.EnvelopeInfo{
