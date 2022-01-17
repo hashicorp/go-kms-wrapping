@@ -51,7 +51,7 @@ as they may have been used for past encryption operations.
   * Supports Additional Authenticated Data (AAD) for all KMSes except Vault Transit.
 
 A
-[`multiwrapper`](https://github.com/hashicorp/go-kms-wrapping/tree/v2/wrappers/multiwrapper)
+[`multiwrapper`](https://github.com/hashicorp/go-kms-wrapping/tree/v2/multiwrapper)
 KMS is also included, capable of encrypting to a specified wrapper and
 decrypting using one of several wrappers switched on key ID. This can allow
 easy key rotation for KMSes that do not natively support it.
