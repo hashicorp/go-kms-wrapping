@@ -136,7 +136,7 @@ func (m *PooledWrapper) encryptor() wrapping.Wrapper {
 }
 
 func (m *PooledWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
-	return wrapping.WrapperTypePooledWrapper, nil
+	return wrapping.WrapperTypePooled, nil
 }
 
 // KeyId returns the KeyId of the current encryptor
