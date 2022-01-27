@@ -12,7 +12,7 @@ const (
 	WrapperTypeGcpCkms         WrapperType = "gcpckms"
 	WrapperTypeHsmAuto         WrapperType = "hsm-auto"
 	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
-	WrapperTypeMultiWrapper    WrapperType = "multiwrapper"
+	WrapperTypePooledWrapper   WrapperType = "pooledwrapper"
 	WrapperTypeOciKms          WrapperType = "ocikms"
 	WrapperTypePkcs11          WrapperType = "pkcs11"
 	WrapperTypeShamir          WrapperType = "shamir"

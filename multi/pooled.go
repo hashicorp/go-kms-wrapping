@@ -1,4 +1,4 @@
-package multiwrapper
+package multi
 
 import (
 	"context"
@@ -11,23 +11,23 @@ import (
 
 const baseEncryptor = "__base__"
 
-var _ wrapping.Wrapper = (*MultiWrapper)(nil)
+var _ wrapping.Wrapper = (*PooledWrapper)(nil)
 
 var ErrKeyNotFound = errors.New("given key ID not found")
 
-// MultiWrapper allows multiple wrappers to be used for decryption based on key
+// PooledWrapper allows multiple wrappers to be used for decryption based on key
 // ID. This allows for rotation of data by allowing data to be decrypted across
 // multiple (possibly derived) wrappers and encrypted with the default.
 // Functions on this type will likely panic if the wrapper is not created via
-// NewMultiWrapper.
-type MultiWrapper struct {
+// NewPooledWrapper.
+type PooledWrapper struct {
 	m        sync.RWMutex
 	wrappers map[string]wrapping.Wrapper
 }
 
-// NewMultiWrapper creates a MultiWrapper and sets its encrypting wrapper to
+// NewPooledWrapper creates a PooledWrapper and sets its encrypting wrapper to
 // the one that is passed in.
-func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) (*MultiWrapper, error) {
+func NewPooledWrapper(ctx context.Context, base wrapping.Wrapper) (*PooledWrapper, error) {
 	baseKeyId, err := base.KeyId(ctx)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) (*MultiWrapper,
 		return nil, fmt.Errorf("base wrapper cannot have a key ID of built-in base encryptor")
 	}
 
-	ret := &MultiWrapper{
+	ret := &PooledWrapper{
 		wrappers: make(map[string]wrapping.Wrapper, 3),
 	}
 	ret.wrappers[baseEncryptor] = base
@@ -46,13 +46,13 @@ func NewMultiWrapper(ctx context.Context, base wrapping.Wrapper) (*MultiWrapper,
 	return ret, nil
 }
 
-// AddWrapper adds a wrapper to the MultiWrapper. For safety, it will refuse to
+// AddWrapper adds a wrapper to the PooledWrapper. For safety, it will refuse to
 // overwrite an existing wrapper; use RemoveWrapper to remove that one first.
 // The return parameter indicates if the wrapper was successfully added, that
 // is, it will be false if an existing wrapper would have been overridden. If
-// you want to change the encrypting wrapper, create a new MultiWrapper or call
+// you want to change the encrypting wrapper, create a new PooledWrapper or call
 // SetEncryptingWrapper.
-func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
+func (m *PooledWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
 	keyId, err := w.KeyId(ctx)
 	if err != nil {
 		return false, err
@@ -69,11 +69,11 @@ func (m *MultiWrapper) AddWrapper(ctx context.Context, w wrapping.Wrapper) (bool
 	return true, nil
 }
 
-// RemoveWrapper removes a wrapper from the MultiWrapper, identified by key ID.
+// RemoveWrapper removes a wrapper from the PooledWrapper, identified by key ID.
 // It will not remove the encrypting wrapper; use SetEncryptingWrapper for
 // that. Returns whether or not a wrapper was removed, which will always be
 // true unless it was the base encryptor.
-func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyId string) (bool, error) {
+func (m *PooledWrapper) RemoveWrapper(ctx context.Context, keyId string) (bool, error) {
 	m.m.Lock()
 	defer m.m.Unlock()
 
@@ -96,7 +96,7 @@ func (m *MultiWrapper) RemoveWrapper(ctx context.Context, keyId string) (bool, e
 // will also add the previous encrypting wrapper to the set of decrypting
 // wrappers; it can then be removed via its key ID and RemoveWrapper if desired.
 // It will return false (not successful) if the given key ID is already in use.
-func (m *MultiWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
+func (m *PooledWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrapper) (bool, error) {
 	keyId, err := w.KeyId(ctx)
 	if err != nil {
 		return false, err
@@ -117,14 +117,14 @@ func (m *MultiWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wrap
 
 // WrapperForKeyId returns the wrapper for the given keyID. Returns nil if no
 // wrapper was found for the given key ID.
-func (m *MultiWrapper) WrapperForKeyId(keyID string) wrapping.Wrapper {
+func (m *PooledWrapper) WrapperForKeyId(keyID string) wrapping.Wrapper {
 	m.m.RLock()
 	defer m.m.RUnlock()
 
 	return m.wrappers[keyID]
 }
 
-func (m *MultiWrapper) encryptor() wrapping.Wrapper {
+func (m *PooledWrapper) encryptor() wrapping.Wrapper {
 	m.m.RLock()
 	defer m.m.RUnlock()
 
@@ -135,23 +135,23 @@ func (m *MultiWrapper) encryptor() wrapping.Wrapper {
 	return wrapper
 }
 
-func (m *MultiWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
-	return wrapping.WrapperTypeMultiWrapper, nil
+func (m *PooledWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypePooledWrapper, nil
 }
 
 // KeyId returns the KeyId of the current encryptor
-func (m *MultiWrapper) KeyId(ctx context.Context) (string, error) {
+func (m *PooledWrapper) KeyId(ctx context.Context) (string, error) {
 	return m.encryptor().KeyId(ctx)
 }
 
 // SetConfig sets config, but there is currently nothing to set on
-// multiwrappers; set configuration on the chosen underlying wrappers instead.
-func (m *MultiWrapper) SetConfig(_ context.Context, _ ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+// pooleed wrappers; set configuration on the chosen underlying wrappers instead.
+func (m *PooledWrapper) SetConfig(_ context.Context, _ ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	return nil, nil
 }
 
 // HmacKeyId returns the HmacKeyId of the current encryptor
-func (m *MultiWrapper) HmacKeyId(ctx context.Context) (string, error) {
+func (m *PooledWrapper) HmacKeyId(ctx context.Context) (string, error) {
 	if hmacWrapper, ok := m.encryptor().(wrapping.HmacComputer); ok {
 		return hmacWrapper.HmacKeyId(ctx)
 	}
@@ -160,18 +160,18 @@ func (m *MultiWrapper) HmacKeyId(ctx context.Context) (string, error) {
 
 // This does nothing; it's up to the user to initialize and finalize any given
 // wrapper
-func (m *MultiWrapper) Init(context.Context) error {
+func (m *PooledWrapper) Init(context.Context) error {
 	return nil
 }
 
 // This does nothing; it's up to the user to initialize and finalize any given
 // wrapper
-func (m *MultiWrapper) Finalize(context.Context) error {
+func (m *PooledWrapper) Finalize(context.Context) error {
 	return nil
 }
 
 // Encrypt encrypts using the current encryptor
-func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
+func (m *PooledWrapper) Encrypt(ctx context.Context, pt []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	return m.encryptor().Encrypt(ctx, pt, opt...)
 }
 
@@ -179,7 +179,7 @@ func (m *MultiWrapper) Encrypt(ctx context.Context, pt []byte, opt ...wrapping.O
 // which wrapper to use for decryption. If there is no key info it will attempt
 // decryption with the current encryptor. It will return an ErrKeyNotFound if
 // it cannot find a suitable key.
-func (m *MultiWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
+func (m *PooledWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if ct.KeyInfo == nil {
 		enc := m.encryptor()
 		return enc.Decrypt(ctx, ct, opt...)
