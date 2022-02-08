@@ -108,6 +108,24 @@ func (m *MultiWrapper) WrapperForKeyID(keyID string) wrapping.Wrapper {
 	return m.wrappers[keyID]
 }
 
+// WrapperKeyIDs returns the key IDs for all the wrappers.
+// Returns nil there are no wrappers in the MultiWrapper.
+func (m *MultiWrapper) WrapperKeyIDs() []string {
+	m.m.RLock()
+	defer m.m.RUnlock()
+	keys := make([]string, 0, len(m.wrappers))
+	for k := range m.wrappers {
+		if k == baseEncryptor {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+	return keys
+}
+
 func (m *MultiWrapper) encryptor() wrapping.Wrapper {
 	m.m.RLock()
 	defer m.m.RUnlock()
