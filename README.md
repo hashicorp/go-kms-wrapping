@@ -98,13 +98,13 @@ Following is an example usage of the AWS KMS provider.
 ctx := context.Background()
 
 wrapper := awskms.NewWrapper(nil)
-_, err := wrapper.SetConfig(&map[string]string{
-    "kms_key_id": "1234abcd-12ab-34cd-56ef-1234567890ab"
+_, err := wrapper.SetConfig(map[string]string{
+    "kms_key_id": "1234abcd-12ab-34cd-56ef-1234567890ab",
 })
 if err != nil {
     return err
 }
-blobInfo, err := wrapper.Encrypt(ctx, []byte{"foo"}, nil)
+blobInfo, err := wrapper.Encrypt(ctx, []byte("foo"), nil)
 if err != nil {
     return err
 }

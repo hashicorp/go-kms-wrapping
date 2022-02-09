@@ -49,7 +49,7 @@ func TestAWSKMSWrapper_Lifecycle(t *testing.T) {
 // per key.
 //
 // To run this test, the following env variables need to be set:
-//   - AWSKMS_WRAPPING_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID
+//   - AWSKMS_WRAPPER_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID
 //   - AWS_REGION
 //   - AWS_ACCESS_KEY_ID
 //   - AWS_SECRET_ACCESS_KEY
