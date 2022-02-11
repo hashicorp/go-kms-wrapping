@@ -22,17 +22,16 @@ require (
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162
 	github.com/yandex-cloud/go-genproto v0.0.0-20200722140432-762fe965ce77
 	github.com/yandex-cloud/go-sdk v0.0.0-20200722140627-2194e5077f13
-	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
-	golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d
-	google.golang.org/api v0.65.0
-	google.golang.org/genproto v0.0.0-20220114231437-d2e6a121cae0
-	google.golang.org/grpc v1.43.0
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	google.golang.org/api v0.68.0
+	google.golang.org/genproto v0.0.0-20220208230804-65c12eb4c068
+	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 )
 
 require (
 	cloud.google.com/go v0.100.2 // indirect
-	cloud.google.com/go/compute v0.1.0 // indirect
+	cloud.google.com/go/compute v1.2.0 // indirect
 	cloud.google.com/go/iam v0.1.0 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.8.2 // indirect
 	github.com/Azure/go-autorest/autorest/azure/cli v0.3.1 // indirect
@@ -51,7 +50,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -86,9 +85,10 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/sys v0.0.0-20220204135822-1c1b9b1eba6a // indirect
+	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/ini.v1 v1.42.0 // indirect

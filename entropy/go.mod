@@ -1,3 +1,3 @@
-module github.com/hashicorp/go-kms-wrapping/entropy
+module github.com/hashicorp/go-kms-wrapping/entropy/v2
 
-go 1.13
+go 1.17
