@@ -5,19 +5,18 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"hash"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-uuid"
 	"golang.org/x/crypto/hkdf"
 )
 
 // Wrapper implements the wrapping.Wrapper interface for AEAD
 type Wrapper struct {
-	keyID    string
+	keyId    string
 	keyBytes []byte
 	aead     cipher.AEAD
 }
@@ -28,63 +27,75 @@ type ShamirWrapper struct {
 	*Wrapper
 }
 
-type DerivedWrapperOptions struct {
-	// KeyID is the key ID to set on the derived wrapper
-	KeyID string
+// Ensure that we are implementing Wrapper
+var (
+	_ wrapping.Wrapper = (*Wrapper)(nil)
+	_ wrapping.Wrapper = (*ShamirWrapper)(nil)
+)
 
-	// AEADType is the type of AEAD to use in the sub-wrapper. An empty value
-	// defaults to "aes-gcm".
-	AEADType string
-
-	// Hash is the type of hash function to use with HKDF. Defaults to
-	// sha256.New.
-	Hash func() hash.Hash
-
-	// Salt is the salt value to use, can be (but shouldn't be) nil
-	Salt []byte
-
-	// Info is the info value to use, can be (but shouldn't be) nil
-	Info []byte
-}
-
-// Ensure that we are implementing AutoSealAccess
-var _ wrapping.Wrapper = (*Wrapper)(nil)
-var _ wrapping.Wrapper = (*ShamirWrapper)(nil)
-
-// NewWrapper creates a new Wrapper with the provided logger
-func NewWrapper(_ *wrapping.WrapperOptions) *Wrapper {
+// NewWrapper creates a new Wrapper. No options are supported.
+func NewWrapper() *Wrapper {
 	seal := new(Wrapper)
 	return seal
 }
 
-func NewShamirWrapper(opts *wrapping.WrapperOptions) *ShamirWrapper {
+// Deprecated: NewShamirWrapper returns a type of "shamir" instead of "aead" and
+// is for backwards compatibility with old versions of Vault. Do not use in new
+// code.
+func NewShamirWrapper() *ShamirWrapper {
 	return &ShamirWrapper{
-		Wrapper: NewWrapper(opts),
+		Wrapper: NewWrapper(),
 	}
 }
 
 // NewDerivedWrapper returns an aead.Wrapper whose key is set to an hkdf-based
 // derivation from the original wrapper
-func (s *Wrapper) NewDerivedWrapper(opts *DerivedWrapperOptions) (*Wrapper, error) {
-	if opts == nil {
-		opts = new(DerivedWrapperOptions)
-	}
+//
+// Supported options:
+//
+// * wrapping.WithKeyId: The key ID, if any, to set on the derived wrapper
+//
+// * wrapping.WithWrapperOptions: A struct containing the following:
+//
+// ** "aead_type": The type of AEAD to use as a string, defaults to
+// wrapping.AeadTypeAesGcm.String()
+//
+// ** "hash": The type of hash function to use for derivation as a string,
+// defaults to wrapping.HashTypeSha256.String()
+//
+// ** "info": The info value, if any, to use in the derivation, as a
+// base64-encoded byte slice
+//
+// ** "salt": The salt value, if any, to use in the derivation, as a
+// base64-encoded byte slice
+//
+// The values in WithWrapperOptions can also be set via the package's native
+// With* functions.
+func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 	if len(s.keyBytes) == 0 {
-		return nil, errors.New("cannot create a sub-wrapper when key byte are not set")
+		return nil, errors.New("cannot create a sub-wrapper when key bytes are not set")
 	}
 
-	h := opts.Hash
-	if h == nil {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
+	var h func() hash.Hash
+	switch opts.WithHashType {
+	case wrapping.HashTypeSha256:
 		h = sha256.New
+	default:
+		return nil, fmt.Errorf("not a supported hash type: %d", opts.WithHashType)
 	}
 
 	ret := &Wrapper{
-		keyID: opts.KeyID,
+		keyId: opts.WithKeyId,
 	}
-	reader := hkdf.New(h, s.keyBytes, opts.Salt, opts.Info)
+	reader := hkdf.New(h, s.keyBytes, opts.WithSalt, opts.WithInfo)
 
-	switch opts.AEADType {
-	case "", "aes-gcm":
+	switch opts.WithAeadType {
+	case wrapping.AeadTypeAesGcm:
 		ret.keyBytes = make([]byte, len(s.keyBytes))
 		n, err := reader.Read(ret.keyBytes)
 		if err != nil {
@@ -93,63 +104,73 @@ func (s *Wrapper) NewDerivedWrapper(opts *DerivedWrapperOptions) (*Wrapper, erro
 		if n != len(s.keyBytes) {
 			return nil, fmt.Errorf("expected to read %d bytes, but read %d bytes from derived reader", len(s.keyBytes), n)
 		}
-		if err := ret.SetAESGCMKeyBytes(ret.keyBytes); err != nil {
+		if err := ret.SetAesGcmKeyBytes(ret.keyBytes); err != nil {
 			return nil, fmt.Errorf("error setting derived AES GCM key: %w", err)
 		}
 
 	default:
-		return nil, fmt.Errorf("not a supported aead type: %q", opts.AEADType)
+		return nil, fmt.Errorf("not a supported aead type: %d", opts.WithAeadType)
 	}
 
 	return ret, nil
 }
 
-// SetConfig sets the fields on the Wrapper object based on
-// values from the config parameter.
-func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
+// SetConfig sets the fields on the Wrapper object
+//
+// Supported options:
+//
+// * wrapping.WithKeyId: The key ID, if any, to set on the wrapper
+//
+// * wrapping.WithWrapperOptions: A struct containing the following:
+//
+// ** "aead_type": The type of AEAD to use, defaults to wrapping.AeadTypeAesGcm
+//
+// ** "key": A base-64 encoded string value containing the key to use
+//
+// The values in WithWrapperOptions can also be set via the package's native
+// With* functions.
+func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
 	}
 
-	s.keyID = config["key_id"]
+	s.keyId = opts.WithKeyId
 
-	key := config["key"]
-	if key == "" {
+	if len(opts.WithKey) == 0 {
 		return nil, nil
 	}
 
-	aeadType := config["aead_type"]
-	switch aeadType {
-	case "aes-gcm":
-		keyRaw, err := base64.StdEncoding.DecodeString(key)
-		if err != nil {
-			return nil, fmt.Errorf("error base64-decoding key: %w", err)
-		}
-		if err := s.SetAESGCMKeyBytes(keyRaw); err != nil {
+	switch opts.WithAeadType {
+	case wrapping.AeadTypeAesGcm:
+		if err := s.SetAesGcmKeyBytes(opts.WithKey); err != nil {
 			return nil, fmt.Errorf("error setting AES GCM key: %w", err)
 		}
 
 	default:
-		return nil, fmt.Errorf("unknown aead_type %q", aeadType)
+		return nil, fmt.Errorf("unsupported aead_type %q", opts.WithAeadType.String())
 	}
 
 	// Map that holds non-sensitive configuration info
-	wrappingInfo := make(map[string]string)
-	wrappingInfo["aead_type"] = config["aead_type"]
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["aead_type"] = opts.WithAeadType.String()
 
-	return wrappingInfo, nil
+	return wrapConfig, nil
 }
 
+// GetKeyBytes returns the current key bytes
 func (s *Wrapper) GetKeyBytes() []byte {
 	return s.keyBytes
 }
 
-func (s *Wrapper) SetAEAD(aead cipher.AEAD) {
+// SetAead allows directly setting an AEAD to use
+func (s *Wrapper) SetAead(aead cipher.AEAD) {
 	s.aead = aead
 }
 
-// SetAESGCMKeyBytes takes in a byte slice and constucts an AES-GCM AEAD from it
-func (s *Wrapper) SetAESGCMKeyBytes(key []byte) error {
+// SetAesGcmKeyBytes takes in a byte slice and constucts an AES-GCM AEAD from it
+func (s *Wrapper) SetAesGcmKeyBytes(key []byte) error {
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return err
@@ -165,38 +186,27 @@ func (s *Wrapper) SetAESGCMKeyBytes(key []byte) error {
 	return nil
 }
 
-// Init is a no-op at the moment
-func (s *Wrapper) Init(_ context.Context) error {
-	return nil
-}
-
-// Finalize is called during shutdown. This is a no-op since
-// Wrapper doesn't require any cleanup.
-func (s *Wrapper) Finalize(_ context.Context) error {
-	return nil
-}
-
 // Type returns the seal type for this particular Wrapper implementation
-func (s *Wrapper) Type() string {
-	return wrapping.AEAD
+func (s *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeAead, nil
 }
 
-func (s *ShamirWrapper) Type() string {
-	return wrapping.Shamir
+func (s *ShamirWrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeShamir, nil
 }
 
-// KeyID returns the last known key id
-func (s *Wrapper) KeyID() string {
-	return s.keyID
+// KeyId returns the last known key id
+func (s *Wrapper) KeyId(_ context.Context) (string, error) {
+	return s.keyId, nil
 }
 
-// HMACKeyID returns the last known HMAC key id
-func (s *Wrapper) HMACKeyID() string {
-	return ""
-}
-
-// Encrypt is used to encrypt the plaintext using the aead held by the seal.
-func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (*wrapping.EncryptedBlobInfo, error) {
+// Encrypt is used to encrypt the plaintext using the AEAD held by the wrapper
+//
+// Supported options:
+//
+// * wrapping.WithAad: Additional authenticated data that should be sourced from
+// a separate location, and must also be provided during decryption
+func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -205,22 +215,33 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (*wrapping.E
 		return nil, errors.New("aead is not configured in the seal")
 	}
 
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
 	iv, err := uuid.GenerateRandomBytes(12)
 	if err != nil {
 		return nil, err
 	}
 
-	ciphertext := s.aead.Seal(nil, iv, plaintext, aad)
+	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
 
-	return &wrapping.EncryptedBlobInfo{
+	return &wrapping.BlobInfo{
 		Ciphertext: append(iv, ciphertext...),
 		KeyInfo: &wrapping.KeyInfo{
-			KeyID: s.keyID,
+			KeyId: s.keyId,
 		},
 	}, nil
 }
 
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) ([]byte, error) {
+// Decrypt is used to decrypt the ciphertext using the AEAD held by the wrapper
+//
+// Supported options:
+//
+// * wrapping.WithAad: Additional authenticated data that should be sourced from
+// a separate location, and must match what was provided during encryption
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
@@ -229,9 +250,14 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 		return nil, errors.New("aead is not configured in the seal")
 	}
 
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
 	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
 
-	plaintext, err := s.aead.Open(nil, iv, ciphertext, aad)
+	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
 	if err != nil {
 		return nil, err
 	}
