@@ -11,6 +11,8 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestAeadPluginWrapper(t *testing.T) {
@@ -58,7 +60,7 @@ func TestAeadPluginWrapper(t *testing.T) {
 	require.Equal("foobar", string(decVal))
 }
 
-func TestInterfaces(t *testing.T) {
+func TestInterfaceWrapper(t *testing.T) {
 	require, assert := require.New(t), assert.New(t)
 	ctx := context.Background()
 
@@ -69,10 +71,45 @@ func TestInterfaces(t *testing.T) {
 
 	var ok bool
 
-	// First get a normal wrapper and ensure it doesn't satisfy InitFinalizer
 	wrapper, wrapperCleanup := TestPlugin(t, filepath.Join(pluginPath, "wrapperplugin"))
 	if wrapperCleanup != nil {
-		defer wrapperCleanup()
+		t.Cleanup(wrapperCleanup)
+	}
+	keyId, err := wrapper.KeyId(ctx)
+	assert.NoError(err)
+	assert.Equal(keyId, "static-key")
+
+	ifWrapper, ok := wrapper.(wrapping.InitFinalizer)
+	require.True(ok)
+	err = ifWrapper.Init(ctx)
+	require.Error(err)
+	assert.Equal(codes.Unimplemented, status.Code(err))
+	err = ifWrapper.Finalize(ctx)
+	require.Error(err)
+	assert.Equal(codes.Unimplemented, status.Code(err))
+
+	hmacWrapper, ok := wrapper.(wrapping.HmacComputer)
+	require.True(ok)
+	keyId, err = hmacWrapper.HmacKeyId(ctx)
+	require.Error(err)
+	assert.Empty(keyId)
+	assert.Equal(codes.Unimplemented, status.Code(err))
+}
+
+func TestInterfaceAll(t *testing.T) {
+	require, assert := require.New(t), assert.New(t)
+	ctx := context.Background()
+
+	pluginPath := os.Getenv("PLUGIN_PATH")
+	if pluginPath == "" {
+		t.Skipf("skipping plugin test as no PLUGIN_PATH specified")
+	}
+
+	var ok bool
+	// Now get one that does and validate it
+	wrapper, wrapperCleanup := TestPlugin(t, filepath.Join(pluginPath, "initfinalizerhmaccomputerplugin"))
+	if wrapperCleanup != nil {
+		t.Cleanup(wrapperCleanup)
 	}
 	keyId, err := wrapper.KeyId(ctx)
 	assert.NoError(err)
