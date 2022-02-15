@@ -78,33 +78,9 @@ func NewWrapperClient(pluginPath string, opt ...Option) (*gp.Client, error) {
 
 func (w *wrapper) GRPCServer(broker *gp.GRPCBroker, s *grpc.Server) error {
 	RegisterWrappingServer(s, &wrapServer{impl: w.impl})
-	if initFinalizer, ok := w.impl.(wrapping.InitFinalizer); ok {
-		RegisterInitFinalizeServer(s, &initFinalizeServer{impl: initFinalizer})
-	}
-	if hmacComputer, ok := w.impl.(wrapping.HmacComputer); ok {
-		RegisterHmacComputerServer(s, &hmacComputerServer{impl: hmacComputer})
-	}
 	return nil
 }
 
 func (w *wrapper) GRPCClient(ctx context.Context, broker *gp.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	wrap := &wrapClient{impl: NewWrappingClient(c)}
-	switch {
-	case w.hmacComputer && w.initFinalizer:
-		ifc := &wrapInitFinalizerClient{
-			wrapClient: wrap,
-			impl:       NewInitFinalizeClient(c),
-		}
-		return &wrapInitFinalizerHmacComputerClient{
-			wrapInitFinalizerClient: ifc,
-			impl:                    NewHmacComputerClient(c),
-		}, nil
-	case w.initFinalizer:
-		return &wrapInitFinalizerClient{
-			wrapClient: wrap,
-			impl:       NewInitFinalizeClient(c),
-		}, nil
-	default:
-		return wrap, nil
-	}
+	return &wrapClient{impl: NewWrappingClient(c)}, nil
 }

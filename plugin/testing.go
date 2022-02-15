@@ -27,9 +27,6 @@ func TestPlugin(
 	t.Helper()
 	require := require.New(t)
 
-	opts, err := getOpts(opt...)
-	require.NoError(err)
-
 	require.NotEmpty(pluginLoc, "plugin location cannot be empty")
 
 	tmpDir, err := ioutil.TempDir("", "*")
@@ -65,14 +62,10 @@ func TestPlugin(
 	var ok bool
 	pluginWrapper, ok = raw.(wrapping.Wrapper)
 	require.True(ok)
-	if opts.withInitFinalizerInterface {
-		_, ok := raw.(wrapping.InitFinalizer)
-		require.True(ok)
-	}
-	if opts.withHmacComputerInterface {
-		_, ok := raw.(wrapping.HmacComputer)
-		require.True(ok)
-	}
+	_, ok = raw.(wrapping.InitFinalizer)
+	require.True(ok)
+	_, ok = raw.(wrapping.HmacComputer)
+	require.True(ok)
 	require.NotNil(pluginWrapper)
 
 	return

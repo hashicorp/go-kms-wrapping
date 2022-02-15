@@ -77,43 +77,13 @@ func TestInterfaces(t *testing.T) {
 	keyId, err := wrapper.KeyId(ctx)
 	assert.NoError(err)
 	assert.Equal(keyId, "static-key")
-	_, ok = wrapper.(wrapping.InitFinalizer)
-	assert.False(ok)
-	_, ok = wrapper.(wrapping.HmacComputer)
-	assert.False(ok)
 
-	// Now get a wrapper satisfying InitFinalizer and ensure it does
-	initFinalizer, initFinalizerCleanup := TestPlugin(t, filepath.Join(pluginPath, "initfinalizerplugin"), WithInitFinalizerInterface(true))
-	if initFinalizerCleanup != nil {
-		defer initFinalizerCleanup()
-	}
-	keyId, err = initFinalizer.KeyId(ctx)
-	assert.NoError(err)
-	assert.Equal(keyId, "static-key")
-
-	ifWrapper, ok := initFinalizer.(wrapping.InitFinalizer)
+	ifWrapper, ok := wrapper.(wrapping.InitFinalizer)
 	require.True(ok)
 	require.NoError(ifWrapper.Init(ctx))
 	require.NoError(ifWrapper.Finalize(ctx))
 
-	_, ok = initFinalizer.(wrapping.HmacComputer)
-	assert.False(ok)
-
-	// Now get a wrapper satisfying InitFinalizer and HmacComputer and ensure it does
-	hmacComputer, hmacComputerCleanup := TestPlugin(t, filepath.Join(pluginPath, "initfinalizerhmaccomputerplugin"), WithInitFinalizerInterface(true), WithHmacComputerInterface(true))
-	if hmacComputerCleanup != nil {
-		defer hmacComputerCleanup()
-	}
-	keyId, err = hmacComputer.KeyId(ctx)
-	require.NoError(err)
-	assert.Equal(keyId, "static-key")
-
-	ifWrapper, ok = hmacComputer.(wrapping.InitFinalizer)
-	require.True(ok)
-	require.NoError(ifWrapper.Init(ctx))
-	require.NoError(ifWrapper.Finalize(ctx))
-
-	hmacWrapper, ok := hmacComputer.(wrapping.HmacComputer)
+	hmacWrapper, ok := wrapper.(wrapping.HmacComputer)
 	require.True(ok)
 	keyId, err = hmacWrapper.HmacKeyId(ctx)
 	require.NoError(err)
