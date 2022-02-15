@@ -4,6 +4,8 @@ import (
 	context "context"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 type wrapServer struct {
@@ -77,4 +79,47 @@ func (ws *wrapServer) Decrypt(ctx context.Context, req *DecryptRequest) (*Decryp
 		return nil, err
 	}
 	return &DecryptResponse{Plaintext: pt}, nil
+}
+
+func (ws *wrapServer) Init(ctx context.Context, req *InitRequest) (*InitResponse, error) {
+	initFinalizer, ok := ws.impl.(wrapping.InitFinalizer)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "this wrapper does not implement InitFinalizer")
+	}
+	opts := req.Options
+	if opts == nil {
+		opts = new(wrapping.Options)
+	}
+	if err := initFinalizer.Init(
+		ctx,
+		wrapping.WithWrapperOptions(opts.WithWrapperOptions),
+	); err != nil {
+		return nil, err
+	}
+	return &InitResponse{}, nil
+}
+
+func (ws *wrapServer) Finalize(ctx context.Context, req *FinalizeRequest) (*FinalizeResponse, error) {
+	initFinalizer, ok := ws.impl.(wrapping.InitFinalizer)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "this wrapper does not implement InitFinalizer")
+	}
+	if err := initFinalizer.Finalize(
+		ctx,
+	); err != nil {
+		return nil, err
+	}
+	return &FinalizeResponse{}, nil
+}
+
+func (ws *wrapServer) HmacKeyId(ctx context.Context, req *HmacKeyIdRequest) (*HmacKeyIdResponse, error) {
+	hmacComputer, ok := ws.impl.(wrapping.HmacComputer)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "this wrapper does not implement HmacComputer")
+	}
+	hmacKeyId, err := hmacComputer.HmacKeyId(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &HmacKeyIdResponse{KeyId: hmacKeyId}, nil
 }
