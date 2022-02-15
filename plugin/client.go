@@ -8,9 +8,8 @@ import (
 
 var (
 	_ wrapping.Wrapper       = (*wrapClient)(nil)
-	_ wrapping.InitFinalizer = (*wrapInitFinalizerClient)(nil)
-	_ wrapping.InitFinalizer = (*wrapInitFinalizerHmacComputerClient)(nil)
-	_ wrapping.HmacComputer  = (*wrapInitFinalizerHmacComputerClient)(nil)
+	_ wrapping.InitFinalizer = (*wrapClient)(nil)
+	_ wrapping.HmacComputer  = (*wrapClient)(nil)
 )
 
 type wrapClient struct {
@@ -77,12 +76,7 @@ func (wc *wrapClient) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, option
 	return resp.Plaintext, nil
 }
 
-type wrapInitFinalizerClient struct {
-	*wrapClient
-	impl InitFinalizeClient
-}
-
-func (ifc *wrapInitFinalizerClient) Init(ctx context.Context, options ...wrapping.Option) error {
+func (ifc *wrapClient) Init(ctx context.Context, options ...wrapping.Option) error {
 	opts, err := wrapping.GetOpts(options...)
 	if err != nil {
 		return err
@@ -93,7 +87,7 @@ func (ifc *wrapInitFinalizerClient) Init(ctx context.Context, options ...wrappin
 	return err
 }
 
-func (ifc *wrapInitFinalizerClient) Finalize(ctx context.Context, options ...wrapping.Option) error {
+func (ifc *wrapClient) Finalize(ctx context.Context, options ...wrapping.Option) error {
 	opts, err := wrapping.GetOpts(options...)
 	if err != nil {
 		return err
@@ -104,12 +98,7 @@ func (ifc *wrapInitFinalizerClient) Finalize(ctx context.Context, options ...wra
 	return err
 }
 
-type wrapInitFinalizerHmacComputerClient struct {
-	*wrapInitFinalizerClient
-	impl HmacComputerClient
-}
-
-func (wc *wrapInitFinalizerHmacComputerClient) HmacKeyId(ctx context.Context) (string, error) {
+func (wc *wrapClient) HmacKeyId(ctx context.Context) (string, error) {
 	resp, err := wc.impl.HmacKeyId(ctx, new(HmacKeyIdRequest))
 	if err != nil {
 		return "", err

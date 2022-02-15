@@ -18,6 +18,13 @@ var HandshakeConfig = gp.HandshakeConfig{
 	MagicCookieValue: "wrapper",
 }
 
+// wrapper embeds Plugin and is used as the top-level
+type wrapper struct {
+	gp.Plugin
+
+	impl wrapping.Wrapper
+}
+
 // ServePlugin is a generic function to start serving a wrapper as a plugin
 func ServePlugin(wrapper wrapping.Wrapper, opt ...Option) error {
 	opts, err := getOpts(opt...)
@@ -39,19 +46,11 @@ func ServePlugin(wrapper wrapping.Wrapper, opt ...Option) error {
 	return nil
 }
 
-// wrapper embeds Plugin and is used as the top-level
-type wrapper struct {
-	gp.Plugin
-
-	impl          wrapping.Wrapper
-	initFinalizer bool
-	hmacComputer  bool
-}
-
 func NewWrapperServer(impl wrapping.Wrapper) (*wrapper, error) {
 	if impl == nil {
 		return nil, fmt.Errorf("empty underlying wrapper passed in")
 	}
+
 	return &wrapper{
 		impl: impl,
 	}, nil
@@ -62,15 +61,11 @@ func NewWrapperClient(pluginPath string, opt ...Option) (*gp.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	wrapPlugin := &wrapper{
-		initFinalizer: opts.withInitFinalizerInterface,
-		hmacComputer:  opts.withHmacComputerInterface,
-	}
 
 	return gp.NewClient(&gp.ClientConfig{
 		HandshakeConfig: HandshakeConfig,
 		VersionedPlugins: map[int]gp.PluginSet{
-			1: {"wrapping": wrapPlugin},
+			1: {"wrapping": &wrapper{}},
 		},
 		Cmd: exec.Command(pluginPath),
 		AllowedProtocols: []gp.Protocol{

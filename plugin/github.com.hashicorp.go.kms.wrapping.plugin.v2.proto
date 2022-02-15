@@ -50,32 +50,27 @@ service Wrapping {
 	rpc SetConfig(SetConfigRequest) returns (SetConfigResponse);
 	rpc Encrypt(EncryptRequest) returns (EncryptResponse);
 	rpc Decrypt(DecryptRequest) returns (DecryptResponse);
+	
+	// Init & finalize functions
+	rpc Init(InitRequest) returns (InitResponse);
+	rpc Finalize(FinalizeRequest) returns (FinalizeResponse);
+
+	// HMAC related functions
+	rpc HmacKeyId(HmacKeyIdRequest) returns (HmacKeyIdResponse);
 }
 
 message InitRequest {
 	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
-
 message InitResponse {};
 
 message FinalizeRequest {
 	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
 }
-
 message FinalizeResponse {};
-
-service InitFinalize {
-	rpc Init(InitRequest) returns (InitResponse);
-	rpc Finalize(FinalizeRequest) returns (FinalizeResponse);
-}
 
 message HmacKeyIdRequest {
 }
-
 message HmacKeyIdResponse {
 	string key_id = 10 [json_name="key_id"];
-}
-
-service HmacComputer {
-	rpc HmacKeyId(HmacKeyIdRequest) returns (HmacKeyIdResponse);
 }

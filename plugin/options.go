@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 // getOpts iterates the inbound Options and returns a struct
@@ -25,9 +26,9 @@ func getOpts(opt ...Option) (*options, error) {
 }
 
 type options struct {
-	withLogger                 hclog.Logger
-	withInitFinalizerInterface bool
-	withHmacComputerInterface  bool
+	withLogger        hclog.Logger
+	withInitFinalizer wrapping.InitFinalizer
+	withHmacComputer  wrapping.HmacComputer
 }
 
 // Option - a type that wraps an interface for compile-time safety but can
@@ -46,29 +47,29 @@ func getDefaultOptions() *options {
 
 // WithInitFinalizerInterface controls whether the client should expose
 // wrapping.InitFinalizer
-func WithInitFinalizerInterface(initFinalizer bool) Option {
+func WithInitFinalizerInterface(with wrapping.InitFinalizer) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) {
-			o.withInitFinalizerInterface = initFinalizer
+			o.withInitFinalizer = with
 		})
 	}
 }
 
 // WithHmacComputerInterface controls whether the client should expose
 // wrapping.HmacComputer
-func WithHmacComputerInterface(hmacComputer bool) Option {
+func WithHmacComputerInterface(with wrapping.HmacComputer) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) {
-			o.withHmacComputerInterface = hmacComputer
+			o.withHmacComputer = with
 		})
 	}
 }
 
 // WithLogger allows passing a logger to the plugin library for debugging
-func WithLogger(logger hclog.Logger) Option {
+func WithLogger(with hclog.Logger) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) {
-			o.withLogger = logger
+			o.withLogger = with
 		})
 	}
 }

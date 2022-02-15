@@ -23,6 +23,11 @@ type WrappingClient interface {
 	SetConfig(ctx context.Context, in *SetConfigRequest, opts ...grpc.CallOption) (*SetConfigResponse, error)
 	Encrypt(ctx context.Context, in *EncryptRequest, opts ...grpc.CallOption) (*EncryptResponse, error)
 	Decrypt(ctx context.Context, in *DecryptRequest, opts ...grpc.CallOption) (*DecryptResponse, error)
+	// Init & finalize functions
+	Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error)
+	Finalize(ctx context.Context, in *FinalizeRequest, opts ...grpc.CallOption) (*FinalizeResponse, error)
+	// HMAC related functions
+	HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error)
 }
 
 type wrappingClient struct {
@@ -78,6 +83,33 @@ func (c *wrappingClient) Decrypt(ctx context.Context, in *DecryptRequest, opts .
 	return out, nil
 }
 
+func (c *wrappingClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error) {
+	out := new(InitResponse)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Init", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wrappingClient) Finalize(ctx context.Context, in *FinalizeRequest, opts ...grpc.CallOption) (*FinalizeResponse, error) {
+	out := new(FinalizeResponse)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Finalize", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *wrappingClient) HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error) {
+	out := new(HmacKeyIdResponse)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/HmacKeyId", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WrappingServer is the server API for Wrapping service.
 // All implementations must embed UnimplementedWrappingServer
 // for forward compatibility
@@ -87,6 +119,11 @@ type WrappingServer interface {
 	SetConfig(context.Context, *SetConfigRequest) (*SetConfigResponse, error)
 	Encrypt(context.Context, *EncryptRequest) (*EncryptResponse, error)
 	Decrypt(context.Context, *DecryptRequest) (*DecryptResponse, error)
+	// Init & finalize functions
+	Init(context.Context, *InitRequest) (*InitResponse, error)
+	Finalize(context.Context, *FinalizeRequest) (*FinalizeResponse, error)
+	// HMAC related functions
+	HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error)
 	mustEmbedUnimplementedWrappingServer()
 }
 
@@ -108,6 +145,15 @@ func (UnimplementedWrappingServer) Encrypt(context.Context, *EncryptRequest) (*E
 }
 func (UnimplementedWrappingServer) Decrypt(context.Context, *DecryptRequest) (*DecryptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Decrypt not implemented")
+}
+func (UnimplementedWrappingServer) Init(context.Context, *InitRequest) (*InitResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
+}
+func (UnimplementedWrappingServer) Finalize(context.Context, *FinalizeRequest) (*FinalizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Finalize not implemented")
+}
+func (UnimplementedWrappingServer) HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HmacKeyId not implemented")
 }
 func (UnimplementedWrappingServer) mustEmbedUnimplementedWrappingServer() {}
 
@@ -212,6 +258,60 @@ func _Wrapping_Decrypt_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Wrapping_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WrappingServer).Init(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Init",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WrappingServer).Init(ctx, req.(*InitRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Wrapping_Finalize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinalizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WrappingServer).Finalize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Finalize",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WrappingServer).Finalize(ctx, req.(*FinalizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Wrapping_HmacKeyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HmacKeyIdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WrappingServer).HmacKeyId(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/HmacKeyId",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WrappingServer).HmacKeyId(ctx, req.(*HmacKeyIdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Wrapping_ServiceDesc is the grpc.ServiceDesc for Wrapping service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -239,213 +339,17 @@ var Wrapping_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "Decrypt",
 			Handler:    _Wrapping_Decrypt_Handler,
 		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v2.proto",
-}
-
-// InitFinalizeClient is the client API for InitFinalize service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type InitFinalizeClient interface {
-	Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error)
-	Finalize(ctx context.Context, in *FinalizeRequest, opts ...grpc.CallOption) (*FinalizeResponse, error)
-}
-
-type initFinalizeClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewInitFinalizeClient(cc grpc.ClientConnInterface) InitFinalizeClient {
-	return &initFinalizeClient{cc}
-}
-
-func (c *initFinalizeClient) Init(ctx context.Context, in *InitRequest, opts ...grpc.CallOption) (*InitResponse, error) {
-	out := new(InitResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.InitFinalize/Init", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *initFinalizeClient) Finalize(ctx context.Context, in *FinalizeRequest, opts ...grpc.CallOption) (*FinalizeResponse, error) {
-	out := new(FinalizeResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.InitFinalize/Finalize", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// InitFinalizeServer is the server API for InitFinalize service.
-// All implementations must embed UnimplementedInitFinalizeServer
-// for forward compatibility
-type InitFinalizeServer interface {
-	Init(context.Context, *InitRequest) (*InitResponse, error)
-	Finalize(context.Context, *FinalizeRequest) (*FinalizeResponse, error)
-	mustEmbedUnimplementedInitFinalizeServer()
-}
-
-// UnimplementedInitFinalizeServer must be embedded to have forward compatible implementations.
-type UnimplementedInitFinalizeServer struct {
-}
-
-func (UnimplementedInitFinalizeServer) Init(context.Context, *InitRequest) (*InitResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Init not implemented")
-}
-func (UnimplementedInitFinalizeServer) Finalize(context.Context, *FinalizeRequest) (*FinalizeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Finalize not implemented")
-}
-func (UnimplementedInitFinalizeServer) mustEmbedUnimplementedInitFinalizeServer() {}
-
-// UnsafeInitFinalizeServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to InitFinalizeServer will
-// result in compilation errors.
-type UnsafeInitFinalizeServer interface {
-	mustEmbedUnimplementedInitFinalizeServer()
-}
-
-func RegisterInitFinalizeServer(s grpc.ServiceRegistrar, srv InitFinalizeServer) {
-	s.RegisterService(&InitFinalize_ServiceDesc, srv)
-}
-
-func _InitFinalize_Init_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InitRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(InitFinalizeServer).Init(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.InitFinalize/Init",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InitFinalizeServer).Init(ctx, req.(*InitRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _InitFinalize_Finalize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FinalizeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(InitFinalizeServer).Finalize(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.InitFinalize/Finalize",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InitFinalizeServer).Finalize(ctx, req.(*FinalizeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// InitFinalize_ServiceDesc is the grpc.ServiceDesc for InitFinalize service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var InitFinalize_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v2.InitFinalize",
-	HandlerType: (*InitFinalizeServer)(nil),
-	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Init",
-			Handler:    _InitFinalize_Init_Handler,
+			Handler:    _Wrapping_Init_Handler,
 		},
 		{
 			MethodName: "Finalize",
-			Handler:    _InitFinalize_Finalize_Handler,
+			Handler:    _Wrapping_Finalize_Handler,
 		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v2.proto",
-}
-
-// HmacComputerClient is the client API for HmacComputer service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type HmacComputerClient interface {
-	HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error)
-}
-
-type hmacComputerClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewHmacComputerClient(cc grpc.ClientConnInterface) HmacComputerClient {
-	return &hmacComputerClient{cc}
-}
-
-func (c *hmacComputerClient) HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error) {
-	out := new(HmacKeyIdResponse)
-	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.HmacComputer/HmacKeyId", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// HmacComputerServer is the server API for HmacComputer service.
-// All implementations must embed UnimplementedHmacComputerServer
-// for forward compatibility
-type HmacComputerServer interface {
-	HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error)
-	mustEmbedUnimplementedHmacComputerServer()
-}
-
-// UnimplementedHmacComputerServer must be embedded to have forward compatible implementations.
-type UnimplementedHmacComputerServer struct {
-}
-
-func (UnimplementedHmacComputerServer) HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HmacKeyId not implemented")
-}
-func (UnimplementedHmacComputerServer) mustEmbedUnimplementedHmacComputerServer() {}
-
-// UnsafeHmacComputerServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to HmacComputerServer will
-// result in compilation errors.
-type UnsafeHmacComputerServer interface {
-	mustEmbedUnimplementedHmacComputerServer()
-}
-
-func RegisterHmacComputerServer(s grpc.ServiceRegistrar, srv HmacComputerServer) {
-	s.RegisterService(&HmacComputer_ServiceDesc, srv)
-}
-
-func _HmacComputer_HmacKeyId_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HmacKeyIdRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(HmacComputerServer).HmacKeyId(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.HmacComputer/HmacKeyId",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HmacComputerServer).HmacKeyId(ctx, req.(*HmacKeyIdRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// HmacComputer_ServiceDesc is the grpc.ServiceDesc for HmacComputer service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var HmacComputer_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v2.HmacComputer",
-	HandlerType: (*HmacComputerServer)(nil),
-	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "HmacKeyId",
-			Handler:    _HmacComputer_HmacKeyId_Handler,
+			Handler:    _Wrapping_HmacKeyId_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
