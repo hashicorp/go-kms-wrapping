@@ -93,6 +93,12 @@ type options struct {
 	WithInfo     []byte
 	WithKey      []byte
 	WithSalt     []byte
+
+	withPrefix         string
+	withPrk            []byte
+	withEd25519        bool
+	withBase64Encoding bool
+	withBase58Encoding bool
 }
 
 func getDefaultOptions() options {
@@ -147,6 +153,58 @@ func WithSalt(salt []byte) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.WithSalt = salt
+			return nil
+		})
+	}
+}
+
+// WithPrefix allows an optional prefix to be specified for the data returned
+func WithPrefix(prefix string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withPrefix = prefix
+			return nil
+		})
+	}
+}
+
+// WithPrk allows an optional PRK (pseudorandom key) to be specified for an
+// operation.  If you're using this option with HmacSha256, you might consider
+// using HmacSha256WithPrk instead.
+func WithPrk(prk []byte) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withPrk = prk
+			return nil
+		})
+	}
+}
+
+// WithEd25519 allows an optional request to use ed25519 during the operation
+func WithEd25519() wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withEd25519 = true
+			return nil
+		})
+	}
+}
+
+// WithBase64Encoding allows an optional request to base64 encode the data returned
+func WithBase64Encoding() wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withBase64Encoding = true
+			return nil
+		})
+	}
+}
+
+// WithBase58Encoding allows an optional request to base58 encode the data returned
+func WithBase58Encoding() wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withBase58Encoding = true
 			return nil
 		})
 	}
