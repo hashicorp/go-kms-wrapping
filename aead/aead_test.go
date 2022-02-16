@@ -23,7 +23,7 @@ func TestShamirVsAEAD(t *testing.T) {
 	require.Equal(t, typ, wrapping.WrapperTypeShamir)
 }
 
-func TestWrapper(t *testing.T) {
+func Test_Wrapper(t *testing.T) {
 	root := NewWrapper()
 	encBlob := testWrapperBasic(t, root)
 	testDerivation(t, root, encBlob)

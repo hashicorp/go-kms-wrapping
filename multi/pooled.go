@@ -9,7 +9,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-const baseEncryptor = "__base__"
+const BaseEncryptor = "__base__"
 
 var _ wrapping.Wrapper = (*PooledWrapper)(nil)
 
@@ -34,14 +34,14 @@ func NewPooledWrapper(ctx context.Context, base wrapping.Wrapper) (*PooledWrappe
 	}
 
 	// For safety, no real reason this should happen
-	if baseKeyId == baseEncryptor {
+	if baseKeyId == BaseEncryptor {
 		return nil, fmt.Errorf("base wrapper cannot have a key ID of built-in base encryptor")
 	}
 
 	ret := &PooledWrapper{
 		wrappers: make(map[string]wrapping.Wrapper, 3),
 	}
-	ret.wrappers[baseEncryptor] = base
+	ret.wrappers[BaseEncryptor] = base
 	ret.wrappers[baseKeyId] = base
 	return ret, nil
 }
@@ -77,7 +77,7 @@ func (m *PooledWrapper) RemoveWrapper(ctx context.Context, keyId string) (bool, 
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	base := m.wrappers[baseEncryptor]
+	base := m.wrappers[BaseEncryptor]
 
 	baseKeyId, err := base.KeyId(ctx)
 	if err != nil {
@@ -103,14 +103,14 @@ func (m *PooledWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wra
 	}
 
 	// For safety, no real reason this should happen
-	if keyId == baseEncryptor {
+	if keyId == BaseEncryptor {
 		return false, fmt.Errorf("encrypting wrapper cannot have a key ID of built-in base encryptor")
 	}
 
 	m.m.Lock()
 	defer m.m.Unlock()
 
-	m.wrappers[baseEncryptor] = w
+	m.wrappers[BaseEncryptor] = w
 	m.wrappers[keyId] = w
 	return true, nil
 }
@@ -128,7 +128,7 @@ func (m *PooledWrapper) encryptor() wrapping.Wrapper {
 	m.m.RLock()
 	defer m.m.RUnlock()
 
-	wrapper := m.wrappers[baseEncryptor]
+	wrapper := m.wrappers[BaseEncryptor]
 	if wrapper == nil {
 		panic("no base encryptor found")
 	}
@@ -190,4 +190,16 @@ func (m *PooledWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt 
 		return nil, ErrKeyNotFound
 	}
 	return wrapper.Decrypt(ctx, ct, opt...)
+}
+
+// GetKeyBytes implements the option KeyBytes interface which will return the
+// baseEncryptor key bytes
+func (m *PooledWrapper) GetKeyBytes() ([]byte, error) {
+	raw := m.WrapperForKeyId(BaseEncryptor)
+	var ok bool
+	b, ok := raw.(wrapping.KeyBytes)
+	if !ok {
+		return nil, fmt.Errorf("wrapper does not support GetKeyBytes() interface")
+	}
+	return b.GetKeyBytes()
 }

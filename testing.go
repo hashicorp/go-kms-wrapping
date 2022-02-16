@@ -115,8 +115,11 @@ func (t *TestWrapper) SetKeyId(k string) {
 }
 
 // GetKeyBytes returns the current key bytes
-func (t *TestWrapper) GetKeyBytes() []byte {
-	return t.secret
+func (t *TestWrapper) GetKeyBytes() ([]byte, error) {
+	if t.secret == nil {
+		return nil, fmt.Errorf("missing bytes: %w", ErrInvalidParameter)
+	}
+	return t.secret, nil
 }
 
 // Encrypt allows encrypting via the test wrapper
