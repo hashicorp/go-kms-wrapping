@@ -76,19 +76,31 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 //
 // Order of precedence AWS values:
 // * Environment variable
-// * Value from Vault configuration file
+// * Passed in config map
 // * Instance metadata role (access key and secret key)
 // * Default values
 func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
+	return k.SetConfigWithEnv(config, true)
+}
+
+// SetConfigWithEnv sets the various fields on the Wrapper object, with the ability to
+// either ignore or use environment variables within the system.
+//
+// Order of precedence AWS values:
+// * Environment variable (ignored if allowEnv is false)
+// * Passed in config map
+// * Instance metadata role (access key and secret key)
+// * Default values
+func (k *Wrapper) SetConfigWithEnv(config map[string]string, allowEnv bool) (map[string]string, error) {
 	if config == nil {
 		config = map[string]string{}
 	}
 
 	// Check and set KeyID
 	switch {
-	case os.Getenv(EnvAWSKMSWrapperKeyID) != "":
+	case os.Getenv(EnvAWSKMSWrapperKeyID) != "" && allowEnv:
 		k.keyID = os.Getenv(EnvAWSKMSWrapperKeyID)
-	case os.Getenv(EnvVaultAWSKMSSealKeyID) != "":
+	case os.Getenv(EnvVaultAWSKMSSealKeyID) != "" && allowEnv:
 		k.keyID = os.Getenv(EnvVaultAWSKMSSealKeyID)
 	case config["kms_key_id"] != "":
 		k.keyID = config["kms_key_id"]
@@ -115,7 +127,9 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	k.roleSessionName = config["role_session_name"]
 	k.roleArn = config["role_arn"]
 
-	k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
+	if allowEnv {
+		k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
+	}
 	if k.endpoint == "" {
 		if endpoint, ok := config["endpoint"]; ok {
 			k.endpoint = endpoint
