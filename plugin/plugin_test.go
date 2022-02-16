@@ -4,6 +4,7 @@ import (
 	context "context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,8 +12,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func TestAeadPluginWrapper(t *testing.T) {
@@ -83,17 +82,17 @@ func TestInterfaceWrapper(t *testing.T) {
 	require.True(ok)
 	err = ifWrapper.Init(ctx)
 	require.Error(err)
-	assert.Equal(codes.Unimplemented, status.Code(err))
+	assert.True(errors.Is(err, wrapping.ErrFunctionNotImplemented))
 	err = ifWrapper.Finalize(ctx)
 	require.Error(err)
-	assert.Equal(codes.Unimplemented, status.Code(err))
+	assert.True(errors.Is(err, wrapping.ErrFunctionNotImplemented))
 
 	hmacWrapper, ok := wrapper.(wrapping.HmacComputer)
 	require.True(ok)
 	keyId, err = hmacWrapper.HmacKeyId(ctx)
 	require.Error(err)
 	assert.Empty(keyId)
-	assert.Equal(codes.Unimplemented, status.Code(err))
+	assert.True(errors.Is(err, wrapping.ErrFunctionNotImplemented))
 }
 
 func TestInterfaceAll(t *testing.T) {

@@ -4,6 +4,8 @@ import (
 	context "context"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -84,6 +86,9 @@ func (ifc *wrapClient) Init(ctx context.Context, options ...wrapping.Option) err
 	_, err = ifc.impl.Init(ctx, &InitRequest{
 		Options: opts,
 	})
+	if status.Code(err) == codes.Unimplemented {
+		return wrapping.ErrFunctionNotImplemented
+	}
 	return err
 }
 
@@ -95,12 +100,19 @@ func (ifc *wrapClient) Finalize(ctx context.Context, options ...wrapping.Option)
 	_, err = ifc.impl.Finalize(ctx, &FinalizeRequest{
 		Options: opts,
 	})
+	if status.Code(err) == codes.Unimplemented {
+		return wrapping.ErrFunctionNotImplemented
+	}
 	return err
 }
 
 func (wc *wrapClient) HmacKeyId(ctx context.Context) (string, error) {
 	resp, err := wc.impl.HmacKeyId(ctx, new(HmacKeyIdRequest))
-	if err != nil {
+	switch {
+	case err == nil:
+	case status.Code(err) == codes.Unimplemented:
+		return "", wrapping.ErrFunctionNotImplemented
+	default:
 		return "", err
 	}
 	return resp.KeyId, nil
