@@ -114,6 +114,11 @@ func (t *TestWrapper) SetKeyId(k string) {
 	t.keyId = k
 }
 
+// GetKeyBytes returns the current key bytes
+func (t *TestWrapper) GetKeyBytes() []byte {
+	return t.secret
+}
+
 // Encrypt allows encrypting via the test wrapper
 func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...Option) (*BlobInfo, error) {
 	switch t.envelope {
