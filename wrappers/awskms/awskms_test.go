@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAWSKMSWrapper(t *testing.T) {
@@ -28,6 +30,32 @@ func TestAWSKMSWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestAWSKMSWrapper_IgnoreEnv(t *testing.T) {
+	wrapper := NewAWSKMSTestWrapper()
+
+	// Setup environment values to ignore for the following values
+	for _, envVar := range []string{EnvAWSKMSWrapperKeyID, EnvVaultAWSKMSSealKeyID, "AWS_KMS_ENDPOINT"} {
+		oldVal := os.Getenv(envVar)
+		os.Setenv(envVar, "envValue")
+		defer os.Setenv(envVar, oldVal)
+	}
+
+	config := map[string]string{
+		"kms_key_id": "a-key-key",
+		"access_key": "a-access-key",
+		"secret_key": "a-secret-key",
+		"endpoint":   "my-endpoint",
+	}
+
+	_, err := wrapper.SetConfigWithEnv(config, false)
+	assert.NoError(t, err)
+
+	require.Equal(t, config["access_key"], wrapper.accessKey)
+	require.Equal(t, config["secret_key"], wrapper.secretKey)
+	require.Equal(t, config["kms_key_id"], wrapper.keyID)
+	require.Equal(t, config["endpoint"], wrapper.endpoint)
 }
 
 func TestAWSKMSWrapper_Lifecycle(t *testing.T) {
