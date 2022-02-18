@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -73,19 +74,17 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // * Passed in config map
 // * Managed Service Identity for instance
 func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	return v.SetConfigWithEnv(config, true)
-}
-
-// SetConfigWithEnv sets the various fields on the Wrapper object, with the ability to
-// either ignore or use environment variables within the system.
-//
-// Order of precedence:
-// * Environment variable (ignored if allowEnv is false)
-// * Passed in config map
-// * Managed Service Identity for instance
-func (v *Wrapper) SetConfigWithEnv(config map[string]string, allowEnv bool) (map[string]string, error) {
 	if config == nil {
 		config = map[string]string{}
+	}
+
+	allowEnv := true
+	if val, ok := config["disallow_env_vars"]; ok {
+		disallowEnvVars, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		allowEnv = !disallowEnvVars
 	}
 
 	switch {

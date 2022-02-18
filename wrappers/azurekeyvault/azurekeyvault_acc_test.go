@@ -49,15 +49,16 @@ func TestAzureKeyVault_IgnoreEnv(t *testing.T) {
 		defer os.Setenv(envVar, oldVal)
 	}
 	config := map[string]string{
-		"tenant_id":     "a-tenant-id",
-		"client_id":     "a-client-id",
-		"client_secret": "a-client-secret",
-		"environment":   azure.PublicCloud.Name,
-		"resource":      "a-resource",
-		"vault_name":    "a-vault-name",
-		"key_name":      "a-key-name",
+		"disallow_env_vars": "true",
+		"tenant_id":         "a-tenant-id",
+		"client_id":         "a-client-id",
+		"client_secret":     "a-client-secret",
+		"environment":       azure.PublicCloud.Name,
+		"resource":          "a-resource",
+		"vault_name":        "a-vault-name",
+		"key_name":          "a-key-name",
 	}
-	_, err := s.SetConfigWithEnv(config, false)
+	_, err := s.SetConfig(config)
 	assert.NoError(t, err)
 	require.Equal(t, config["tenant_id"], s.tenantID)
 	require.Equal(t, config["client_id"], s.clientID)

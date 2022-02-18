@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -80,20 +81,17 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // * Instance metadata role (access key and secret key)
 // * Default values
 func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	return k.SetConfigWithEnv(config, true)
-}
-
-// SetConfigWithEnv sets the various fields on the Wrapper object, with the ability to
-// either ignore or use environment variables within the system.
-//
-// Order of precedence AWS values:
-// * Environment variable (ignored if allowEnv is false)
-// * Passed in config map
-// * Instance metadata role (access key and secret key)
-// * Default values
-func (k *Wrapper) SetConfigWithEnv(config map[string]string, allowEnv bool) (map[string]string, error) {
 	if config == nil {
 		config = map[string]string{}
+	}
+
+	allowEnv := true
+	if val, ok := config["disallow_env_vars"]; ok {
+		disallowEnvVars, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		allowEnv = !disallowEnvVars
 	}
 
 	// Check and set KeyID

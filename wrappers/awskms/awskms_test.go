@@ -43,13 +43,14 @@ func TestAWSKMSWrapper_IgnoreEnv(t *testing.T) {
 	}
 
 	config := map[string]string{
-		"kms_key_id": "a-key-key",
-		"access_key": "a-access-key",
-		"secret_key": "a-secret-key",
-		"endpoint":   "my-endpoint",
+		"disallow_env_vars": "true",
+		"kms_key_id":        "a-key-key",
+		"access_key":        "a-access-key",
+		"secret_key":        "a-secret-key",
+		"endpoint":          "my-endpoint",
 	}
 
-	_, err := wrapper.SetConfigWithEnv(config, false)
+	_, err := wrapper.SetConfig(config)
 	assert.NoError(t, err)
 
 	require.Equal(t, config["access_key"], wrapper.accessKey)
