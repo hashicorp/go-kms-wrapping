@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -74,47 +73,24 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // * Passed in config map
 // * Managed Service Identity for instance
 func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
+	ct, err := wrapping.NewConfigurationTool(config)
+	if err != nil {
+		return nil, err
 	}
 
-	allowEnv := true
-	if val, ok := config["disallow_env_vars"]; ok {
-		disallowEnvVars, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, err
-		}
-		allowEnv = !disallowEnvVars
+	if tenantID := ct.GetParam("tenant_id", "AZURE_TENANT_ID"); tenantID != "" {
+		v.tenantID = tenantID
 	}
 
-	switch {
-	case os.Getenv("AZURE_TENANT_ID") != "" && allowEnv:
-		v.tenantID = os.Getenv("AZURE_TENANT_ID")
-	case config["tenant_id"] != "":
-		v.tenantID = config["tenant_id"]
+	if clientID := ct.GetParam("client_id", "AZURE_CLIENT_ID"); clientID != "" {
+		v.clientID = clientID
 	}
 
-	switch {
-	case os.Getenv("AZURE_CLIENT_ID") != "" && allowEnv:
-		v.clientID = os.Getenv("AZURE_CLIENT_ID")
-	case config["client_id"] != "":
-		v.clientID = config["client_id"]
+	if secret := ct.GetParam("client_secret", "AZURE_CLIENT_SECRET"); secret != {
+		v.clientSecret = secret
 	}
 
-	switch {
-	case os.Getenv("AZURE_CLIENT_SECRET") != "" && allowEnv:
-		v.clientSecret = os.Getenv("AZURE_CLIENT_SECRET")
-	case config["client_secret"] != "":
-		v.clientSecret = config["client_secret"]
-	}
-
-	var envName string
-	if allowEnv {
-		envName = os.Getenv("AZURE_ENVIRONMENT")
-	}
-	if envName == "" {
-		envName = config["environment"]
-	}
+	envName := ct.GetParamWithDefault("environment", "AZURE_ENVIRONMENT")
 	if envName == "" {
 		v.environment = azure.PublicCloud
 	} else {
@@ -125,41 +101,20 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		}
 	}
 
-	var azResource string
-	if allowEnv {
-		azResource = os.Getenv("AZURE_AD_RESOURCE")
-	}
-	if azResource == "" {
-		azResource = config["resource"]
-		if azResource == "" {
-			azResource = v.environment.KeyVaultDNSSuffix
-		}
-	}
+	azResource := ct.GetParamWithDefault(v.environment.KeyVaultDNSSuffix, "resource", "AZURE_AD_RESOURCE")
 	v.environment.KeyVaultDNSSuffix = azResource
 	v.resource = "https://" + azResource + "/"
 	v.environment.KeyVaultEndpoint = v.resource
 
-	switch {
-	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "" && allowEnv:
-		v.vaultName = os.Getenv(EnvAzureKeyVaultWrapperVaultName)
-	case os.Getenv(EnvVaultAzureKeyVaultVaultName) != "" && allowEnv:
-		v.vaultName = os.Getenv(EnvVaultAzureKeyVaultVaultName)
-	case config["vault_name"] != "":
-		v.vaultName = config["vault_name"]
-	default:
+	if vaultName := ct.GetParam("vault_name", EnvAzureKeyVaultWrapperVaultName, EnvVaultAzureKeyVaultKeyName); vaultName != "" {
+		v.vaultName = vaultName
+	} else {
 		return nil, errors.New("vault name is required")
 	}
 
-	switch {
-	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "" && allowEnv:
-		v.keyName = os.Getenv(EnvAzureKeyVaultWrapperKeyName)
-	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "" && allowEnv:
-		v.keyName = os.Getenv(EnvVaultAzureKeyVaultKeyName)
-	case config["key_name"] != "":
-		v.keyName = config["key_name"]
-	case v.keyNotRequired:
-		// key not required to set config
-	default:
+	if keyName := ct.GetParam("key_name", EnvAzureKeyVaultWrapperKeyName, EnvVaultAzureKeyVaultKeyName); keyName != "" {
+		v.keyName = keyName
+	} else if ! v.keyNotRequired {
 		return nil, errors.New("key name is required")
 	}
 
