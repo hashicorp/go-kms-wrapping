@@ -26,8 +26,9 @@ func NewConfigurationTool(config map[string]string) (*ConfigurationTool, error) 
 	}, nil
 }
 
-func (t *ConfigurationTool) GetParam(key string, envVars ...string) string {
+func (t *ConfigurationTool) GetParam(key string, envVar string, extraEnvVars ...string) string {
 	if t.allowEnv {
+		envVars := append([]string{envVar}, extraEnvVars...)
 		for _, envVar := range envVars {
 			envVarValue := os.Getenv(envVar)
 			if envVarValue != "" {
@@ -38,8 +39,8 @@ func (t *ConfigurationTool) GetParam(key string, envVars ...string) string {
 	return t.config[key]
 }
 
-func (t *ConfigurationTool) GetParamWithDefault(defaultValue, key string, envVars ...string) string {
-	v := t.GetParam(key, envVars...)
+func (t *ConfigurationTool) GetParamWithDefault(defaultValue, key string, envVar string, extraEnvVars ...string) string {
+	v := t.GetParam(key, envVar, extraEnvVars...)
 	if v != "" {
 		return v
 	}
