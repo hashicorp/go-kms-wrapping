@@ -90,7 +90,7 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		v.clientSecret = secret
 	}
 
-	envName := ct.GetParamWithDefault("environment", "AZURE_ENVIRONMENT")
+	envName := ct.GetParam("environment", "AZURE_ENVIRONMENT")
 	if envName == "" {
 		v.environment = azure.PublicCloud
 	} else {
