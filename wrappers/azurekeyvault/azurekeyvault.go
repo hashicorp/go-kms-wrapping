@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -70,35 +71,47 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 //
 // Order of precedence:
 // * Environment variable
-// * Value from Vault configuration file
+// * Passed in config map
 // * Managed Service Identity for instance
 func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
 	if config == nil {
 		config = map[string]string{}
 	}
 
+	allowEnv := true
+	if val, ok := config["disallow_env_vars"]; ok {
+		disallowEnvVars, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		allowEnv = !disallowEnvVars
+	}
+
 	switch {
-	case os.Getenv("AZURE_TENANT_ID") != "":
+	case os.Getenv("AZURE_TENANT_ID") != "" && allowEnv:
 		v.tenantID = os.Getenv("AZURE_TENANT_ID")
 	case config["tenant_id"] != "":
 		v.tenantID = config["tenant_id"]
 	}
 
 	switch {
-	case os.Getenv("AZURE_CLIENT_ID") != "":
+	case os.Getenv("AZURE_CLIENT_ID") != "" && allowEnv:
 		v.clientID = os.Getenv("AZURE_CLIENT_ID")
 	case config["client_id"] != "":
 		v.clientID = config["client_id"]
 	}
 
 	switch {
-	case os.Getenv("AZURE_CLIENT_SECRET") != "":
+	case os.Getenv("AZURE_CLIENT_SECRET") != "" && allowEnv:
 		v.clientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	case config["client_secret"] != "":
 		v.clientSecret = config["client_secret"]
 	}
 
-	envName := os.Getenv("AZURE_ENVIRONMENT")
+	var envName string
+	if allowEnv {
+		envName = os.Getenv("AZURE_ENVIRONMENT")
+	}
 	if envName == "" {
 		envName = config["environment"]
 	}
@@ -112,7 +125,10 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		}
 	}
 
-	azResource := os.Getenv("AZURE_AD_RESOURCE")
+	var azResource string
+	if allowEnv {
+		azResource = os.Getenv("AZURE_AD_RESOURCE")
+	}
 	if azResource == "" {
 		azResource = config["resource"]
 		if azResource == "" {
@@ -124,9 +140,9 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	v.environment.KeyVaultEndpoint = v.resource
 
 	switch {
-	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "":
+	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "" && allowEnv:
 		v.vaultName = os.Getenv(EnvAzureKeyVaultWrapperVaultName)
-	case os.Getenv(EnvVaultAzureKeyVaultVaultName) != "":
+	case os.Getenv(EnvVaultAzureKeyVaultVaultName) != "" && allowEnv:
 		v.vaultName = os.Getenv(EnvVaultAzureKeyVaultVaultName)
 	case config["vault_name"] != "":
 		v.vaultName = config["vault_name"]
@@ -135,9 +151,9 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	switch {
-	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "":
+	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "" && allowEnv:
 		v.keyName = os.Getenv(EnvAzureKeyVaultWrapperKeyName)
-	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "":
+	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "" && allowEnv:
 		v.keyName = os.Getenv(EnvVaultAzureKeyVaultKeyName)
 	case config["key_name"] != "":
 		v.keyName = config["key_name"]
