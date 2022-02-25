@@ -30,6 +30,20 @@ func TestAWSKMSWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	if s.KeyID() != awsTestKeyID {
+		t.Fatalf("Expected key ID %s, got %s", awsTestKeyID, s.KeyID())
+	}
+
+	newKeyID := "new-key"
+	config := make(map[string]string)
+	config["kms_key_id"] = newKeyID
+	os.Setenv(EnvAWSKMSWrapperKeyID, "")
+	_, err = s.SetConfig(config)
+
+	if s.KeyID() != "new-key" {
+		t.Fatalf("Expected key ID %s, got %s", newKeyID, s.KeyID())
+	}
 }
 
 func TestAWSKMSWrapper_IgnoreEnv(t *testing.T) {

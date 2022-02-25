@@ -108,6 +108,8 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		return nil, fmt.Errorf("'kms_key_id' not found for AWS KMS wrapper configuration")
 	}
 
+	k.currentKeyID.Store(k.keyID)
+
 	// Please see GetRegion for an explanation of the order in which region is parsed.
 	var err error
 	k.region, err = awsutil.GetRegion(config["region"])
