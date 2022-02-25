@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -76,7 +77,7 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 //
 // Order of precedence AWS values:
 // * Environment variable
-// * Value from Vault configuration file
+// * Passed in config map
 // * Instance metadata role (access key and secret key)
 // * Default values
 func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
@@ -84,11 +85,20 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		config = map[string]string{}
 	}
 
+	allowEnv := true
+	if val, ok := config["disallow_env_vars"]; ok {
+		disallowEnvVars, err := strconv.ParseBool(val)
+		if err != nil {
+			return nil, err
+		}
+		allowEnv = !disallowEnvVars
+	}
+
 	// Check and set KeyID
 	switch {
-	case os.Getenv(EnvAWSKMSWrapperKeyID) != "":
+	case os.Getenv(EnvAWSKMSWrapperKeyID) != "" && allowEnv:
 		k.keyID = os.Getenv(EnvAWSKMSWrapperKeyID)
-	case os.Getenv(EnvVaultAWSKMSSealKeyID) != "":
+	case os.Getenv(EnvVaultAWSKMSSealKeyID) != "" && allowEnv:
 		k.keyID = os.Getenv(EnvVaultAWSKMSSealKeyID)
 	case config["kms_key_id"] != "":
 		k.keyID = config["kms_key_id"]
@@ -115,7 +125,9 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	k.roleSessionName = config["role_session_name"]
 	k.roleArn = config["role_arn"]
 
-	k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
+	if allowEnv {
+		k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
+	}
 	if k.endpoint == "" {
 		if endpoint, ok := config["endpoint"]; ok {
 			k.endpoint = endpoint
