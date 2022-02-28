@@ -47,12 +47,12 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts)
 		assert.Equal("bar", opts.WithKeyId)
 	})
-	t.Run("WithWrapperOptions", func(t *testing.T) {
+	t.Run("WithWrapperConfigMap", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		strOpts := map[string]string{"foo": "bar"}
-		opts, err := GetOpts(WithWrapperOptions(strOpts))
+		opts, err := GetOpts(WithWrapperConfigMap(strOpts))
 		require.NoError(err)
 		require.NotNil(opts)
-		assert.Equal(strOpts, opts.WithWrapperOptions)
+		assert.Equal(strOpts, opts.WithWrapperConfigMap)
 	})
 }

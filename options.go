@@ -21,7 +21,7 @@ func GetOpts(opt ...Option) (*Options, error) {
 			return nil, errors.New("option passed into top-level wrapping options handler" +
 				" that is not from this package; this is likely due to the wrapper being" +
 				" invoked as a plugin but options being sent from a specific wrapper package;" +
-				" use WithWrapperOptions to send options via the plugin interface")
+				" use WithWrapperConfigMap to send options via the plugin interface")
 		}
 	}
 	return opts, nil
