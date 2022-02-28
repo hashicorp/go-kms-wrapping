@@ -61,12 +61,12 @@ func WithKeyId(id string) Option {
 	}
 }
 
-// WithWrapperOptions is an option accepted by wrappers at configuration time
+// WithWrapperConfigMap is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
-func WithWrapperOptions(options map[string]string) Option {
+func WithWrapperConfigMap(options map[string]string) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithWrapperOptions = options
+			o.WithWrapperConfigMap = options
 			return nil
 		})
 	}

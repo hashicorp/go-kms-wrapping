@@ -90,6 +90,6 @@ message Options {
 	// The AAD bytes, if any
 	bytes with_aad = 20;
 
-	// Wrapper-specific options to pass along
-	map<string, string> with_wrapper_options = 30;
+	// Wrapper-specific configuration to pass along
+	map<string, string> with_wrapper_config_map = 30;
 }
