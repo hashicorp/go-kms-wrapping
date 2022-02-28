@@ -38,12 +38,12 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 		opts.Options = new(wrapping.Options)
 	}
 
-	// Local options can be provided either via the WithWrapperOptions field
+	// Local options can be provided either via the WithWrapperConfigMap field
 	// (for over the plugin barrier or embedding) or via local option functions
 	// (for embedding). First pull from the option.
-	if opts.WithWrapperOptions != nil {
+	if opts.WithWrapperConfigMap != nil {
 		var err error
-		for k, v := range opts.WithWrapperOptions {
+		for k, v := range opts.WithWrapperConfigMap {
 			switch k {
 			case "aead_type":
 				opts.WithAeadType = wrapping.AeadTypeMap(v)

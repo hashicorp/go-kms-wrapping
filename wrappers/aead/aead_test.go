@@ -45,7 +45,7 @@ func testWrapperBasic(t *testing.T, root wrapping.Wrapper) *wrapping.BlobInfo {
 	_, err = root.SetConfig(
 		context.Background(),
 		wrapping.WithKeyId("root"),
-		wrapping.WithWrapperOptions(map[string]string{
+		wrapping.WithWrapperConfigMap(map[string]string{
 			"key": base64.StdEncoding.EncodeToString(rootKey),
 		}),
 	)
@@ -72,7 +72,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 
 	sub, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub"),
-		wrapping.WithWrapperOptions(map[string]string{
+		wrapping.WithWrapperConfigMap(map[string]string{
 			"salt": base64.StdEncoding.EncodeToString([]byte("zip")),
 			"info": base64.StdEncoding.EncodeToString([]byte("zap")),
 		}),
@@ -122,7 +122,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	// Ensure that a subkey with different params doesn't work
 	subBad, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		wrapping.WithWrapperOptions(map[string]string{
+		wrapping.WithWrapperConfigMap(map[string]string{
 			"salt": base64.StdEncoding.EncodeToString([]byte("zap")),
 			"info": base64.StdEncoding.EncodeToString([]byte("zip")),
 		}),

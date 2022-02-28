@@ -15,7 +15,7 @@ import (
 func TestStructWrapping(t *testing.T) {
 	wrapper := aead.NewWrapper()
 
-	_, err := wrapper.SetConfig(context.Background(), wrapping.WithWrapperOptions(map[string]string{
+	_, err := wrapper.SetConfig(context.Background(), wrapping.WithWrapperConfigMap(map[string]string{
 		"aead_type": wrapping.AeadTypeAesGcm.String(),
 		"key":       "QmjueU/LMsZAO+rvSUMcpkBziCD5ON7BgxVqcZ6+TCI=",
 	}))

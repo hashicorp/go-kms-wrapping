@@ -55,7 +55,7 @@ func NewShamirWrapper() *ShamirWrapper {
 //
 // * wrapping.WithKeyId: The key ID, if any, to set on the derived wrapper
 //
-// * wrapping.WithWrapperOptions: A struct containing the following:
+// * wrapping.WithWrapperConfigMap: A struct containing the following:
 //
 // ** "aead_type": The type of AEAD to use as a string, defaults to
 // wrapping.AeadTypeAesGcm.String()
@@ -69,7 +69,7 @@ func NewShamirWrapper() *ShamirWrapper {
 // ** "salt": The salt value, if any, to use in the derivation, as a
 // base64-encoded byte slice
 //
-// The values in WithWrapperOptions can also be set via the package's native
+// The values in WithWrapperConfigMap can also be set via the package's native
 // With* functions.
 func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 	if len(s.keyBytes) == 0 {
@@ -121,13 +121,13 @@ func (s *Wrapper) NewDerivedWrapper(opt ...wrapping.Option) (*Wrapper, error) {
 //
 // * wrapping.WithKeyId: The key ID, if any, to set on the wrapper
 //
-// * wrapping.WithWrapperOptions: A struct containing the following:
+// * wrapping.WithWrapperConfigMap: A struct containing the following:
 //
 // ** "aead_type": The type of AEAD to use, defaults to wrapping.AeadTypeAesGcm
 //
 // ** "key": A base-64 encoded string value containing the key to use
 //
-// The values in WithWrapperOptions can also be set via the package's native
+// The values in WithWrapperConfigMap can also be set via the package's native
 // With* functions.
 func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts, err := getOpts(opt...)
