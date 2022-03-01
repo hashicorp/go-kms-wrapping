@@ -18,7 +18,6 @@ require (
 	github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4
 	github.com/oracle/oci-go-sdk v13.1.0+incompatible
 	github.com/stretchr/testify v1.7.0
-	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162
 	github.com/yandex-cloud/go-genproto v0.0.0-20200722140432-762fe965ce77
 	github.com/yandex-cloud/go-sdk v0.0.0-20200722140627-2194e5077f13
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
