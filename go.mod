@@ -16,7 +16,6 @@ require (
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/vault/api v1.3.1
 	github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4
-	github.com/oracle/oci-go-sdk v13.1.0+incompatible
 	github.com/stretchr/testify v1.7.0
 	github.com/tencentcloud/tencentcloud-sdk-go v1.0.162
 	github.com/yandex-cloud/go-genproto v0.0.0-20200722140432-762fe965ce77
