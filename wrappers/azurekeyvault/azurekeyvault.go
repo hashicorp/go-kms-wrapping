@@ -86,7 +86,7 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		v.clientID = clientID
 	}
 
-	if secret := ct.GetParam("client_secret", "AZURE_CLIENT_SECRET"); secret != {
+	if secret := ct.GetParam("client_secret", "AZURE_CLIENT_SECRET"); secret != "" {
 		v.clientSecret = secret
 	}
 
