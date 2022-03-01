@@ -234,11 +234,10 @@ github.com/hashicorp/go-hclog v1.1.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39E
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-immutable-radix v1.3.1/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220228225637-4f641266e1ea/go.mod h1:/YFYtrrdj6bUWvxypNV11CzXqe+t5z7xmTtF6r436KA=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220228225701-0514e42efcc8 h1:lqMZKluJRFsS25t7aZrStitqpbVB3qUv9bPVAgblsM8=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220228225701-0514e42efcc8/go.mod h1:/YFYtrrdj6bUWvxypNV11CzXqe+t5z7xmTtF6r436KA=
-github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220228225701-0514e42efcc8 h1:N1/ojDeP4lGIX/AvW6420vYBVulSKIrAWhqVK3A8LOg=
-github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220228225701-0514e42efcc8/go.mod h1:t20RuQHMJAf7kOTGwkNeGaWgTHZTTH6v7aNq01OBjJg=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220301142800-4d0d50b9d94a h1:c6M/jfJDzKH/EaEvNrFhBJ3ufGl4jgSD+7RtHQGIHBY=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220301142800-4d0d50b9d94a/go.mod h1:/YFYtrrdj6bUWvxypNV11CzXqe+t5z7xmTtF6r436KA=
+github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220301142843-172c1b7ea4fc h1:9AjHNYc1d3cfYiW8TbOlBqh7PUmlcDg5qlii3MlSKKM=
+github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2 v2.0.0-20220301142843-172c1b7ea4fc/go.mod h1:Ae/y9bkDhgFiIosZOsKQcsEItC1Seh5nxBrR5siePYA=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
 github.com/hashicorp/go-plugin v1.4.3 h1:DXmvivbWD5qdiBts9TpBC7BYL1Aia5sxbRgQB+v6UZM=

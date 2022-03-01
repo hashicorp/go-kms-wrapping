@@ -40,7 +40,7 @@ func TestAeadPluginWrapper(t *testing.T) {
 	_, err = wrapper.SetConfig(
 		context.Background(),
 		wrapping.WithKeyId("root"),
-		wrapping.WithWrapperConfigMap(map[string]string{
+		wrapping.WithConfigMap(map[string]string{
 			"key": base64.StdEncoding.EncodeToString(rootKey),
 		}),
 	)
