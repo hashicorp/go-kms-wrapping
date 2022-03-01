@@ -4,10 +4,6 @@ go 1.17
 
 require (
 	cloud.google.com/go/kms v1.1.0
-	github.com/Azure/azure-sdk-for-go v36.2.0+incompatible
-	github.com/Azure/go-autorest/autorest v0.10.1
-	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
-	github.com/Azure/go-autorest/autorest/to v0.3.0
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190620160927-9418d7b0cd0f
 	github.com/aws/aws-sdk-go v1.30.27
 	github.com/hashicorp/go-cleanhttp v0.5.2
@@ -32,18 +28,11 @@ require (
 	cloud.google.com/go v0.100.2 // indirect
 	cloud.google.com/go/compute v1.2.0 // indirect
 	cloud.google.com/go/iam v0.1.0 // indirect
-	github.com/Azure/go-autorest/autorest/adal v0.8.2 // indirect
-	github.com/Azure/go-autorest/autorest/azure/cli v0.3.1 // indirect
-	github.com/Azure/go-autorest/autorest/date v0.2.0 // indirect
-	github.com/Azure/go-autorest/autorest/validation v0.2.0 // indirect
-	github.com/Azure/go-autorest/logger v0.1.0 // indirect
-	github.com/Azure/go-autorest/tracing v0.5.0 // indirect
 	github.com/armon/go-metrics v0.3.9 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
-	github.com/dimchansky/utfbom v1.1.0 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
