@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/yandex-cloud/go-genproto/yandex/cloud/kms/v1"
-	"google.golang.org/grpc"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/yandex-cloud/go-genproto/yandex/cloud/kms/v1"
+	"google.golang.org/grpc"
 )
 
-func TestYandexCloudKMSWrapper(t *testing.T) {
-	wrapper := NewWrapper(nil)
+func TestYandexCloudKmsWrapper(t *testing.T) {
+	wrapper := NewWrapper()
 	if err := wrapper.setClient(&mockSymmetricCryptoServiceClient{primaryVersionID: "version-id"}); err != nil {
 		t.Fatal(err)
 	}
@@ -22,45 +23,45 @@ func TestYandexCloudKMSWrapper(t *testing.T) {
 	}
 
 	// Set the key
-	if err := os.Setenv(EnvYandexCloudKMSKeyID, "key-id"); err != nil {
+	if err := os.Setenv(EnvYandexCloudKmsKeyId, "key-id"); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvYandexCloudKMSKeyID); err != nil {
+		if err := os.Unsetenv(EnvYandexCloudKmsKeyId); err != nil {
 			t.Fatal(err)
 		}
 	}()
-	if _, err := wrapper.SetConfig(nil); err != nil {
+	if _, err := wrapper.SetConfig(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestYandexCloudKMSWrapper_Lifecycle(t *testing.T) {
-	wrapper := NewWrapper(nil)
+func TestYandexCloudKmsWrapper_Lifecycle(t *testing.T) {
+	wrapper := NewWrapper()
 	if err := wrapper.setClient(&mockSymmetricCryptoServiceClient{primaryVersionID: "version-id"}); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := os.Setenv(EnvYandexCloudKMSKeyID, "key-id"); err != nil {
+	if err := os.Setenv(EnvYandexCloudKmsKeyId, "key-id"); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvYandexCloudKMSKeyID); err != nil {
+		if err := os.Unsetenv(EnvYandexCloudKmsKeyId); err != nil {
 			t.Fatal(err)
 		}
 	}()
-	if _, err := wrapper.SetConfig(nil); err != nil {
+	if _, err := wrapper.SetConfig(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
 	// Test Encrypt and Decrypt calls
 	plaintext := []byte("foo")
-	encryptedBlobInfo, err := wrapper.Encrypt(context.Background(), plaintext, nil)
+	encryptedBlobInfo, err := wrapper.Encrypt(context.Background(), plaintext)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	decrypted, err := wrapper.Decrypt(context.Background(), encryptedBlobInfo, nil)
+	decrypted, err := wrapper.Decrypt(context.Background(), encryptedBlobInfo)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
@@ -70,43 +71,55 @@ func TestYandexCloudKMSWrapper_Lifecycle(t *testing.T) {
 	}
 }
 
-func TestYandexCloudKMSWrapper_KeyRotation(t *testing.T) {
+func TestYandexCloudKmsWrapper_KeyRotation(t *testing.T) {
 	versionID1 := "version-id-1"
 	versionID2 := "version-id-2"
 
-	wrapper := NewWrapper(nil)
+	wrapper := NewWrapper()
 	client := &mockSymmetricCryptoServiceClient{primaryVersionID: versionID1}
 	if err := wrapper.setClient(client); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := os.Setenv(EnvYandexCloudKMSKeyID, "key-id"); err != nil {
+	if err := os.Setenv(EnvYandexCloudKmsKeyId, "key-id"); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvYandexCloudKMSKeyID); err != nil {
+		if err := os.Unsetenv(EnvYandexCloudKmsKeyId); err != nil {
 			t.Fatal(err)
 		}
 	}()
-	if _, err := wrapper.SetConfig(nil); err != nil {
+	if _, err := wrapper.SetConfig(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(wrapper.KeyID(), versionID1) {
-		t.Fatalf("expected %s, got %s", versionID1, wrapper.KeyID())
+	keyId, err := wrapper.KeyId(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(keyId, versionID1) {
+		t.Fatalf("expected %s, got %s", versionID1, keyId)
 	}
 
 	client.rotateKey(versionID2)
-	if !reflect.DeepEqual(wrapper.KeyID(), versionID1) {
-		t.Fatalf("expected %s, got %s", versionID1, wrapper.KeyID())
+	keyId, err = wrapper.KeyId(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(keyId, versionID1) {
+		t.Fatalf("expected %s, got %s", versionID1, keyId)
 	}
 
 	// Only Encrypt calls update wrapper.currentVersionID
-	if _, err := wrapper.Encrypt(context.Background(), []byte("plaintext"), nil); err != nil {
+	if _, err := wrapper.Encrypt(context.Background(), []byte("plaintext")); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(wrapper.KeyID(), versionID2) {
-		t.Fatalf("expected %s, got %s", versionID2, wrapper.KeyID())
+	keyId, err = wrapper.KeyId(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(keyId, versionID2) {
+		t.Fatalf("expected %s, got %s", versionID2, keyId)
 	}
 }
 

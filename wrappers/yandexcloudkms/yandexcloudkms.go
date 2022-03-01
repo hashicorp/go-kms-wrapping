@@ -17,19 +17,14 @@ const (
 	// Accepted env vars
 	EnvYandexCloudOAuthToken            = "YANDEXCLOUD_OAUTH_TOKEN"
 	EnvYandexCloudServiceAccountKeyFile = "YANDEXCLOUD_SERVICE_ACCOUNT_KEY_FILE"
-	EnvYandexCloudKMSKeyID              = "YANDEXCLOUD_KMS_KEY_ID"
-
-	// Accepted config parameters
-	CfgYandexCloudOAuthToken            = "oauth_token"
-	CfgYandexCloudServiceAccountKeyFile = "service_account_key_file"
-	CfgYandexCloudKMSKeyID              = "kms_key_id"
+	EnvYandexCloudKmsKeyId              = "YANDEXCLOUD_KMS_KEY_ID"
 )
 
 // Wrapper represents credentials and key information for the KMS Key used to
 // encryption and decryption
 type Wrapper struct {
 	client           kms.SymmetricCryptoServiceClient
-	keyID            string
+	keyId            string
 	currentVersionID *atomic.Value
 }
 
@@ -37,10 +32,7 @@ type Wrapper struct {
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 
 // NewWrapper creates a new Yandex.Cloud wrapper
-func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
-	if opts == nil {
-		opts = new(wrapping.WrapperOptions)
-	}
+func NewWrapper() *Wrapper {
 	k := &Wrapper{
 		currentVersionID: new(atomic.Value),
 	}
@@ -55,28 +47,29 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // * Environment variable
 // * Value from Vault configuration file
 // * Compute Instance metadata
-func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
+func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
 	}
 
-	// Check and set KeyID
-	k.keyID = coalesce(os.Getenv(EnvYandexCloudKMSKeyID), config[CfgYandexCloudKMSKeyID])
-	if k.keyID == "" {
+	// Check and set KeyId
+	k.keyId = coalesce(os.Getenv(EnvYandexCloudKmsKeyId), opts.WithKeyId)
+	if k.keyId == "" {
 		return nil, fmt.Errorf(
-			"neither '%s' environment variable nor '%s' config parameter is set",
-			EnvYandexCloudKMSKeyID, CfgYandexCloudKMSKeyID,
+			"neither '%s' environment variable nor 'key_id' config parameter is set",
+			EnvYandexCloudKmsKeyId,
 		)
 	}
 
 	// Check and set k.client
 	if k.client == nil {
-		client, err := getYandexCloudKMSClient(
-			coalesce(os.Getenv(EnvYandexCloudOAuthToken), config[CfgYandexCloudOAuthToken]),
-			coalesce(os.Getenv(EnvYandexCloudServiceAccountKeyFile), config[CfgYandexCloudServiceAccountKeyFile]),
+		client, err := getYandexCloudKmsClient(
+			coalesce(os.Getenv(EnvYandexCloudOAuthToken), opts.withOAuthToken),
+			coalesce(os.Getenv(EnvYandexCloudServiceAccountKeyFile), opts.withServiceAccountKeyFile),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error initializing Yandex.Cloud KMS client: %w", err)
+			return nil, fmt.Errorf("error initializing Yandex.Cloud kms client: %w", err)
 		}
 
 		if err := k.setClient(client); err != nil {
@@ -85,10 +78,11 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	// Map that holds non-sensitive configuration info
-	wrappingInfo := make(map[string]string)
-	wrappingInfo["kms_key_id"] = k.keyID
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["key_id"] = k.keyId
 
-	return wrappingInfo, nil
+	return wrapConfig, nil
 }
 
 func (k *Wrapper) setClient(client kms.SymmetricCryptoServiceClient) error {
@@ -104,41 +98,25 @@ func (k *Wrapper) setClient(client kms.SymmetricCryptoServiceClient) error {
 	return nil
 }
 
-// Init is called during core.Initialize. No-op at the moment.
-func (k *Wrapper) Init(_ context.Context) error {
-	return nil
-}
-
-// Finalize is called during shutdown. This is a no-op since
-// Wrapper doesn't require any cleanup.
-func (k *Wrapper) Finalize(_ context.Context) error {
-	return nil
-}
-
 // Type returns the wrapping type for this particular Wrapper implementation
-func (k *Wrapper) Type() string {
-	return wrapping.YandexCloudKMS
+func (k *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeYandexCloudKms, nil
 }
 
-// KeyID returns the last known key id
-func (k *Wrapper) KeyID() string {
-	return k.currentVersionID.Load().(string)
-}
-
-// HMACKeyID returns the last known HMAC key id
-func (k *Wrapper) HMACKeyID() string {
-	return ""
+// KeyId returns the last known key id
+func (k *Wrapper) KeyId(_ context.Context) (string, error) {
+	return k.currentVersionID.Load().(string), nil
 }
 
 // Encrypt is used to encrypt the master key using Yandex.Cloud symmetric key.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after the KMS client has been instantiated.
-func (k *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
+	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
@@ -150,7 +128,7 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 	encryptResponse, err := k.client.Encrypt(
 		ctx,
 		&kms.SymmetricEncryptRequest{
-			KeyId:     k.keyID,
+			KeyId:     k.keyId,
 			Plaintext: env.Key,
 		},
 	)
@@ -161,14 +139,14 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 	// Store the current version id
 	k.currentVersionID.Store(encryptResponse.VersionId)
 
-	ret := &wrapping.EncryptedBlobInfo{
+	ret := &wrapping.BlobInfo{
 		Ciphertext: env.Ciphertext,
-		IV:         env.IV,
+		Iv:         env.Iv,
 		KeyInfo: &wrapping.KeyInfo{
 			// Even though we do not use the version id during decryption, store it
 			// to know exactly the specific key version used in encryption in case we
 			// want to rewrap older entries
-			KeyID:      encryptResponse.VersionId,
+			KeyId:      encryptResponse.VersionId,
 			WrappedKey: encryptResponse.Ciphertext,
 		},
 	}
@@ -177,7 +155,7 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
-func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
+func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
@@ -185,7 +163,7 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 	decryptResponse, err := k.client.Decrypt(
 		ctx,
 		&kms.SymmetricDecryptRequest{
-			KeyId:      k.keyID,
+			KeyId:      k.keyId,
 			Ciphertext: in.KeyInfo.WrappedKey,
 		},
 	)
@@ -195,10 +173,10 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 
 	envInfo := &wrapping.EnvelopeInfo{
 		Key:        decryptResponse.Plaintext,
-		IV:         in.IV,
+		Iv:         in.Iv,
 		Ciphertext: in.Ciphertext,
 	}
-	plaintext, err := wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
+	plaintext, err := wrapping.EnvelopeDecrypt(envInfo, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting data: %w", err)
 	}
@@ -206,8 +184,8 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 	return plaintext, nil
 }
 
-// GetYandexCloudKMSClient returns an instance of the KMS client.
-func getYandexCloudKMSClient(oauthToken string, serviceAccountKeyFile string) (kms.SymmetricCryptoServiceClient, error) {
+// GetYandexCloudKmsClient returns an instance of the KMS client.
+func getYandexCloudKmsClient(oauthToken string, serviceAccountKeyFile string) (kms.SymmetricCryptoServiceClient, error) {
 	credentials, err := getCredentials(oauthToken, serviceAccountKeyFile)
 	if err != nil {
 		return nil, fmt.Errorf("error getting credentials: %w", err)

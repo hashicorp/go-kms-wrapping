@@ -26,18 +26,18 @@ func TestAccYandexCloudKMSWrapper_Lifecycle(t *testing.T) {
 		t.SkipNow()
 	}
 
-	wrapper := NewWrapper(nil)
-	_, err := wrapper.SetConfig(nil)
+	wrapper := NewWrapper()
+	_, err := wrapper.SetConfig(context.Background())
 	if err != nil {
 		t.Fatalf("err : %s", err)
 	}
 
 	plaintext := []byte("foo")
-	encryptedBlobInfo, err := wrapper.Encrypt(context.Background(), plaintext, nil)
+	encryptedBlobInfo, err := wrapper.Encrypt(context.Background(), plaintext)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
-	decrypted, err := wrapper.Decrypt(context.Background(), encryptedBlobInfo, nil)
+	decrypted, err := wrapper.Decrypt(context.Background(), encryptedBlobInfo)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
