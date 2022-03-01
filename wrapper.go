@@ -29,7 +29,7 @@ type Wrapper interface {
 	KeyId(context.Context) (string, error)
 
 	// SetConfig applies the given options to a wrapper and returns
-	// configuration information. WithWrapperConfigMap will almost certainly be
+	// configuration information. WithConfigMap will almost certainly be
 	// required to be passed in to give wrapper-specific configuration
 	// information to the wrapper. WithKeyId is also supported.
 	SetConfig(ctx context.Context, options ...Option) (*WrapperConfig, error)
