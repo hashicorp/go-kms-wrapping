@@ -3,7 +3,7 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 go 1.17
 
 require (
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220228225637-4f641266e1ea
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220301142800-4d0d50b9d94a
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97
