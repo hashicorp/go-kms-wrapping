@@ -29,8 +29,8 @@ type Wrapper struct {
 	sessionToken string
 	region       string
 
-	keyID        string
-	currentKeyID *atomic.Value
+	keyId        string
+	currentKeyId *atomic.Value
 
 	client kmsClient
 }
@@ -39,15 +39,11 @@ type Wrapper struct {
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 
 // NewWrapper returns a new TencentCloud wrapper
-func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
-	if opts == nil {
-		opts = new(wrapping.WrapperOptions)
-	}
-
+func NewWrapper() *Wrapper {
 	k := &Wrapper{
-		currentKeyID: new(atomic.Value),
+		currentKeyId: new(atomic.Value),
 	}
-	k.currentKeyID.Store("")
+	k.currentKeyId.Store("")
 
 	return k
 }
@@ -57,34 +53,33 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // Order of precedence values:
 // * Environment variable
 // * Instance metadata role
-func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
+func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
 	}
 
 	switch {
 	case os.Getenv(PROVIDER_KMS_KEY_ID) != "":
-		k.keyID = os.Getenv(PROVIDER_KMS_KEY_ID)
-	case config["kms_key_id"] != "":
-		k.keyID = config["kms_key_id"]
+		k.keyId = os.Getenv(PROVIDER_KMS_KEY_ID)
+	case opts.WithKeyId != "":
+		k.keyId = opts.WithKeyId
 	default:
-		return nil, fmt.Errorf("'kms_key_id' not found for TencentCloud KMS wrapper configuration")
+		return nil, fmt.Errorf("'key_id' not found for TencentCloud kms wrapper configuration")
 	}
 
 	switch {
 	case os.Getenv(PROVIDER_REGION) != "":
 		k.region = os.Getenv(PROVIDER_REGION)
-	case config["region"] != "":
-		k.region = config["region"]
-	default:
-		k.region = "ap-guangzhou"
+	case opts.withRegion != "":
+		k.region = opts.withRegion
 	}
 
 	switch {
 	case os.Getenv(PROVIDER_SECRET_ID) != "":
 		k.accessKey = os.Getenv(PROVIDER_SECRET_ID)
-	case config["access_key"] != "":
-		k.accessKey = config["access_key"]
+	case opts.withAccessKey != "":
+		k.accessKey = opts.withAccessKey
 	default:
 		return nil, fmt.Errorf("'access_key' not found for TencentCloud KMS wrapper configuration")
 	}
@@ -92,8 +87,8 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	switch {
 	case os.Getenv(PROVIDER_SECRET_KEY) != "":
 		k.secretKey = os.Getenv(PROVIDER_SECRET_KEY)
-	case config["secret_key"] != "":
-		k.secretKey = config["secret_key"]
+	case opts.withSecretKey != "":
+		k.secretKey = opts.withSecretKey
 	default:
 		return nil, fmt.Errorf("'secret_key' not found for TencentCloud KMS wrapper configuration")
 	}
@@ -101,10 +96,8 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	switch {
 	case os.Getenv(PROVIDER_SECURITY_TOKEN) != "":
 		k.sessionToken = os.Getenv(PROVIDER_SECURITY_TOKEN)
-	case config["session_token"] != "":
-		k.sessionToken = config["session_token"]
-	default:
-		k.sessionToken = ""
+	case opts.withSessionToken != "":
+		k.sessionToken = opts.withSessionToken
 	}
 
 	if k.client == nil {
@@ -120,7 +113,7 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 		}
 
 		input := kms.NewDescribeKeyRequest()
-		input.KeyId = &k.keyID
+		input.KeyId = &k.keyId
 		keyInfo, err := client.DescribeKey(input)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching TencentCloud KMS information: %w", err)
@@ -130,57 +123,43 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 			return nil, fmt.Errorf("no key information return")
 		}
 
-		k.currentKeyID.Store(*keyInfo.Response.KeyMetadata.KeyId)
+		k.currentKeyId.Store(*keyInfo.Response.KeyMetadata.KeyId)
 		k.client = client
 	}
 
-	wrappingInfo := make(map[string]string)
-	wrappingInfo["region"] = k.region
-	wrappingInfo["kms_key_id"] = k.keyID
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["region"] = k.region
+	wrapConfig.Metadata["kms_key_id"] = k.keyId
 
-	return wrappingInfo, nil
-}
-
-// Init is called during core.Initialize. No-op at the moment.
-func (k *Wrapper) Init(_ context.Context) error {
-	return nil
-}
-
-// Finalize is called during shutdown. No-op at the moment.
-func (k *Wrapper) Finalize(_ context.Context) error {
-	return nil
+	return wrapConfig, nil
 }
 
 // Type returns the type for this particular wrapper implementation
-func (k *Wrapper) Type() string {
-	return wrapping.TencentCloudKMS
+func (k *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeTencentCloudKms, nil
 }
 
-// KeyID returns the last known key id
-func (k *Wrapper) KeyID() string {
-	return k.currentKeyID.Load().(string)
-}
-
-// HMACKeyID returns nothing, it's here to satisfy the interface
-func (k *Wrapper) HMACKeyID() string {
-	return ""
+// KeyId returns the last known key id
+func (k *Wrapper) KeyId(_ context.Context) (string, error) {
+	return k.currentKeyId.Load().(string), nil
 }
 
 // Encrypt is used to encrypt the master key using the the TencentCloud KMS.
 // This returns the ciphertext, and/or any errors from this call.
 // This should be called after the KMS client has been instantiated.
-func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
+	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
 
 	input := kms.NewEncryptRequest()
-	input.KeyId = &k.keyID
+	input.KeyId = &k.keyId
 	input.Plaintext = common.StringPtr(base64.StdEncoding.EncodeToString(env.Key))
 
 	output, err := k.client.Encrypt(input)
@@ -188,14 +167,14 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
 
-	keyID := *output.Response.KeyId
-	k.currentKeyID.Store(keyID)
+	keyId := *output.Response.KeyId
+	k.currentKeyId.Store(keyId)
 
-	ret := &wrapping.EncryptedBlobInfo{
+	ret := &wrapping.BlobInfo{
 		Ciphertext: env.Ciphertext,
-		IV:         env.IV,
+		Iv:         env.Iv,
 		KeyInfo: &wrapping.KeyInfo{
-			KeyID:      keyID,
+			KeyId:      keyId,
 			WrappedKey: []byte(*output.Response.CiphertextBlob),
 		},
 	}
@@ -205,7 +184,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 
 // Decrypt is used to decrypt the ciphertext using the the TencentCloud KMS.
 // This should be called after the KMS client has been instantiated.
-func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
+func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
@@ -225,11 +204,11 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 
 	envInfo := &wrapping.EnvelopeInfo{
 		Key:        keyBytes,
-		IV:         in.IV,
+		Iv:         in.Iv,
 		Ciphertext: in.Ciphertext,
 	}
 
-	plaintext, err := wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
+	plaintext, err := wrapping.EnvelopeDecrypt(envInfo, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error decrypting data: %w", err)
 	}
