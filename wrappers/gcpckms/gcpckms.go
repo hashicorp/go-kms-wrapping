@@ -29,9 +29,9 @@ const (
 const (
 	// GcpCkmsEncrypt is used to directly encrypt the data with KMS
 	GcpCkmsEncrypt = iota
-	// GcpCkmsEnvelopeAESGCMEncrypt is when a data encryption key is generatated and
-	// the data is encrypted with AESGCM and the key is encrypted with KMS
-	GcpCkmsEnvelopeAESGCMEncrypt
+	// GcpCkmsEnvelopeAesGcmEncrypt is when a data encryption key is generatated and
+	// the data is encrypted with AES-GCM and the key is encrypted with KMS
+	GcpCkmsEnvelopeAesGcmEncrypt
 )
 
 type Wrapper struct {
@@ -206,7 +206,7 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 		Ciphertext: env.Ciphertext,
 		Iv:         env.Iv,
 		KeyInfo: &wrapping.KeyInfo{
-			Mechanism: GcpCkmsEnvelopeAESGCMEncrypt,
+			Mechanism: GcpCkmsEnvelopeAesGcmEncrypt,
 			// Even though we do not use the key id during decryption, store it
 			// to know exactly what version was used in encryption in case we
 			// want to rewrap older entries
@@ -244,7 +244,7 @@ func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 
 		plaintext = resp.Plaintext
 
-	case GcpCkmsEnvelopeAESGCMEncrypt:
+	case GcpCkmsEnvelopeAesGcmEncrypt:
 		resp, err := s.client.Decrypt(ctx, &kmspb.DecryptRequest{
 			Name:       s.parentName,
 			Ciphertext: in.KeyInfo.WrappedKey,
