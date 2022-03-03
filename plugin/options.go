@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-plugin"
+	gp "github.com/hashicorp/go-plugin"
 )
 
 // getOpts iterates the inbound Options and returns a struct
@@ -27,7 +27,7 @@ func getOpts(opt ...Option) (*options, error) {
 
 type options struct {
 	withLogger       hclog.Logger
-	withSecureConfig *plugin.SecureConfig
+	withSecureConfig *gp.SecureConfig
 }
 
 // Option - a type that wraps an interface for compile-time safety but can
@@ -54,7 +54,7 @@ func WithLogger(with hclog.Logger) Option {
 }
 
 // WithSecureConfig allows passing a secure configuration param
-func WithSecureConfig(with *plugin.SecureConfig) Option {
+func WithSecureConfig(with *gp.SecureConfig) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) {
 			o.withSecureConfig = with
