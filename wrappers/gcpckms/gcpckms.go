@@ -15,23 +15,23 @@ import (
 
 const (
 	// General GCP values, follows TF naming conventions
-	EnvGCPCKMSWrapperCredsPath = "GOOGLE_CREDENTIALS"
-	EnvGCPCKMSWrapperProject   = "GOOGLE_PROJECT"
-	EnvGCPCKMSWrapperLocation  = "GOOGLE_REGION"
+	EnvGcpCkmsWrapperCredsPath = "GOOGLE_CREDENTIALS"
+	EnvGcpCkmsWrapperProject   = "GOOGLE_PROJECT"
+	EnvGcpCkmsWrapperLocation  = "GOOGLE_REGION"
 
 	// CKMS-specific values
-	EnvGCPCKMSWrapperKeyRing     = "GCPCKMS_WRAPPER_KEY_RING"
-	EnvVaultGCPCKMSSealKeyRing   = "VAULT_GCPCKMS_SEAL_KEY_RING"
-	EnvGCPCKMSWrapperCryptoKey   = "GCPCKMS_WRAPPER_CRYPTO_KEY"
-	EnvVaultGCPCKMSSealCryptoKey = "VAULT_GCPCKMS_SEAL_CRYPTO_KEY"
+	EnvGcpCkmsWrapperKeyRing     = "GCPCKMS_WRAPPER_KEY_RING"
+	EnvVaultGcpCkmsSealKeyRing   = "VAULT_GCPCKMS_SEAL_KEY_RING"
+	EnvGcpCkmsWrapperCryptoKey   = "GCPCKMS_WRAPPER_CRYPTO_KEY"
+	EnvVaultGcpCkmsSealCryptoKey = "VAULT_GCPCKMS_SEAL_CRYPTO_KEY"
 )
 
 const (
-	// GCPKMSEncrypt is used to directly encrypt the data with KMS
-	GCPKMSEncrypt = iota
-	// GCPKMSEnvelopeAESGCMEncrypt is when a data encryption key is generatated and
-	// the data is encrypted with AESGCM and the key is encrypted with KMS
-	GCPKMSEnvelopeAESGCMEncrypt
+	// GcpCkmsEncrypt is used to directly encrypt the data with KMS
+	GcpCkmsEncrypt = iota
+	// GcpCkmsEnvelopeAesGcmEncrypt is when a data encryption key is generatated and
+	// the data is encrypted with AES-GCM and the key is encrypted with KMS
+	GcpCkmsEnvelopeAesGcmEncrypt
 )
 
 type Wrapper struct {
@@ -47,7 +47,7 @@ type Wrapper struct {
 
 	userAgent string
 
-	currentKeyID   *atomic.Value
+	currentKeyId   *atomic.Value
 	keyNotRequired bool
 
 	client *cloudkms.KeyManagementClient
@@ -55,15 +55,11 @@ type Wrapper struct {
 
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 
-func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
-	if opts == nil {
-		opts = new(wrapping.WrapperOptions)
-	}
+func NewWrapper() *Wrapper {
 	s := &Wrapper{
-		currentKeyID:   new(atomic.Value),
-		keyNotRequired: opts.KeyNotRequired,
+		currentKeyId: new(atomic.Value),
 	}
-	s.currentKeyID.Store("")
+	s.currentKeyId.Store("")
 	return s
 }
 
@@ -75,12 +71,15 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // * GOOGLE_CREDENTIALS environment variable
 // * `credentials` value from Value configuration file
 // * GOOGLE_APPLICATION_CREDENTIALS (https://developers.google.com/identity/protocols/application-default-credentials)
-func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
+func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
 	}
 
-	s.userAgent = config["user_agent"]
+	s.keyNotRequired = opts.withKeyNotRequired
+
+	s.userAgent = opts.withUserAgent
 
 	// Do not return an error in this case. Let client initialization in
 	// createClient() attempt to sort out where to get default credentials internally
@@ -88,48 +87,48 @@ func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	// it error out there if none is found. This is here to establish precedence on
 	// non-default input methods.
 	switch {
-	case os.Getenv(EnvGCPCKMSWrapperCredsPath) != "":
-		s.credsPath = os.Getenv(EnvGCPCKMSWrapperCredsPath)
-	case config["credentials"] != "":
-		s.credsPath = config["credentials"]
+	case os.Getenv(EnvGcpCkmsWrapperCredsPath) != "":
+		s.credsPath = os.Getenv(EnvGcpCkmsWrapperCredsPath)
+	case opts.withCredentials != "":
+		s.credsPath = opts.withCredentials
 	}
 
 	switch {
-	case os.Getenv(EnvGCPCKMSWrapperProject) != "":
-		s.project = os.Getenv(EnvGCPCKMSWrapperProject)
-	case config["project"] != "":
-		s.project = config["project"]
+	case os.Getenv(EnvGcpCkmsWrapperProject) != "":
+		s.project = os.Getenv(EnvGcpCkmsWrapperProject)
+	case opts.withProject != "":
+		s.project = opts.withProject
 	default:
 		return nil, errors.New("'project' not found for GCP CKMS wrapper configuration")
 	}
 
 	switch {
-	case os.Getenv(EnvGCPCKMSWrapperLocation) != "":
-		s.location = os.Getenv(EnvGCPCKMSWrapperLocation)
-	case config["region"] != "":
-		s.location = config["region"]
+	case os.Getenv(EnvGcpCkmsWrapperLocation) != "":
+		s.location = os.Getenv(EnvGcpCkmsWrapperLocation)
+	case opts.withRegion != "":
+		s.location = opts.withRegion
 	default:
 		return nil, errors.New("'region' not found for GCP CKMS wrapper configuration")
 	}
 
 	switch {
-	case os.Getenv(EnvGCPCKMSWrapperKeyRing) != "":
-		s.keyRing = os.Getenv(EnvGCPCKMSWrapperKeyRing)
-	case os.Getenv(EnvVaultGCPCKMSSealKeyRing) != "":
-		s.keyRing = os.Getenv(EnvVaultGCPCKMSSealKeyRing)
-	case config["key_ring"] != "":
-		s.keyRing = config["key_ring"]
+	case os.Getenv(EnvGcpCkmsWrapperKeyRing) != "":
+		s.keyRing = os.Getenv(EnvGcpCkmsWrapperKeyRing)
+	case os.Getenv(EnvVaultGcpCkmsSealKeyRing) != "":
+		s.keyRing = os.Getenv(EnvVaultGcpCkmsSealKeyRing)
+	case opts.withKeyRing != "":
+		s.keyRing = opts.withKeyRing
 	default:
 		return nil, errors.New("'key_ring' not found for GCP CKMS wrapper configuration")
 	}
 
 	switch {
-	case os.Getenv(EnvGCPCKMSWrapperCryptoKey) != "":
-		s.cryptoKey = os.Getenv(EnvGCPCKMSWrapperCryptoKey)
-	case os.Getenv(EnvVaultGCPCKMSSealCryptoKey) != "":
-		s.cryptoKey = os.Getenv(EnvVaultGCPCKMSSealCryptoKey)
-	case config["crypto_key"] != "":
-		s.cryptoKey = config["crypto_key"]
+	case os.Getenv(EnvGcpCkmsWrapperCryptoKey) != "":
+		s.cryptoKey = os.Getenv(EnvGcpCkmsWrapperCryptoKey)
+	case os.Getenv(EnvVaultGcpCkmsSealCryptoKey) != "":
+		s.cryptoKey = os.Getenv(EnvVaultGcpCkmsSealCryptoKey)
+	case opts.withCryptoKey != "":
+		s.cryptoKey = opts.withCryptoKey
 	case s.keyNotRequired:
 		// key not required to set config
 	default:
@@ -159,50 +158,35 @@ func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	// Map that holds non-sensitive configuration info to return
-	wrapperInfo := make(map[string]string)
-	wrapperInfo["project"] = s.project
-	wrapperInfo["region"] = s.location
-	wrapperInfo["key_ring"] = s.keyRing
-	wrapperInfo["crypto_key"] = s.cryptoKey
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["project"] = s.project
+	wrapConfig.Metadata["region"] = s.location
+	wrapConfig.Metadata["key_ring"] = s.keyRing
+	wrapConfig.Metadata["crypto_key"] = s.cryptoKey
 
-	return wrapperInfo, nil
-}
-
-// Init is called during core.Initialize. No-op at the moment
-func (s *Wrapper) Init(_ context.Context) error {
-	return nil
-}
-
-// Finalize is called during shutdown. This is a no-op since
-// Wrapper doesn't require any cleanup.
-func (s *Wrapper) Finalize(_ context.Context) error {
-	return nil
+	return wrapConfig, nil
 }
 
 // Type returns the type for this particular wrapper implementation
-func (s *Wrapper) Type() string {
-	return wrapping.GCPCKMS
+func (s *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeGcpCkms, nil
 }
 
-// KeyID returns the last known key id
-func (s *Wrapper) KeyID() string {
-	return s.currentKeyID.Load().(string)
-}
-
-// HMACKeyID returns the last known key id
-func (s *Wrapper) HMACKeyID() string {
-	return ""
+// KeyId returns the last known key id
+func (s *Wrapper) KeyId(_ context.Context) (string, error) {
+	return s.currentKeyId.Load().(string), nil
 }
 
 // Encrypt is used to encrypt the master key using the the AWS CMK.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after s.client has been instantiated.
-func (s *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
+	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping data: %w", err)
 	}
@@ -216,17 +200,17 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 	}
 
 	// Store current key id value
-	s.currentKeyID.Store(resp.Name)
+	s.currentKeyId.Store(resp.Name)
 
-	ret := &wrapping.EncryptedBlobInfo{
+	ret := &wrapping.BlobInfo{
 		Ciphertext: env.Ciphertext,
-		IV:         env.IV,
+		Iv:         env.Iv,
 		KeyInfo: &wrapping.KeyInfo{
-			Mechanism: GCPKMSEnvelopeAESGCMEncrypt,
+			Mechanism: GcpCkmsEnvelopeAesGcmEncrypt,
 			// Even though we do not use the key id during decryption, store it
 			// to know exactly what version was used in encryption in case we
 			// want to rewrap older entries
-			KeyID:      resp.Name,
+			KeyId:      resp.Name,
 			WrappedKey: resp.Ciphertext,
 		},
 	}
@@ -235,7 +219,7 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 }
 
 // Decrypt is used to decrypt the ciphertext.
-func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
+func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in.Ciphertext == nil {
 		return nil, fmt.Errorf("given ciphertext for decryption is nil")
 	}
@@ -243,13 +227,13 @@ func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
 		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: GCPKMSEncrypt,
+			Mechanism: GcpCkmsEncrypt,
 		}
 	}
 
 	var plaintext []byte
 	switch in.KeyInfo.Mechanism {
-	case GCPKMSEncrypt:
+	case GcpCkmsEncrypt:
 		resp, err := s.client.Decrypt(ctx, &kmspb.DecryptRequest{
 			Name:       s.parentName,
 			Ciphertext: in.Ciphertext,
@@ -260,7 +244,7 @@ func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 
 		plaintext = resp.Plaintext
 
-	case GCPKMSEnvelopeAESGCMEncrypt:
+	case GcpCkmsEnvelopeAesGcmEncrypt:
 		resp, err := s.client.Decrypt(ctx, &kmspb.DecryptRequest{
 			Name:       s.parentName,
 			Ciphertext: in.KeyInfo.WrappedKey,
@@ -271,10 +255,10 @@ func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 
 		envInfo := &wrapping.EnvelopeInfo{
 			Key:        resp.Plaintext,
-			IV:         in.IV,
+			Iv:         in.Iv,
 			Ciphertext: in.Ciphertext,
 		}
-		plaintext, err = wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
+		plaintext, err = wrapping.EnvelopeDecrypt(envInfo, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data with envelope: %w", err)
 		}
