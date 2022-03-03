@@ -72,8 +72,9 @@ func NewWrapperClient(pluginPath string, opt ...Option) (*gp.Client, error) {
 		AllowedProtocols: []gp.Protocol{
 			gp.ProtocolGRPC,
 		},
-		Logger:   opts.withLogger,
-		AutoMTLS: true,
+		Logger:       opts.withLogger,
+		AutoMTLS:     true,
+		SecureConfig: opts.withSecureConfig,
 	}), nil
 }
 
