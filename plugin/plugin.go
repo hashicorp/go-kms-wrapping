@@ -6,7 +6,6 @@ import (
 	"os/exec"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-plugin"
 	gp "github.com/hashicorp/go-plugin"
 	grpc "google.golang.org/grpc"
 )
@@ -20,7 +19,8 @@ var HandshakeConfig = gp.HandshakeConfig{
 
 // wrapper embeds Plugin and is used as the top-level
 type wrapper struct {
-	gp.Plugin
+	// Embeding this will disable the netRPC protocol
+	gp.NetRPCUnsupportedPlugin
 
 	impl wrapping.Wrapper
 }
@@ -35,13 +35,13 @@ func ServePlugin(wrapper wrapping.Wrapper, opt ...Option) error {
 	if err != nil {
 		return err
 	}
-	plugin.Serve(&plugin.ServeConfig{
+	gp.Serve(&gp.ServeConfig{
 		HandshakeConfig: HandshakeConfig,
-		VersionedPlugins: map[int]plugin.PluginSet{
+		VersionedPlugins: map[int]gp.PluginSet{
 			1: {"wrapping": wrapServer},
 		},
 		Logger:     opts.withLogger,
-		GRPCServer: plugin.DefaultGRPCServer,
+		GRPCServer: gp.DefaultGRPCServer,
 	})
 	return nil
 }
