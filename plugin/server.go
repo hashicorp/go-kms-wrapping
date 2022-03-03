@@ -37,7 +37,7 @@ func (ws *wrapServer) SetConfig(ctx context.Context, req *SetConfigRequest) (*Se
 	wc, err := ws.impl.SetConfig(
 		ctx,
 		wrapping.WithKeyId(opts.WithKeyId),
-		wrapping.WithWrapperOptions(opts.WithWrapperOptions),
+		wrapping.WithConfigMap(opts.WithConfigMap),
 	)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func (ws *wrapServer) Encrypt(ctx context.Context, req *EncryptRequest) (*Encryp
 		req.Plaintext,
 		wrapping.WithAad(opts.WithAad),
 		wrapping.WithKeyId(opts.WithKeyId),
-		wrapping.WithWrapperOptions(opts.WithWrapperOptions),
+		wrapping.WithConfigMap(opts.WithConfigMap),
 	)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (ws *wrapServer) Decrypt(ctx context.Context, req *DecryptRequest) (*Decryp
 		req.Ciphertext,
 		wrapping.WithAad(opts.WithAad),
 		wrapping.WithKeyId(opts.WithKeyId),
-		wrapping.WithWrapperOptions(opts.WithWrapperOptions),
+		wrapping.WithConfigMap(opts.WithConfigMap),
 	)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (ws *wrapServer) Init(ctx context.Context, req *InitRequest) (*InitResponse
 	}
 	if err := initFinalizer.Init(
 		ctx,
-		wrapping.WithWrapperOptions(opts.WithWrapperOptions),
+		wrapping.WithConfigMap(opts.WithConfigMap),
 	); err != nil {
 		return nil, err
 	}

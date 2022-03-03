@@ -27,6 +27,8 @@ func TestPlugin(
 	t.Helper()
 	require := require.New(t)
 
+	cleanup = func() {}
+
 	require.NotEmpty(pluginLoc, "plugin location cannot be empty")
 
 	tmpDir, err := ioutil.TempDir("", "*")

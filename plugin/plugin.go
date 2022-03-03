@@ -1,7 +1,7 @@
 package plugin
 
 import (
-	context "context"
+	"context"
 	"fmt"
 	"os/exec"
 

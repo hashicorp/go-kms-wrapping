@@ -24,9 +24,7 @@ func TestAeadPluginWrapper(t *testing.T) {
 	}
 
 	wrapper, cleanup := TestPlugin(t, pluginPath)
-
-	require.NotNil(cleanup)
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	rootKey := make([]byte, 32)
 	n, err := rand.Read(rootKey)
@@ -40,7 +38,7 @@ func TestAeadPluginWrapper(t *testing.T) {
 	_, err = wrapper.SetConfig(
 		context.Background(),
 		wrapping.WithKeyId("root"),
-		wrapping.WithWrapperOptions(map[string]string{
+		wrapping.WithConfigMap(map[string]string{
 			"key": base64.StdEncoding.EncodeToString(rootKey),
 		}),
 	)
@@ -71,9 +69,8 @@ func TestInterfaceWrapper(t *testing.T) {
 	var ok bool
 
 	wrapper, wrapperCleanup := TestPlugin(t, filepath.Join(pluginPath, "wrapperplugin"))
-	if wrapperCleanup != nil {
-		t.Cleanup(wrapperCleanup)
-	}
+	t.Cleanup(wrapperCleanup)
+
 	keyId, err := wrapper.KeyId(ctx)
 	assert.NoError(err)
 	assert.Equal(keyId, "static-key")
