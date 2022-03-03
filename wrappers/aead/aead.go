@@ -35,8 +35,7 @@ var (
 
 // NewWrapper creates a new Wrapper. No options are supported.
 func NewWrapper() *Wrapper {
-	seal := new(Wrapper)
-	return seal
+	return new(Wrapper)
 }
 
 // Deprecated: NewShamirWrapper returns a type of "shamir" instead of "aead" and
