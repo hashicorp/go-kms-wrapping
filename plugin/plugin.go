@@ -20,7 +20,8 @@ var HandshakeConfig = gp.HandshakeConfig{
 
 // wrapper embeds Plugin and is used as the top-level
 type wrapper struct {
-	gp.Plugin
+	// Embeding this will disable the netRPC protocol
+	plugin.NetRPCUnsupportedPlugin
 
 	impl wrapping.Wrapper
 }
