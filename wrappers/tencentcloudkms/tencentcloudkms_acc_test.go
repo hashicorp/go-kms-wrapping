@@ -23,19 +23,19 @@ func TestAccTencentCloudKMSWrapper_Lifecycle(t *testing.T) {
 		t.SkipNow()
 	}
 
-	s := NewWrapper(nil)
-	_, err := s.SetConfig(nil)
+	s := NewWrapper()
+	_, err := s.SetConfig(context.Background())
 	if err != nil {
 		t.Fatalf("err : %s", err)
 	}
 
 	input := []byte("tencentcloud")
-	swi, err := s.Encrypt(context.Background(), input, nil)
+	swi, err := s.Encrypt(context.Background(), input)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := s.Decrypt(context.Background(), swi, nil)
+	pt, err := s.Decrypt(context.Background(), swi)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}

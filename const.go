@@ -20,7 +20,6 @@ const (
 	WrapperTypeShamir          WrapperType = "shamir"
 	WrapperTypeTencentCloudKms WrapperType = "tencentcloudkms"
 	WrapperTypeTransit         WrapperType = "transit"
-	WrapperTypeYandexCloudKms  WrapperType = "yandexcloudkms"
 	WrapperTypeTest            WrapperType = "test-auto"
 )
 

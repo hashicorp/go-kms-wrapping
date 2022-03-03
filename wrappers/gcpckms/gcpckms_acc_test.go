@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	context "golang.org/x/net/context"
 )
 
@@ -16,12 +17,12 @@ const (
 	gcpckmsTestCryptoKey  = "vault-test-key"
 )
 
-func TestGCPCKMSSeal(t *testing.T) {
+func TestGcpCkmsSeal(t *testing.T) {
 	// Do an error check before env vars are set
-	s := NewWrapper(nil)
-	_, err := s.SetConfig(nil)
+	s := NewWrapper()
+	_, err := s.SetConfig(context.Background())
 	if err == nil {
-		t.Fatal("expected error when GCPCKMSSeal required values are not provided")
+		t.Fatal("expected error when GcpCkmsSeal required values are not provided")
 	}
 
 	// Now test for cases where CKMS values are provided
@@ -36,8 +37,8 @@ func TestGCPCKMSSeal(t *testing.T) {
 
 	for name, config := range configCases {
 		t.Run(name, func(t *testing.T) {
-			s := NewWrapper(nil)
-			_, err := s.SetConfig(config)
+			s := NewWrapper()
+			_, err := s.SetConfig(context.Background(), wrapping.WithConfigMap(config))
 			if err != nil {
 				t.Fatalf("error setting seal config: %v", err)
 			}
@@ -45,23 +46,23 @@ func TestGCPCKMSSeal(t *testing.T) {
 	}
 }
 
-func TestGCPCKMSSeal_Lifecycle(t *testing.T) {
+func TestGcpCkmsSeal_Lifecycle(t *testing.T) {
 	checkAndSetEnvVars(t)
 
-	s := NewWrapper(nil)
-	_, err := s.SetConfig(nil)
+	s := NewWrapper()
+	_, err := s.SetConfig(context.Background())
 	if err != nil {
 		t.Fatalf("error setting seal config: %v", err)
 	}
 
 	// Test Encrypt and Decrypt calls
 	input := []byte("foo")
-	swi, err := s.Encrypt(context.Background(), input, nil)
+	swi, err := s.Encrypt(context.Background(), input)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := s.Decrypt(context.Background(), swi, nil)
+	pt, err := s.Decrypt(context.Background(), swi)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
@@ -81,29 +82,29 @@ func checkAndSetEnvVars(t *testing.T) {
 		t.SkipNow()
 	}
 
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" && os.Getenv(EnvGCPCKMSWrapperCredsPath) == "" {
+	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" && os.Getenv(EnvGcpCkmsWrapperCredsPath) == "" {
 		t.Fatal("unable to get GCP credentials via environment variables")
 	}
 
-	if os.Getenv(EnvGCPCKMSWrapperProject) == "" {
-		os.Setenv(EnvGCPCKMSWrapperProject, gcpckmsTestProjectID)
+	if os.Getenv(EnvGcpCkmsWrapperProject) == "" {
+		os.Setenv(EnvGcpCkmsWrapperProject, gcpckmsTestProjectID)
 	}
 
-	if os.Getenv(EnvGCPCKMSWrapperLocation) == "" {
-		os.Setenv(EnvGCPCKMSWrapperLocation, gcpckmsTestLocationID)
+	if os.Getenv(EnvGcpCkmsWrapperLocation) == "" {
+		os.Setenv(EnvGcpCkmsWrapperLocation, gcpckmsTestLocationID)
 	}
 
-	if os.Getenv(EnvVaultGCPCKMSSealKeyRing) == "" {
-		os.Setenv(EnvVaultGCPCKMSSealKeyRing, gcpckmsTestKeyRing)
+	if os.Getenv(EnvVaultGcpCkmsSealKeyRing) == "" {
+		os.Setenv(EnvVaultGcpCkmsSealKeyRing, gcpckmsTestKeyRing)
 	}
-	if os.Getenv(EnvGCPCKMSWrapperKeyRing) == "" {
-		os.Setenv(EnvGCPCKMSWrapperKeyRing, gcpckmsTestKeyRing)
+	if os.Getenv(EnvGcpCkmsWrapperKeyRing) == "" {
+		os.Setenv(EnvGcpCkmsWrapperKeyRing, gcpckmsTestKeyRing)
 	}
 
-	if os.Getenv(EnvVaultGCPCKMSSealCryptoKey) == "" {
-		os.Setenv(EnvVaultGCPCKMSSealCryptoKey, gcpckmsTestCryptoKey)
+	if os.Getenv(EnvVaultGcpCkmsSealCryptoKey) == "" {
+		os.Setenv(EnvVaultGcpCkmsSealCryptoKey, gcpckmsTestCryptoKey)
 	}
-	if os.Getenv(EnvGCPCKMSWrapperCryptoKey) == "" {
-		os.Setenv(EnvGCPCKMSWrapperCryptoKey, gcpckmsTestCryptoKey)
+	if os.Getenv(EnvGcpCkmsWrapperCryptoKey) == "" {
+		os.Setenv(EnvGcpCkmsWrapperCryptoKey, gcpckmsTestCryptoKey)
 	}
 }
