@@ -14,9 +14,9 @@ import (
 
 const tencentCloudTestKeyID = "tencentcloud-test-key-id"
 
-func TestTencentCloudKMSWrapper(t *testing.T) {
-	s := NewWrapper(nil)
-	s.client = &mockTencentCloudKMSWrapperClient{
+func TestTencentCloudKmsWrapper(t *testing.T) {
+	s := NewWrapper()
+	s.client = &mockTencentCloudKmsWrapperClient{
 		keyID: common.StringPtr(tencentCloudTestKeyID),
 	}
 
@@ -24,8 +24,8 @@ func TestTencentCloudKMSWrapper(t *testing.T) {
 	tmpKeyID := os.Getenv(PROVIDER_KMS_KEY_ID)
 	_ = os.Unsetenv(PROVIDER_KMS_KEY_ID)
 
-	if _, err := s.SetConfig(nil); err == nil {
-		t.Fatal("expected error when TencentCloudKMSWrapper keyID is not provided")
+	if _, err := s.SetConfig(context.Background()); err == nil {
+		t.Fatal("expected error when TencentCloudKmsWrapper keyID is not provided")
 	}
 
 	if err := os.Setenv(PROVIDER_KMS_KEY_ID, tencentCloudTestKeyID); err != nil {
@@ -36,14 +36,14 @@ func TestTencentCloudKMSWrapper(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if _, err := s.SetConfig(nil); err != nil {
+	if _, err := s.SetConfig(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestTencentCloudKMSWrapper_Lifecycle(t *testing.T) {
-	s := NewWrapper(nil)
-	s.client = &mockTencentCloudKMSWrapperClient{
+func TestTencentCloudKmsWrapper_Lifecycle(t *testing.T) {
+	s := NewWrapper()
+	s.client = &mockTencentCloudKmsWrapperClient{
 		keyID: common.StringPtr(tencentCloudTestKeyID),
 	}
 
@@ -59,17 +59,17 @@ func TestTencentCloudKMSWrapper_Lifecycle(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
-	if _, err := s.SetConfig(nil); err != nil {
+	if _, err := s.SetConfig(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
 	input := []byte("tencentcloud")
-	swi, err := s.Encrypt(context.Background(), input, nil)
+	swi, err := s.Encrypt(context.Background(), input)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := s.Decrypt(context.Background(), swi, nil)
+	pt, err := s.Decrypt(context.Background(), swi)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
@@ -79,13 +79,13 @@ func TestTencentCloudKMSWrapper_Lifecycle(t *testing.T) {
 	}
 }
 
-// mockTencentCloudKMSWrapperClient is a mock client for testing
-type mockTencentCloudKMSWrapperClient struct {
+// mockTencentCloudKmsWrapperClient is a mock client for testing
+type mockTencentCloudKmsWrapperClient struct {
 	keyID *string
 }
 
 // Encrypt is a mocked call that returns a base64 encoded string.
-func (m *mockTencentCloudKMSWrapperClient) Encrypt(request *kms.EncryptRequest) (response *kms.EncryptResponse, err error) {
+func (m *mockTencentCloudKmsWrapperClient) Encrypt(request *kms.EncryptRequest) (response *kms.EncryptResponse, err error) {
 	m.keyID = request.KeyId
 
 	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(*request.Plaintext)))
@@ -97,7 +97,7 @@ func (m *mockTencentCloudKMSWrapperClient) Encrypt(request *kms.EncryptRequest) 
 }
 
 // Decrypt is a mocked call that returns a decoded base64 string.
-func (m *mockTencentCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) (response *kms.DecryptResponse, err error) {
+func (m *mockTencentCloudKmsWrapperClient) Decrypt(request *kms.DecryptRequest) (response *kms.DecryptResponse, err error) {
 	decLen := base64.StdEncoding.DecodedLen(len(*request.CiphertextBlob))
 	decoded := make([]byte, decLen)
 	len, err := base64.StdEncoding.Decode(decoded, []byte(*request.CiphertextBlob))
@@ -115,7 +115,7 @@ func (m *mockTencentCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) 
 }
 
 // DescribeKey is a mocked call that returns the keyID.
-func (m *mockTencentCloudKMSWrapperClient) DescribeKey(request *kms.DescribeKeyRequest) (response *kms.DescribeKeyResponse, err error) {
+func (m *mockTencentCloudKmsWrapperClient) DescribeKey(request *kms.DescribeKeyRequest) (response *kms.DescribeKeyResponse, err error) {
 	if *m.keyID == "" {
 		return nil, errors.New("key not found")
 	}

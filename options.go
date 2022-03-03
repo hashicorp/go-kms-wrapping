@@ -42,20 +42,20 @@ func getDefaultOptions() *Options {
 }
 
 // WithAad provides optional additional authenticated data
-func WithAad(aad []byte) Option {
+func WithAad(with []byte) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithAad = aad
+			o.WithAad = with
 			return nil
 		})
 	}
 }
 
 // WithKeyId provides a common way to pass in a key identifier
-func WithKeyId(id string) Option {
+func WithKeyId(with string) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithKeyId = id
+			o.WithKeyId = with
 			return nil
 		})
 	}
@@ -63,10 +63,10 @@ func WithKeyId(id string) Option {
 
 // WithConfigMap is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
-func WithConfigMap(options map[string]string) Option {
+func WithConfigMap(with map[string]string) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithConfigMap = options
+			o.WithConfigMap = with
 			return nil
 		})
 	}

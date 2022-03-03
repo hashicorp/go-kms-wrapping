@@ -9,24 +9,24 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 )
 
-const awsTestKeyID = "foo"
+const awsTestKeyId = "foo"
 
-func NewAWSKMSTestWrapper() *Wrapper {
-	s := NewWrapper(nil)
+func NewAwsKmsTestWrapper() *Wrapper {
+	s := NewWrapper()
 	s.client = &mockClient{
-		keyID: aws.String(awsTestKeyID),
+		keyId: aws.String(awsTestKeyId),
 	}
 	return s
 }
 
 type mockClient struct {
 	kmsiface.KMSAPI
-	keyID *string
+	keyId *string
 }
 
 // Encrypt is a mocked call that returns a base64 encoded string.
 func (m *mockClient) Encrypt(input *kms.EncryptInput) (*kms.EncryptOutput, error) {
-	m.keyID = input.KeyId
+	m.keyId = input.KeyId
 
 	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(input.Plaintext)))
 	base64.StdEncoding.Encode(encoded, input.Plaintext)
@@ -51,20 +51,20 @@ func (m *mockClient) Decrypt(input *kms.DecryptInput) (*kms.DecryptOutput, error
 	}
 
 	return &kms.DecryptOutput{
-		KeyId:     m.keyID,
+		KeyId:     m.keyId,
 		Plaintext: decoded,
 	}, nil
 }
 
-// DescribeKey is a mocked call that returns the keyID.
+// DescribeKey is a mocked call that returns the keyId.
 func (m *mockClient) DescribeKey(input *kms.DescribeKeyInput) (*kms.DescribeKeyOutput, error) {
-	if m.keyID == nil {
+	if m.keyId == nil {
 		return nil, awserr.New(kms.ErrCodeNotFoundException, "key not found", nil)
 	}
 
 	return &kms.DescribeKeyOutput{
 		KeyMetadata: &kms.KeyMetadata{
-			KeyId: m.keyID,
+			KeyId: m.keyId,
 		},
 	}, nil
 }
