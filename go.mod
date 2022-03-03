@@ -8,7 +8,6 @@ require (
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/hashicorp/vault/api v1.3.1
-	github.com/huaweicloud/golangsdk v0.0.0-20200304081349-45ec0797f2a4
 	github.com/oracle/oci-go-sdk v13.1.0+incompatible
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
