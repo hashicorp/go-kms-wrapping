@@ -15,39 +15,42 @@ import (
 type Wrapper struct {
 	logger       hclog.Logger
 	client       transitClientEncryptor
-	currentKeyID *atomic.Value
+	currentKeyId *atomic.Value
 }
 
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 
 // NewWrapper creates a new transit wrapper
-func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
-	if opts == nil {
-		opts = new(wrapping.WrapperOptions)
-	}
+func NewWrapper() *Wrapper {
 	s := &Wrapper{
-		logger:       opts.Logger,
-		currentKeyID: new(atomic.Value),
+		currentKeyId: new(atomic.Value),
 	}
-	s.currentKeyID.Store("")
+	s.currentKeyId.Store("")
 	return s
 }
 
 // SetConfig processes the config info from the server config
-func (s *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	client, wrapperInfo, err := newTransitClient(s.logger, config)
+func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
+	s.logger = opts.withLogger
+
+	client, wrapConfig, err := newTransitClient(s.logger, opts)
 	if err != nil {
 		return nil, err
 	}
 	s.client = client
 
 	// Send a value to test the wrapper and to set the current key id
-	if _, err := s.Encrypt(context.Background(), []byte("a"), nil); err != nil {
+	if _, err := s.Encrypt(context.Background(), []byte("a")); err != nil {
 		client.Close()
 		return nil, err
 	}
 
-	return wrapperInfo, nil
+	return wrapConfig, nil
 }
 
 // Init is called during core.Initialize
@@ -62,22 +65,17 @@ func (s *Wrapper) Finalize(_ context.Context) error {
 }
 
 // Type returns the type for this particular Wrapper implementation
-func (s *Wrapper) Type() string {
-	return wrapping.Transit
+func (s *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeTransit, nil
 }
 
-// KeyID returns the last known key id
-func (s *Wrapper) KeyID() string {
-	return s.currentKeyID.Load().(string)
-}
-
-// HMACKeyID returns the last known HMAC key id
-func (s *Wrapper) HMACKeyID() string {
-	return ""
+// KeyId returns the last known key id
+func (s *Wrapper) KeyId(_ context.Context) (string, error) {
+	return s.currentKeyId.Load().(string), nil
 }
 
 // Encrypt is used to encrypt using Vault's Transit engine
-func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, _ ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	ciphertext, err := s.client.Encrypt(plaintext)
 	if err != nil {
 		return nil, err
@@ -87,20 +85,20 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext, aad []byte) (blob *wrapp
 	if len(splitKey) != 3 {
 		return nil, errors.New("invalid ciphertext returned")
 	}
-	keyID := splitKey[1]
-	s.currentKeyID.Store(keyID)
+	keyId := splitKey[1]
+	s.currentKeyId.Store(keyId)
 
-	ret := &wrapping.EncryptedBlobInfo{
+	ret := &wrapping.BlobInfo{
 		Ciphertext: ciphertext,
 		KeyInfo: &wrapping.KeyInfo{
-			KeyID: keyID,
+			KeyId: keyId,
 		},
 	}
 	return ret, nil
 }
 
 // Decrypt is used to decrypt the ciphertext
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, _ []byte) (pt []byte, err error) {
+func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, _ ...wrapping.Option) ([]byte, error) {
 	plaintext, err := s.client.Decrypt(in.Ciphertext)
 	if err != nil {
 		return nil, err
