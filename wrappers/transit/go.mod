@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/hashicorp/go-hclog v1.1.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0-20220301142908-761d8400412a
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0
 	github.com/hashicorp/vault/api v1.4.1
 )
 
@@ -32,7 +32,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/sdk v0.4.1 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
-	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
@@ -42,6 +41,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
+	github.com/rogpeppe/go-internal v1.6.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
