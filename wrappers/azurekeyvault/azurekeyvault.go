@@ -6,17 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"sync/atomic"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.0/keyvault"
+	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.1/keyvault"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 const (
@@ -39,7 +38,7 @@ type Wrapper struct {
 	vaultName    string
 	keyName      string
 
-	currentKeyID *atomic.Value
+	currentKeyId *atomic.Value
 
 	environment    azure.Environment
 	resource       string
@@ -53,16 +52,11 @@ type Wrapper struct {
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 
 // NewWrapper creates a new wrapper with the given options
-func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
-	if opts == nil {
-		opts = new(wrapping.WrapperOptions)
-	}
+func NewWrapper() *Wrapper {
 	v := &Wrapper{
-		currentKeyID:   new(atomic.Value),
-		logger:         opts.Logger,
-		keyNotRequired: opts.KeyNotRequired,
+		currentKeyId: new(atomic.Value),
 	}
-	v.currentKeyID.Store("")
+	v.currentKeyId.Store("")
 	return v
 }
 
@@ -73,47 +67,42 @@ func NewWrapper(opts *wrapping.WrapperOptions) *Wrapper {
 // * Environment variable
 // * Passed in config map
 // * Managed Service Identity for instance
-func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
+func (v *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
 	}
 
-	allowEnv := true
-	if val, ok := config["disallow_env_vars"]; ok {
-		disallowEnvVars, err := strconv.ParseBool(val)
-		if err != nil {
-			return nil, err
-		}
-		allowEnv = !disallowEnvVars
-	}
+	v.keyNotRequired = opts.withKeyNotRequired
+	v.logger = opts.withLogger
 
 	switch {
-	case os.Getenv("AZURE_TENANT_ID") != "" && allowEnv:
+	case os.Getenv("AZURE_TENANT_ID") != "" && !opts.withDisallowEnvVars:
 		v.tenantID = os.Getenv("AZURE_TENANT_ID")
-	case config["tenant_id"] != "":
-		v.tenantID = config["tenant_id"]
+	case opts.withTenantId != "":
+		v.tenantID = opts.withTenantId
 	}
 
 	switch {
-	case os.Getenv("AZURE_CLIENT_ID") != "" && allowEnv:
+	case os.Getenv("AZURE_CLIENT_ID") != "" && !opts.withDisallowEnvVars:
 		v.clientID = os.Getenv("AZURE_CLIENT_ID")
-	case config["client_id"] != "":
-		v.clientID = config["client_id"]
+	case opts.withClientId != "":
+		v.clientID = opts.withClientId
 	}
 
 	switch {
-	case os.Getenv("AZURE_CLIENT_SECRET") != "" && allowEnv:
+	case os.Getenv("AZURE_CLIENT_SECRET") != "" && !opts.withDisallowEnvVars:
 		v.clientSecret = os.Getenv("AZURE_CLIENT_SECRET")
-	case config["client_secret"] != "":
-		v.clientSecret = config["client_secret"]
+	case opts.withClientSecret != "":
+		v.clientSecret = opts.withClientSecret
 	}
 
 	var envName string
-	if allowEnv {
+	if !opts.withDisallowEnvVars {
 		envName = os.Getenv("AZURE_ENVIRONMENT")
 	}
 	if envName == "" {
-		envName = config["environment"]
+		envName = opts.withEnvironment
 	}
 	if envName == "" {
 		v.environment = azure.PublicCloud
@@ -126,11 +115,11 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	}
 
 	var azResource string
-	if allowEnv {
+	if !opts.withDisallowEnvVars {
 		azResource = os.Getenv("AZURE_AD_RESOURCE")
 	}
 	if azResource == "" {
-		azResource = config["resource"]
+		azResource = opts.withResource
 		if azResource == "" {
 			azResource = v.environment.KeyVaultDNSSuffix
 		}
@@ -140,23 +129,23 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 	v.environment.KeyVaultEndpoint = v.resource
 
 	switch {
-	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "" && allowEnv:
+	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "" && !opts.withDisallowEnvVars:
 		v.vaultName = os.Getenv(EnvAzureKeyVaultWrapperVaultName)
-	case os.Getenv(EnvVaultAzureKeyVaultVaultName) != "" && allowEnv:
+	case os.Getenv(EnvVaultAzureKeyVaultVaultName) != "" && !opts.withDisallowEnvVars:
 		v.vaultName = os.Getenv(EnvVaultAzureKeyVaultVaultName)
-	case config["vault_name"] != "":
-		v.vaultName = config["vault_name"]
+	case opts.withVaultName != "":
+		v.vaultName = opts.withVaultName
 	default:
 		return nil, errors.New("vault name is required")
 	}
 
 	switch {
-	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "" && allowEnv:
+	case os.Getenv(EnvAzureKeyVaultWrapperKeyName) != "" && !opts.withDisallowEnvVars:
 		v.keyName = os.Getenv(EnvAzureKeyVaultWrapperKeyName)
-	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "" && allowEnv:
+	case os.Getenv(EnvVaultAzureKeyVaultKeyName) != "" && !opts.withDisallowEnvVars:
 		v.keyName = os.Getenv(EnvVaultAzureKeyVaultKeyName)
-	case config["key_name"] != "":
-		v.keyName = config["key_name"]
+	case opts.withKeyName != "":
+		v.keyName = opts.withKeyName
 	case v.keyNotRequired:
 		// key not required to set config
 	default:
@@ -181,56 +170,42 @@ func (v *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 			if keyInfo.Key == nil {
 				return nil, errors.New("no key information returned")
 			}
-			v.currentKeyID.Store(ParseKeyVersion(to.String(keyInfo.Key.Kid)))
+			v.currentKeyId.Store(ParseKeyVersion(to.String(keyInfo.Key.Kid)))
 		}
 
 		v.client = client
 	}
 
 	// Map that holds non-sensitive configuration info
-	wrapperInfo := make(map[string]string)
-	wrapperInfo["environment"] = v.environment.Name
-	wrapperInfo["vault_name"] = v.vaultName
-	wrapperInfo["key_name"] = v.keyName
-	wrapperInfo["resource"] = v.resource
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["environment"] = v.environment.Name
+	wrapConfig.Metadata["vault_name"] = v.vaultName
+	wrapConfig.Metadata["key_name"] = v.keyName
+	wrapConfig.Metadata["resource"] = v.resource
 
-	return wrapperInfo, nil
-}
-
-// Init is called during core.Initialize.  This is a no-op.
-func (v *Wrapper) Init(context.Context) error {
-	return nil
-}
-
-// Finalize is called during shutdown. This is a no-op.
-func (v *Wrapper) Finalize(context.Context) error {
-	return nil
+	return wrapConfig, nil
 }
 
 // Type returns the type for this particular Wrapper implementation
-func (v *Wrapper) Type() string {
-	return wrapping.AzureKeyVault
+func (v *Wrapper) Type(_ context.Context) (wrapping.WrapperType, error) {
+	return wrapping.WrapperTypeAzureKeyVault, nil
 }
 
-// KeyID returns the last known key id
-func (v *Wrapper) KeyID() string {
-	return v.currentKeyID.Load().(string)
-}
-
-// HMACKeyID returns the last known HMAC key id
-func (v *Wrapper) HMACKeyID() string {
-	return ""
+// KeyId returns the last known key id
+func (v *Wrapper) KeyId(_ context.Context) (string, error) {
+	return v.currentKeyId.Load().(string), nil
 }
 
 // Encrypt is used to encrypt using Azure Key Vault.
 // This returns the ciphertext, and/or any errors from this
 // call.
-func (v *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wrapping.EncryptedBlobInfo, err error) {
+func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.NewEnvelope(nil).Encrypt(plaintext, aad)
+	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("error wrapping dat: %w", err)
 	}
@@ -248,13 +223,13 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 
 	// Store the current key version
 	keyVersion := ParseKeyVersion(to.String(resp.Kid))
-	v.currentKeyID.Store(keyVersion)
+	v.currentKeyId.Store(keyVersion)
 
-	ret := &wrapping.EncryptedBlobInfo{
+	ret := &wrapping.BlobInfo{
 		Ciphertext: env.Ciphertext,
-		IV:         env.IV,
+		Iv:         env.Iv,
 		KeyInfo: &wrapping.KeyInfo{
-			KeyID:      keyVersion,
+			KeyId:      keyVersion,
 			WrappedKey: []byte(to.String(resp.Result)),
 		},
 	}
@@ -263,7 +238,7 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext, aad []byte) (blob *wra
 }
 
 // Decrypt is used to decrypt the ciphertext
-func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, aad []byte) (pt []byte, err error) {
+func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, errors.New("given input for decryption is nil")
 	}
@@ -277,7 +252,7 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 		Algorithm: keyvault.RSAOAEP256,
 		Value:     to.StringPtr(string(in.KeyInfo.WrappedKey)),
 	}
-	resp, err := v.client.UnwrapKey(ctx, v.buildBaseURL(), v.keyName, in.KeyInfo.KeyID, params)
+	resp, err := v.client.UnwrapKey(ctx, v.buildBaseURL(), v.keyName, in.KeyInfo.KeyId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -307,10 +282,10 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.EncryptedBlobInfo, a
 
 	envInfo := &wrapping.EnvelopeInfo{
 		Key:        keyBytes,
-		IV:         in.IV,
+		Iv:         in.Iv,
 		Ciphertext: in.Ciphertext,
 	}
-	return wrapping.NewEnvelope(nil).Decrypt(envInfo, aad)
+	return wrapping.EnvelopeDecrypt(envInfo, opt...)
 }
 
 func (v *Wrapper) buildBaseURL() string {

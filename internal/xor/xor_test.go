@@ -12,7 +12,7 @@ const (
 )
 
 func TestBase64XOR(t *testing.T) {
-	ret, err := XORBase64(tokenB64, xorB64)
+	ret, err := XorBase64(tokenB64, xorB64)
 	if err != nil {
 		t.Fatal(err)
 	}
