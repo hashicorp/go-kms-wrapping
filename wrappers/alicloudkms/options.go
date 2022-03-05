@@ -39,7 +39,7 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 	// (for over the plugin barrier or embedding) or via local option functions
 	// (for embedding). First pull from the option.
 	if opts.WithConfigMap != nil {
-		for k, v := range opts.WithWrapperOptions {
+		for k, v := range opts.WithConfigMap {
 			switch k {
 			case "kms_key_id": // deprecated backend-specific value, set global
 				opts.WithKeyId = v
