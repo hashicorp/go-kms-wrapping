@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-hclog"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/vault/api"
 )
 
@@ -36,19 +37,15 @@ type TransitClient struct {
 	keyName   string
 }
 
-func newTransitClient(logger hclog.Logger, config map[string]string) (*TransitClient, map[string]string, error) {
-	if config == nil {
-		config = map[string]string{}
-	}
-
+func newTransitClient(logger hclog.Logger, opts *options) (*TransitClient, *wrapping.WrapperConfig, error) {
 	var mountPath, keyName string
 	switch {
 	case os.Getenv(EnvTransitWrapperMountPath) != "":
 		mountPath = os.Getenv(EnvTransitWrapperMountPath)
 	case os.Getenv(EnvVaultTransitSealMountPath) != "":
 		mountPath = os.Getenv(EnvVaultTransitSealMountPath)
-	case config["mount_path"] != "":
-		mountPath = config["mount_path"]
+	case opts.withMountPath != "":
+		mountPath = opts.withMountPath
 	default:
 		return nil, nil, fmt.Errorf("mount_path is required")
 	}
@@ -58,8 +55,8 @@ func newTransitClient(logger hclog.Logger, config map[string]string) (*TransitCl
 		keyName = os.Getenv(EnvTransitWrapperKeyName)
 	case os.Getenv(EnvVaultTransitSealKeyName) != "":
 		keyName = os.Getenv(EnvVaultTransitSealKeyName)
-	case config["key_name"] != "":
-		keyName = config["key_name"]
+	case opts.withKeyName != "":
+		keyName = opts.withKeyName
 	default:
 		return nil, nil, fmt.Errorf("key_name is required")
 	}
@@ -71,8 +68,8 @@ func newTransitClient(logger hclog.Logger, config map[string]string) (*TransitCl
 		disableRenewalRaw = os.Getenv(EnvTransitWrapperDisableRenewal)
 	case os.Getenv(EnvVaultTransitSealDisableRenewal) != "":
 		disableRenewalRaw = os.Getenv(EnvVaultTransitSealDisableRenewal)
-	case config["disable_renewal"] != "":
-		disableRenewalRaw = config["disable_renewal"]
+	case opts.withDisableRenewal != "":
+		disableRenewalRaw = opts.withDisableRenewal
 	}
 	if disableRenewalRaw != "" {
 		var err error
@@ -86,32 +83,28 @@ func newTransitClient(logger hclog.Logger, config map[string]string) (*TransitCl
 	switch {
 	case os.Getenv("VAULT_NAMESPACE") != "":
 		namespace = os.Getenv("VAULT_NAMESPACE")
-	case config["namespace"] != "":
-		namespace = config["namespace"]
+	case opts.withNamespace != "":
+		namespace = opts.withNamespace
 	}
 
 	apiConfig := api.DefaultConfig()
-	if config["address"] != "" {
-		apiConfig.Address = config["address"]
+	if opts.withAddress != "" {
+		apiConfig.Address = opts.withAddress
 	}
-	if config["tls_ca_cert"] != "" || config["tls_ca_path"] != "" || config["tls_client_cert"] != "" || config["tls_client_key"] != "" ||
-		config["tls_server_name"] != "" || config["tls_skip_verify"] != "" {
-		var tlsSkipVerify bool
-		if config["tls_skip_verify"] != "" {
-			var err error
-			tlsSkipVerify, err = strconv.ParseBool(config["tls_skip_verify"])
-			if err != nil {
-				return nil, nil, err
-			}
-		}
+	if opts.withTlsCaCert != "" ||
+		opts.withTlsCaPath != "" ||
+		opts.withTlsClientCert != "" ||
+		opts.withTlsClientKey != "" ||
+		opts.withTlsServerName != "" ||
+		opts.withTlsSkipVerify {
 
 		tlsConfig := &api.TLSConfig{
-			CACert:        config["tls_ca_cert"],
-			CAPath:        config["tls_ca_path"],
-			ClientCert:    config["tls_client_cert"],
-			ClientKey:     config["tls_client_key"],
-			TLSServerName: config["tls_server_name"],
-			Insecure:      tlsSkipVerify,
+			CACert:        opts.withTlsCaCert,
+			CAPath:        opts.withTlsCaPath,
+			ClientCert:    opts.withTlsClientCert,
+			ClientKey:     opts.withTlsClientKey,
+			TLSServerName: opts.withTlsServerName,
+			Insecure:      opts.withTlsSkipVerify,
 		}
 		if err := apiConfig.ConfigureTLS(tlsConfig); err != nil {
 			return nil, nil, err
@@ -122,8 +115,8 @@ func newTransitClient(logger hclog.Logger, config map[string]string) (*TransitCl
 	if err != nil {
 		return nil, nil, err
 	}
-	if config["token"] != "" {
-		apiClient.SetToken(config["token"])
+	if opts.withToken != "" {
+		apiClient.SetToken(opts.withToken)
 	}
 	if namespace != "" {
 		apiClient.SetNamespace(namespace)
@@ -182,15 +175,16 @@ func newTransitClient(logger hclog.Logger, config map[string]string) (*TransitCl
 		}
 	}
 
-	sealInfo := make(map[string]string)
-	sealInfo["address"] = apiClient.Address()
-	sealInfo["mount_path"] = mountPath
-	sealInfo["key_name"] = keyName
+	wrapConfig := new(wrapping.WrapperConfig)
+	wrapConfig.Metadata = make(map[string]string)
+	wrapConfig.Metadata["address"] = apiClient.Address()
+	wrapConfig.Metadata["mount_path"] = mountPath
+	wrapConfig.Metadata["key_name"] = keyName
 	if namespace != "" {
-		sealInfo["namespace"] = namespace
+		wrapConfig.Metadata["namespace"] = namespace
 	}
 
-	return client, sealInfo, nil
+	return client, wrapConfig, nil
 }
 
 func (c *TransitClient) Close() {

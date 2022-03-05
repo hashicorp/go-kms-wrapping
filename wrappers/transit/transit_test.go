@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
 type testTransitClient struct {
@@ -40,7 +40,7 @@ func (m *testTransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
 		return nil, errors.New("invalid ciphertext returned")
 	}
 
-	data := &wrapping.EncryptedBlobInfo{
+	data := &wrapping.BlobInfo{
 		Ciphertext: []byte(splitKey[2]),
 	}
 	v, err := m.wrap.Decrypt(context.Background(), data, nil)
@@ -52,19 +52,19 @@ func (m *testTransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
 }
 
 func TestTransitWrapper_Lifecycle(t *testing.T) {
-	s := NewWrapper(nil)
+	s := NewWrapper()
 
-	keyID := "test-key"
-	s.client = newTestTransitClient(keyID)
+	keyId := "test-key"
+	s.client = newTestTransitClient(keyId)
 
 	// Test Encrypt and Decrypt calls
 	input := []byte("foo")
-	swi, err := s.Encrypt(context.Background(), input, nil)
+	swi, err := s.Encrypt(context.Background(), input)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err := s.Decrypt(context.Background(), swi, nil)
+	pt, err := s.Decrypt(context.Background(), swi)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
@@ -73,7 +73,11 @@ func TestTransitWrapper_Lifecycle(t *testing.T) {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
 
-	if s.KeyID() != keyID {
-		t.Fatalf("key id does not match: expected %s, got %s", keyID, s.KeyID())
+	kid, err := s.KeyId(context.Background())
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+	if kid != keyId {
+		t.Fatalf("key id does not match: expected %s, got %s", keyId, kid)
 	}
 }
