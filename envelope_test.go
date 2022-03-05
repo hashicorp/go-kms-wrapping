@@ -1,45 +1,37 @@
 package wrapping
 
 import (
-	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnvelope(t *testing.T) {
+	require := require.New(t)
 	input := []byte("test")
-	env, err := NewEnvelope(nil).Encrypt(input, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	output, err := NewEnvelope(nil).Decrypt(env, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	env, err := EnvelopeEncrypt(input)
+	require.NoError(err)
 
-	if !bytes.Equal(input, output) {
-		t.Fatalf("expected the same text: expected %s, got %s", string(input), string(output))
-	}
+	output, err := EnvelopeDecrypt(env)
+	require.NoError(err)
+
+	require.Equal(input, output)
 }
 
-func TestEnvelopeAAD(t *testing.T) {
+func TestEnvelopeAad(t *testing.T) {
+	require := require.New(t)
 	input := []byte("test")
-	env, err := NewEnvelope(nil).Encrypt(input, []byte("foo"))
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	output, err := NewEnvelope(nil).Decrypt(env, nil)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
+	env, err := EnvelopeEncrypt(input, WithAad([]byte("foo")))
+	require.NoError(err)
 
-	output, err = NewEnvelope(nil).Decrypt(env, []byte("foo"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	output, err := EnvelopeDecrypt(env)
+	require.Error(err)
+	require.Nil(output)
 
-	if !bytes.Equal(input, output) {
-		t.Fatalf("expected the same text: expected %s, got %s", string(input), string(output))
-	}
+	output, err = EnvelopeDecrypt(env, WithAad([]byte("foo")))
+	require.NoError(err)
+
+	require.Equal(input, output)
 }

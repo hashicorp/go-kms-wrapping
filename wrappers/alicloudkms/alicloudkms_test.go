@@ -11,12 +11,12 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
 )
 
-const aliCloudTestKeyID = "foo"
+const aliCloudTestKeyId = "foo"
 
-func TestAliCloudKMSWrapper(t *testing.T) {
-	s := NewWrapper(nil)
-	s.client = &mockAliCloudKMSWrapperClient{
-		keyID: aliCloudTestKeyID,
+func TestAliCloudKmsWrapper(t *testing.T) {
+	s := NewWrapper()
+	s.client = &mockAliCloudKmsWrapperClient{
+		keyId: aliCloudTestKeyId,
 	}
 
 	if _, err := s.SetConfig(nil); err == nil {
@@ -24,11 +24,11 @@ func TestAliCloudKMSWrapper(t *testing.T) {
 	}
 
 	// Set the key
-	if err := os.Setenv(EnvAliCloudKMSWrapperKeyID, aliCloudTestKeyID); err != nil {
+	if err := os.Setenv(EnvAliCloudKmsWrapperKeyId, aliCloudTestKeyId); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvAliCloudKMSWrapperKeyID); err != nil {
+		if err := os.Unsetenv(EnvAliCloudKmsWrapperKeyId); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -37,17 +37,17 @@ func TestAliCloudKMSWrapper(t *testing.T) {
 	}
 }
 
-func TestAliCloudKMSWrapper_Lifecycle(t *testing.T) {
-	s := NewWrapper(nil)
-	s.client = &mockAliCloudKMSWrapperClient{
-		keyID: aliCloudTestKeyID,
+func TestAliCloudKmsWrapper_Lifecycle(t *testing.T) {
+	s := NewWrapper()
+	s.client = &mockAliCloudKmsWrapperClient{
+		keyId: aliCloudTestKeyId,
 	}
 
-	if err := os.Setenv(EnvAliCloudKMSWrapperKeyID, aliCloudTestKeyID); err != nil {
+	if err := os.Setenv(EnvAliCloudKmsWrapperKeyId, aliCloudTestKeyId); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Unsetenv(EnvAliCloudKMSWrapperKeyID); err != nil {
+		if err := os.Unsetenv(EnvAliCloudKmsWrapperKeyId); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -72,13 +72,13 @@ func TestAliCloudKMSWrapper_Lifecycle(t *testing.T) {
 	}
 }
 
-type mockAliCloudKMSWrapperClient struct {
-	keyID string
+type mockAliCloudKmsWrapperClient struct {
+	keyId string
 }
 
 // Encrypt is a mocked call that returns a base64 encoded string.
-func (m *mockAliCloudKMSWrapperClient) Encrypt(request *kms.EncryptRequest) (response *kms.EncryptResponse, err error) {
-	m.keyID = request.KeyId
+func (m *mockAliCloudKmsWrapperClient) Encrypt(request *kms.EncryptRequest) (response *kms.EncryptResponse, err error) {
+	m.keyId = request.KeyId
 
 	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(request.Plaintext)))
 	base64.StdEncoding.Encode(encoded, []byte(request.Plaintext))
@@ -90,7 +90,7 @@ func (m *mockAliCloudKMSWrapperClient) Encrypt(request *kms.EncryptRequest) (res
 }
 
 // Decrypt is a mocked call that returns a decoded base64 string.
-func (m *mockAliCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) (response *kms.DecryptResponse, err error) {
+func (m *mockAliCloudKmsWrapperClient) Decrypt(request *kms.DecryptRequest) (response *kms.DecryptResponse, err error) {
 	decLen := base64.StdEncoding.DecodedLen(len(request.CiphertextBlob))
 	decoded := make([]byte, decLen)
 	len, err := base64.StdEncoding.Decode(decoded, []byte(request.CiphertextBlob))
@@ -103,19 +103,19 @@ func (m *mockAliCloudKMSWrapperClient) Decrypt(request *kms.DecryptRequest) (res
 	}
 
 	output := kms.CreateDecryptResponse()
-	output.KeyId = m.keyID
+	output.KeyId = m.keyId
 	output.Plaintext = string(decoded)
 	return output, nil
 }
 
 // DescribeKey is a mocked call that returns the keyID.
-func (m *mockAliCloudKMSWrapperClient) DescribeKey(request *kms.DescribeKeyRequest) (response *kms.DescribeKeyResponse, err error) {
-	if m.keyID == "" {
+func (m *mockAliCloudKmsWrapperClient) DescribeKey(request *kms.DescribeKeyRequest) (response *kms.DescribeKeyResponse, err error) {
+	if m.keyId == "" {
 		return nil, errors.New("key not found")
 	}
 	output := kms.CreateDescribeKeyResponse()
 	output.KeyMetadata = kms.KeyMetadata{
-		KeyId: m.keyID,
+		KeyId: m.keyId,
 	}
 	return output, nil
 }

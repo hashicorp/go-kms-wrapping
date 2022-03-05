@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"golang.org/x/net/context"
 )
 
@@ -46,18 +47,17 @@ func initSeal(t *testing.T) *Wrapper {
 	if os.Getenv("VAULT_ACC") == "" {
 		t.SkipNow()
 	}
-	s := NewWrapper(nil)
-	_, err := s.SetConfig(nil)
+	s := NewWrapper()
+	_, err := s.SetConfig(context.Background())
 	if err == nil {
 		t.Fatal("expected error when Wrapper required values are not provided")
 	}
 
 	mockConfig := map[string]string{
-
 		"auth_type_api_key": "true",
 	}
 
-	_, err = s.SetConfig(mockConfig)
+	_, err = s.SetConfig(context.Background(), wrapping.WithConfigMap(mockConfig))
 	if err != nil {
 		t.Fatalf("error setting seal config: %v", err)
 	}

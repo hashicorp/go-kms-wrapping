@@ -9,13 +9,19 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 )
 
-// NewEnvelope retuns an Envelope that is ready to use for use. It is valid to pass nil EnvelopeOptions.
-func NewEnvelope(opts *EnvelopeOptions) *Envelope {
-	return &Envelope{}
-}
+// EnvelopeEncrypt takes in plaintext and envelope encrypts it, generating an
+// EnvelopeInfo value.
+//
+// Supported options:
+//
+// * wrapping.WithAad: Additional authenticated data that should be sourced from
+// a separate location, and must also be provided during envelope decryption
+func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
+	opts, err := GetOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
 
-// Encrypt takes in plaintext and envelope encrypts it, generating an EnvelopeInfo value
-func (e *Envelope) Encrypt(plaintext []byte, aad []byte) (*EnvelopeInfo, error) {
 	// Generate DEK
 	key, err := uuid.GenerateRandomBytes(32)
 	if err != nil {
@@ -25,29 +31,41 @@ func (e *Envelope) Encrypt(plaintext []byte, aad []byte) (*EnvelopeInfo, error) 
 	if err != nil {
 		return nil, err
 	}
-	aead, err := e.aeadEncrypter(key)
+	aead, err := aeadEncrypter(key)
 	if err != nil {
 		return nil, err
 	}
 
 	return &EnvelopeInfo{
-		Ciphertext: aead.Seal(nil, iv, plaintext, aad),
+		Ciphertext: aead.Seal(nil, iv, plaintext, opts.WithAad),
 		Key:        key,
-		IV:         iv,
+		Iv:         iv,
 	}, nil
 }
 
-// Decrypt takes in EnvelopeInfo and potentially additional data and decrypts. Additional data is separate from the encrypted blob info as it is expected that will be sourced from a separate location.
-func (e *Envelope) Decrypt(data *EnvelopeInfo, aad []byte) ([]byte, error) {
-	aead, err := e.aeadEncrypter(data.Key)
+// EnvelopeDecrypt takes in EnvelopeInfo and potentially additional options and
+// decrypts.
+//
+// Supported options:
+//
+// * wrapping.WithAad: Additional authenticated data that should be sourced from
+// a separate location, and must match what was provided during envelope
+// encryption.
+func EnvelopeDecrypt(data *EnvelopeInfo, opt ...Option) ([]byte, error) {
+	opts, err := GetOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
 
-	return aead.Open(nil, data.IV, data.Ciphertext, aad)
+	aead, err := aeadEncrypter(data.Key)
+	if err != nil {
+		return nil, err
+	}
+
+	return aead.Open(nil, data.Iv, data.Ciphertext, opts.WithAad)
 }
 
-func (e *Envelope) aeadEncrypter(key []byte) (cipher.AEAD, error) {
+func aeadEncrypter(key []byte) (cipher.AEAD, error) {
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
