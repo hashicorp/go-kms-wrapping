@@ -2,8 +2,6 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/ibmkp/v2
 
 go 1.17
 
-replace github.com/hashicorp/go-kms-wrapping/v2 => ../..
-
 require (
 	github.com/IBM/keyprotect-go-client v0.7.0
 	github.com/hashicorp/go-hclog v1.1.0
