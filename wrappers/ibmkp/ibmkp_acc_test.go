@@ -10,7 +10,7 @@ package ibmkp
 // 3. IBM Key Protect's Root Key
 //    https://cloud.ibm.com/docs/key-protect?topic=key-protect-create-root-keys
 //
-// 4. IBM Cloud Service ID with an API Key
+// 4. IBM Cloud Service ID with an API Key.
 //    https://cloud.ibm.com/docs/account?topic=account-serviceids
 //
 // 5. Grant 'Reader' access to Service ID (step 4) into Root Key (step 3)
@@ -21,7 +21,7 @@ package ibmkp
 //
 // To run this test, the following env variables need to be set:
 //   - IBMCLOUD_API_KEY created on step 4
-//   - IBMCLOUD_KP_INSTANCE_ID created on step 2
+//   - IBMCLOUD_KP_INSTANCE_ID created on step 2, it is 8th field on CRN.
 //   - IBMCLOUD_KP_KEY_ID created on step 3
 
 import (
@@ -29,42 +29,76 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
-	TestIBMApiKey       = "notARealApiKey"
-	TestIBMKPInstanceID = "a6493c3a-5b29-4ac3-9eaa-deadbeef3bfd"
-	TestIBMKPKeyID      = "1234abcd-abcd-asdf-3dea-beefdeadabcd"
+	TestIbmApiKey       = "notARealApiKey"
+	TestIbmKpInstanceId = "a6493c3a-5b29-4ac3-9eaa-deadbeef3bfd"
+	TestIbmKpKeyId      = "1234abcd-abcd-asdf-3dea-beefdeadabcd"
 )
 
-func TestIBMKP_SetConfig(t *testing.T) {
+func TestIbmKp_SetConfig(t *testing.T) {
 
 	checkAndSetEnvVars(t)
 
-	s := NewWrapper(nil)
-	instanceID := os.Getenv(EnvIBMKPInstanceID)
-	os.Unsetenv(EnvIBMKPInstanceID)
+	s := NewWrapper()
+	instanceID := os.Getenv(EnvIbmKpInstanceId)
+	os.Unsetenv(EnvIbmKpInstanceId)
 
 	// Attempt to set config, expect failure due to missing config
-	_, err := s.SetConfig(nil)
+	_, err := s.SetConfig(context.Background())
 	if err == nil {
 		t.Fatal("expected error when IBM Key Protect Key Vault config values are not provided")
 	}
 
-	os.Setenv(EnvIBMKPInstanceID, instanceID)
+	os.Setenv(EnvIbmKpInstanceId, instanceID)
 
-	_, err = s.SetConfig(nil)
+	_, err = s.SetConfig(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestIBMKP_Lifecycle(t *testing.T) {
+// This test does not need environment setup
+func TestIbmKp_IgnoreEnv(t *testing.T) {
+	wrapper := NewWrapper()
+	client, _ := wrapper.GetIbmKpClient()
+	wrapper.client = client
+
+	// Setup environment values to ignore for the following values
+	for _, envVar := range []string{EnvIbmApiKey, EnvIbmKpEndpoint, EnvIbmKpInstanceId, EnvIbmKpKeyId} {
+		oldVal := os.Getenv(envVar)
+		os.Setenv(envVar, "envValue")
+		defer os.Setenv(envVar, oldVal)
+	}
+
+	config := map[string]string{
+		"disallow_env_vars": "true",
+		"kms_key_id":        "a-key-key",
+		"api_key":           "a-api-key",
+		"instance_id":       "a-instance-id",
+		"endpoint":          "my-endpoint",
+	}
+
+	_, err := wrapper.SetConfig(context.Background(), wrapping.WithConfigMap(config))
+	assert.NoError(t, err)
+
+	require.Equal(t, config["api_key"], wrapper.apiKey)
+	require.Equal(t, config["instance_id"], wrapper.instanceId)
+	require.Equal(t, config["kms_key_id"], wrapper.keyId)
+	require.Equal(t, config["endpoint"], wrapper.endpoint)
+}
+
+func TestIbmKp_Lifecycle(t *testing.T) {
 
 	checkAndSetEnvVars(t)
 
-	s := NewWrapper(nil)
-	_, err := s.SetConfig(nil)
+	s := NewWrapper()
+	_, err := s.SetConfig(context.Background())
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}
@@ -93,18 +127,18 @@ func checkAndSetEnvVars(t *testing.T) {
 
 	// Skip tests if we are not running acceptance tests
 	if os.Getenv("VAULT_ACC") == "" {
-		t.SkipNow()
+		t.Skip("Skipping, env var 'VAULT_ACC' is empty")
 	}
 
-	if os.Getenv(EnvIBMApiKey) == "" {
-		os.Setenv(EnvIBMApiKey, TestIBMApiKey)
+	if os.Getenv(EnvIbmApiKey) == "" {
+		os.Setenv(EnvIbmApiKey, TestIbmApiKey)
 	}
 
-	if os.Getenv(EnvIBMKPInstanceID) == "" {
-		os.Setenv(EnvIBMKPInstanceID, TestIBMKPInstanceID)
+	if os.Getenv(EnvIbmKpInstanceId) == "" {
+		os.Setenv(EnvIbmKpInstanceId, TestIbmKpInstanceId)
 	}
 
-	if os.Getenv(EnvIBMKPKeyID) == "" {
-		os.Setenv(EnvIBMKPKeyID, TestIBMKPKeyID)
+	if os.Getenv(EnvIbmKpKeyId) == "" {
+		os.Setenv(EnvIbmKpKeyId, TestIbmKpKeyId)
 	}
 }
