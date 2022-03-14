@@ -5,7 +5,7 @@ import (
 	"os"
 
 	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
-	aead "github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2"
+	aead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 )
 
 func main() {
