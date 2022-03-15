@@ -22,8 +22,7 @@ func TestNewDerivedReader(t *testing.T) {
 	type args struct {
 		wrapper  wrapping.Wrapper
 		lenLimit int64
-		salt     []byte
-		info     []byte
+		opt      []wrapping.Option
 	}
 	tests := []struct {
 		name            string
@@ -38,8 +37,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  aeadWrapper,
 				lenLimit: 32,
-				info:     nil,
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := aeadWrapper.(*aead.Wrapper).GetKeyBytes()
@@ -57,8 +55,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  aeadWrapper,
 				lenLimit: 32,
-				info:     []byte("info"),
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := aeadWrapper.(*aead.Wrapper).GetKeyBytes()
@@ -75,8 +72,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  testWrapper,
 				lenLimit: 32,
-				info:     nil,
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := testWrapper.GetKeyBytes()
@@ -93,8 +89,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  testWrapper,
 				lenLimit: 32,
-				info:     []byte("info"),
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := testWrapper.GetKeyBytes()
@@ -111,8 +106,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  pooledWrapper,
 				lenLimit: 32,
-				info:     nil,
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
 				raw := pooledWrapper.(*multi.PooledWrapper).WrapperForKeyId("__base__")
@@ -129,8 +123,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  &unknownWrapper{},
 				lenLimit: 20,
-				info:     []byte("info"),
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -141,8 +134,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  nil,
 				lenLimit: 10,
-				info:     []byte("info"),
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -153,8 +145,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  testWrapper,
 				lenLimit: 10,
-				info:     []byte("info"),
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -165,8 +156,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  &aead.Wrapper{},
 				lenLimit: 32,
-				info:     nil,
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -177,8 +167,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  &wrapping.TestWrapper{},
 				lenLimit: 32,
-				info:     nil,
-				salt:     []byte("salt"),
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -188,7 +177,7 @@ func TestNewDerivedReader(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := crypto.NewDerivedReader(tc.args.wrapper, tc.args.lenLimit, tc.args.salt, tc.args.info)
+			got, err := crypto.NewDerivedReader(tc.args.wrapper, tc.args.lenLimit, tc.args.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				assert.ErrorIsf(err, tc.wantErrCode, "unexpected error: %s", err)

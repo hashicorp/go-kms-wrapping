@@ -15,10 +15,10 @@ import (
 )
 
 // TestWithEd25519 produces test hmac sha256 using a derived Ed25519 key
-func TestWithEd25519(t *testing.T, data []byte, w wrapping.Wrapper, salt, info []byte, opt ...wrapping.Option) string {
+func TestWithEd25519(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapping.Option) string {
 	t.Helper()
 	require := require.New(t)
-	reader, err := NewDerivedReader(w, 32, salt, info)
+	reader, err := NewDerivedReader(w, 32, opt...)
 	require.NoError(err)
 	edKey, _, err := ed25519.GenerateKey(reader)
 	require.NoError(err)
@@ -30,7 +30,7 @@ func TestWithEd25519(t *testing.T, data []byte, w wrapping.Wrapper, salt, info [
 
 // TestWithBlake2b produces a test hmac sha256 using derived blake2b.  Supported
 // options: WithPrk
-func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, salt, info []byte, opt ...wrapping.Option) string {
+func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapping.Option) string {
 	t.Helper()
 	require := require.New(t)
 	require.NotNil(data)
@@ -42,7 +42,7 @@ func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, salt, info [
 	case opts.withPrk != nil:
 		key = blake2b.Sum256(opts.withPrk)
 	default:
-		reader, err := NewDerivedReader(w, 32, salt, info)
+		reader, err := NewDerivedReader(w, 32, opt...)
 		require.NoError(err)
 		readerKey := make([]byte, 32)
 		n, err := io.ReadFull(reader, readerKey)

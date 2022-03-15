@@ -16,7 +16,7 @@ import (
 // Example:
 //	reader, _ := crypto.NewDerivedReader(wrapper, userId, jobId)
 // 	key := ed25519.GenerateKey(reader)
-func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byte) (*io.LimitedReader, error) {
+func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, opt ...wrapping.Option) (*io.LimitedReader, error) {
 	const (
 		op     = "reader.NewDerivedReader"
 		minLen = 20
@@ -38,7 +38,11 @@ func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, salt, info []byt
 	if b == nil {
 		return nil, fmt.Errorf("%s: wrapper missing bytes: %w", op, wrapping.ErrInvalidParameter)
 	}
-	reader := hkdf.New(sha256.New, b, salt, info)
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to get options %w", op, err)
+	}
+	reader := hkdf.New(sha256.New, b, opts.withSalt, opts.withInfo)
 	return &io.LimitedReader{
 		R: reader,
 		N: lenLimit,

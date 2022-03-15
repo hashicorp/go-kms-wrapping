@@ -17,8 +17,6 @@ func Test_HmacSha256(t *testing.T) {
 		name            string
 		data            []byte
 		wrapper         wrapping.Wrapper
-		salt            []byte
-		info            []byte
 		opts            []wrapping.Option
 		wantHmac        string
 		wantErr         bool
@@ -112,7 +110,7 @@ func Test_HmacSha256(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			hm, err := crypto.HmacSha256(testCtx, tc.data, tc.wrapper, tc.salt, tc.info, tc.opts...)
+			hm, err := crypto.HmacSha256(testCtx, tc.data, tc.wrapper, tc.opts...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {

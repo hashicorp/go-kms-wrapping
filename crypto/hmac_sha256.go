@@ -18,14 +18,15 @@ import (
 // options supported.
 func HmacSha256WithPrk(ctx context.Context, data, prk []byte, opt ...wrapping.Option) (string, error) {
 	opt = append(opt, WithPrk(prk))
-	return HmacSha256(ctx, data, nil, nil, nil, opt...)
+	return HmacSha256(ctx, data, nil, opt...)
 }
 
-// HmacSha256 the provided data. Supports WithPrefix, WithEd25519 and WithPrk
-// options. WithEd25519 is a "legacy" way to complete this operation and should
-// not be used in new operations unless backward compatibility is needed. The
-// WithPrefix option will prepend the prefix to the hmac-sha256 value.
-func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt, info []byte, opt ...wrapping.Option) (string, error) {
+// HmacSha256 the provided data. Supports WithSalt, WithInfo, WithPrefix,
+// WithEd25519 and WithPrk options. WithEd25519 is a "legacy" way to complete
+// this operation and should not be used in new operations unless backward
+// compatibility is needed. The WithPrefix option will prepend the prefix to the
+// hmac-sha256 value.
+func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt ...wrapping.Option) (string, error) {
 	const op = "crypto.HmacSha256"
 	opts, err := getOpts(opt...)
 	if err != nil {
@@ -49,7 +50,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt,
 		key = blake2b.Sum256(opts.withPrk)
 
 	case opts.withEd25519:
-		reader, err := NewDerivedReader(cipher, 32, salt, info)
+		reader, err := NewDerivedReader(cipher, 32, opt...)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)
 		}
@@ -63,7 +64,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, salt,
 		}
 
 	default:
-		reader, err := NewDerivedReader(cipher, 32, salt, info)
+		reader, err := NewDerivedReader(cipher, 32, opt...)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)
 		}

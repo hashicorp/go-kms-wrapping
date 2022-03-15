@@ -41,6 +41,8 @@ type options struct {
 	withEd25519        bool
 	withBase64Encoding bool
 	withBase58Encoding bool
+	withSalt           []byte
+	withInfo           []byte
 }
 
 func getDefaultOptions() options {
@@ -94,6 +96,26 @@ func WithBase58Encoding() wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withBase58Encoding = true
+			return nil
+		})
+	}
+}
+
+// WithSalt allows optional salt to be specified for an operation.
+func WithSalt(salt []byte) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withSalt = salt
+			return nil
+		})
+	}
+}
+
+// WithInfo allows optional info to be specified for an operation.
+func WithInfo(info []byte) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withInfo = info
 			return nil
 		})
 	}
