@@ -1,6 +1,7 @@
 package crypto_test
 
 import (
+	"context"
 	"crypto/sha256"
 	"io"
 	"testing"
@@ -18,6 +19,7 @@ func TestNewDerivedReader(t *testing.T) {
 	testWrapper := wrapping.NewTestWrapper([]byte("secret"))
 	pooledWrapper := aead.TestPooledWrapper(t)
 	aeadWrapper := aead.TestWrapper(t)
+	ctx := context.Background()
 
 	type args struct {
 		wrapper  wrapping.Wrapper
@@ -40,14 +42,13 @@ func TestNewDerivedReader(t *testing.T) {
 				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
-				b, err := aeadWrapper.(*aead.Wrapper).GetKeyBytes()
+				b, err := aeadWrapper.(*aead.Wrapper).KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
 					R: hkdf.New(sha256.New, b, []byte("salt"), nil),
 					N: 32,
 				}
 				return r
-
 			}(),
 		},
 		{
@@ -58,7 +59,7 @@ func TestNewDerivedReader(t *testing.T) {
 				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
-				b, err := aeadWrapper.(*aead.Wrapper).GetKeyBytes()
+				b, err := aeadWrapper.(*aead.Wrapper).KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
 					R: hkdf.New(sha256.New, b, []byte("salt"), []byte("info")),
@@ -75,7 +76,7 @@ func TestNewDerivedReader(t *testing.T) {
 				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
-				b, err := testWrapper.GetKeyBytes()
+				b, err := testWrapper.KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
 					R: hkdf.New(sha256.New, b, []byte("salt"), nil),
@@ -92,7 +93,7 @@ func TestNewDerivedReader(t *testing.T) {
 				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
 			},
 			want: func() *io.LimitedReader {
-				b, err := testWrapper.GetKeyBytes()
+				b, err := testWrapper.KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
 					R: hkdf.New(sha256.New, b, []byte("salt"), []byte("info")),
@@ -110,7 +111,7 @@ func TestNewDerivedReader(t *testing.T) {
 			},
 			want: func() *io.LimitedReader {
 				raw := pooledWrapper.(*multi.PooledWrapper).WrapperForKeyId("__base__")
-				b, err := raw.(*aead.Wrapper).GetKeyBytes()
+				b, err := raw.(*aead.Wrapper).KeyBytes(ctx)
 				require.NoError(t, err)
 				return &io.LimitedReader{
 					R: hkdf.New(sha256.New, b, []byte("salt"), nil),
@@ -177,7 +178,7 @@ func TestNewDerivedReader(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := crypto.NewDerivedReader(tc.args.wrapper, tc.args.lenLimit, tc.args.opt...)
+			got, err := crypto.NewDerivedReader(context.Background(), tc.args.wrapper, tc.args.lenLimit, tc.args.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				assert.ErrorIsf(err, tc.wantErrCode, "unexpected error: %s", err)

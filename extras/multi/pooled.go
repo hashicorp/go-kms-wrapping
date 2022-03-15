@@ -11,7 +11,12 @@ import (
 
 const BaseEncryptor = "__base__"
 
-var _ wrapping.Wrapper = (*PooledWrapper)(nil)
+var (
+	_ wrapping.Wrapper       = (*PooledWrapper)(nil)
+	_ wrapping.InitFinalizer = (*PooledWrapper)(nil)
+	_ wrapping.HmacComputer  = (*PooledWrapper)(nil)
+	_ wrapping.KeyExporter   = (*PooledWrapper)(nil)
+)
 
 var ErrKeyNotFound = errors.New("given key ID not found")
 
@@ -160,13 +165,13 @@ func (m *PooledWrapper) HmacKeyId(ctx context.Context) (string, error) {
 
 // This does nothing; it's up to the user to initialize and finalize any given
 // wrapper
-func (m *PooledWrapper) Init(context.Context) error {
+func (m *PooledWrapper) Init(context.Context, ...wrapping.Option) error {
 	return nil
 }
 
 // This does nothing; it's up to the user to initialize and finalize any given
 // wrapper
-func (m *PooledWrapper) Finalize(context.Context) error {
+func (m *PooledWrapper) Finalize(context.Context, ...wrapping.Option) error {
 	return nil
 }
 
@@ -192,14 +197,14 @@ func (m *PooledWrapper) Decrypt(ctx context.Context, ct *wrapping.BlobInfo, opt 
 	return wrapper.Decrypt(ctx, ct, opt...)
 }
 
-// GetKeyBytes implements the option KeyBytes interface which will return the
+// KeyBytes implements the option KeyExporter interface which will return the
 // baseEncryptor key bytes
-func (m *PooledWrapper) GetKeyBytes() ([]byte, error) {
+func (m *PooledWrapper) KeyBytes(ctx context.Context) ([]byte, error) {
 	raw := m.WrapperForKeyId(BaseEncryptor)
 	var ok bool
-	b, ok := raw.(wrapping.KeyBytes)
+	b, ok := raw.(wrapping.KeyExporter)
 	if !ok {
-		return nil, fmt.Errorf("wrapper does not support GetKeyBytes() interface")
+		return nil, fmt.Errorf("wrapper does not support KeyExporter interface")
 	}
-	return b.GetKeyBytes()
+	return b.KeyBytes(ctx)
 }

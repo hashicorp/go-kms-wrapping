@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 // Example:
 //	reader, _ := crypto.NewDerivedReader(wrapper, userId, jobId)
 // 	key := ed25519.GenerateKey(reader)
-func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, opt ...wrapping.Option) (*io.LimitedReader, error) {
+func NewDerivedReader(ctx context.Context, wrapper wrapping.Wrapper, lenLimit int64, opt ...wrapping.Option) (*io.LimitedReader, error) {
 	const (
 		op     = "reader.NewDerivedReader"
 		minLen = 20
@@ -27,11 +28,11 @@ func NewDerivedReader(wrapper wrapping.Wrapper, lenLimit int64, opt ...wrapping.
 	if lenLimit < minLen {
 		return nil, fmt.Errorf("%s: lenLimit must be >= %d: %w", op, minLen, wrapping.ErrInvalidParameter)
 	}
-	biter, ok := wrapper.(wrapping.KeyBytes)
+	biter, ok := wrapper.(wrapping.KeyExporter)
 	if !ok {
 		return nil, fmt.Errorf("%s: wrapper does not implement required KeyBytes interface: %w", op, wrapping.ErrInvalidParameter)
 	}
-	b, err := biter.GetKeyBytes()
+	b, err := biter.KeyBytes(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to get current key bytes: %w", op, err)
 	}

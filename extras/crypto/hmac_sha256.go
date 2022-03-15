@@ -50,7 +50,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt .
 		key = blake2b.Sum256(opts.withPrk)
 
 	case opts.withEd25519:
-		reader, err := NewDerivedReader(cipher, 32, opt...)
+		reader, err := NewDerivedReader(ctx, cipher, 32, opt...)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)
 		}
@@ -64,7 +64,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt .
 		}
 
 	default:
-		reader, err := NewDerivedReader(cipher, 32, opt...)
+		reader, err := NewDerivedReader(ctx, cipher, 32, opt...)
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", op, err)
 		}

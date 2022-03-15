@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -18,7 +19,7 @@ import (
 func TestWithEd25519(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapping.Option) string {
 	t.Helper()
 	require := require.New(t)
-	reader, err := NewDerivedReader(w, 32, opt...)
+	reader, err := NewDerivedReader(context.Background(), w, 32, opt...)
 	require.NoError(err)
 	edKey, _, err := ed25519.GenerateKey(reader)
 	require.NoError(err)
@@ -42,7 +43,7 @@ func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapp
 	case opts.withPrk != nil:
 		key = blake2b.Sum256(opts.withPrk)
 	default:
-		reader, err := NewDerivedReader(w, 32, opt...)
+		reader, err := NewDerivedReader(context.Background(), w, 32, opt...)
 		require.NoError(err)
 		readerKey := make([]byte, 32)
 		n, err := io.ReadFull(reader, readerKey)

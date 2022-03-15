@@ -24,16 +24,14 @@ type TestInitFinalizerHmacComputer struct {
 	*TestInitFinalizer
 }
 
-type TestInitFinalizerHmacComputerKeyExporter struct {
-	*TestInitFinalizerHmacComputer
-}
-
 var (
 	_ Wrapper       = (*TestWrapper)(nil)
+	_ KeyExporter   = (*TestWrapper)(nil)
 	_ InitFinalizer = (*TestInitFinalizer)(nil)
+	_ KeyExporter   = (*TestInitFinalizer)(nil)
 	_ InitFinalizer = (*TestInitFinalizerHmacComputer)(nil)
 	_ HmacComputer  = (*TestInitFinalizerHmacComputer)(nil)
-	_ KeyExporter   = (*TestInitFinalizerHmacComputerKeyExporter)(nil)
+	_ KeyExporter   = (*TestInitFinalizerHmacComputer)(nil)
 )
 
 // NewTestWrapper constructs a test wrapper
@@ -69,21 +67,6 @@ func NewTestInitFinalizerHmacComputer(secret []byte) *TestInitFinalizerHmacCompu
 	}
 }
 
-// NewTestInitFinalizerHmacComputerKeyExporter constructs a test wrapper
-func NewTestInitFinalizerHmacComputerKeyExporter(secret []byte) *TestInitFinalizerHmacComputerKeyExporter {
-	return &TestInitFinalizerHmacComputerKeyExporter{
-		TestInitFinalizerHmacComputer: &TestInitFinalizerHmacComputer{
-			TestInitFinalizer: &TestInitFinalizer{
-				TestWrapper: &TestWrapper{
-					wrapperType: WrapperTypeTest,
-					secret:      secret,
-					keyId:       "static-key",
-				},
-			},
-		},
-	}
-}
-
 // NewTestWrapper constructs a test wrapper
 func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 	return &TestWrapper{
@@ -92,11 +75,6 @@ func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 		keyId:       "static-key",
 		envelope:    true,
 	}
-}
-
-// KeyBytes returns the key bytes
-func (t *TestInitFinalizerHmacComputerKeyExporter) KeyBytes(_ context.Context) ([]byte, error) {
-	return t.secret, nil
 }
 
 // HmacKeyId returns the HMAC key id
@@ -139,8 +117,8 @@ func (t *TestWrapper) SetKeyId(k string) {
 	t.keyId = k
 }
 
-// GetKeyBytes returns the current key bytes
-func (t *TestWrapper) GetKeyBytes() ([]byte, error) {
+// KeyBytes returns the current key bytes
+func (t *TestWrapper) KeyBytes(context.Context) ([]byte, error) {
 	if t.secret == nil {
 		return nil, fmt.Errorf("missing bytes: %w", ErrInvalidParameter)
 	}

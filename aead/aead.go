@@ -29,8 +29,9 @@ type ShamirWrapper struct {
 
 // Ensure that we are implementing Wrapper
 var (
-	_ wrapping.Wrapper = (*Wrapper)(nil)
-	_ wrapping.Wrapper = (*ShamirWrapper)(nil)
+	_ wrapping.Wrapper     = (*Wrapper)(nil)
+	_ wrapping.Wrapper     = (*ShamirWrapper)(nil)
+	_ wrapping.KeyExporter = (*Wrapper)(nil)
 )
 
 // NewWrapper creates a new Wrapper. No options are supported.
@@ -158,11 +159,10 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	return wrapConfig, nil
 }
 
-// GetKeyBytes returns the current key bytes
-func (s *Wrapper) GetKeyBytes() ([]byte, error) {
+// KeyBytes returns the current key bytes
+func (s *Wrapper) KeyBytes(context.Context) ([]byte, error) {
 	if s.keyBytes == nil {
 		return nil, fmt.Errorf("missing bytes: %w", wrapping.ErrInvalidParameter)
-
 	}
 	return s.keyBytes, nil
 }
