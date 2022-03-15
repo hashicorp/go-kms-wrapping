@@ -57,6 +57,9 @@ service Wrapping {
 
 	// HMAC related functions
 	rpc HmacKeyId(HmacKeyIdRequest) returns (HmacKeyIdResponse);
+
+	// KeyBytes function
+	rpc KeyBytes(KeyBytesRequest) returns (KeyBytesResponse);
 }
 
 message InitRequest {
@@ -69,8 +72,12 @@ message FinalizeRequest {
 }
 message FinalizeResponse {};
 
-message HmacKeyIdRequest {
-}
+message HmacKeyIdRequest {};
 message HmacKeyIdResponse {
 	string key_id = 10 [json_name="key_id"];
+}
+
+message KeyBytesRequest {};
+message KeyBytesResponse {
+	bytes key_bytes = 10 [json_name="key_bytes"];
 }

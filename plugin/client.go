@@ -12,6 +12,7 @@ var (
 	_ wrapping.Wrapper       = (*wrapClient)(nil)
 	_ wrapping.InitFinalizer = (*wrapClient)(nil)
 	_ wrapping.HmacComputer  = (*wrapClient)(nil)
+	_ wrapping.KeyExporter   = (*wrapClient)(nil)
 )
 
 type wrapClient struct {
@@ -116,4 +117,16 @@ func (wc *wrapClient) HmacKeyId(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return resp.KeyId, nil
+}
+
+func (wc *wrapClient) KeyBytes(ctx context.Context) ([]byte, error) {
+	resp, err := wc.impl.KeyBytes(ctx, new(KeyBytesRequest))
+	switch {
+	case err == nil:
+	case status.Code(err) == codes.Unimplemented:
+		return nil, wrapping.ErrFunctionNotImplemented
+	default:
+		return nil, err
+	}
+	return resp.KeyBytes, nil
 }

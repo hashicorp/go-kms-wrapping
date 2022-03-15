@@ -123,3 +123,15 @@ func (ws *wrapServer) HmacKeyId(ctx context.Context, req *HmacKeyIdRequest) (*Hm
 	}
 	return &HmacKeyIdResponse{KeyId: hmacKeyId}, nil
 }
+
+func (ws *wrapServer) KeyBytes(ctx context.Context, req *KeyBytesRequest) (*KeyBytesResponse, error) {
+	keyExporter, ok := ws.impl.(wrapping.KeyExporter)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "this wrapper does not implement HmacComputer")
+	}
+	keyBytes, err := keyExporter.KeyBytes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &KeyBytesResponse{KeyBytes: keyBytes}, nil
+}

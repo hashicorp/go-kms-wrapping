@@ -57,6 +57,13 @@ func TestAeadPluginWrapper(t *testing.T) {
 	decVal, err := wrapper.Decrypt(context.Background(), encBlob)
 	require.NoError(err)
 	require.Equal("foobar", string(decVal))
+
+	// Check KeyExporter
+	keWrapper, ok := wrapper.(wrapping.KeyExporter)
+	require.True(ok)
+	buf, err := keWrapper.KeyBytes(ctx)
+	require.NoError(err)
+	require.NotEmpty(buf)
 }
 
 func TestInterfaceWrapper(t *testing.T) {

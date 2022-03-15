@@ -28,6 +28,8 @@ type WrappingClient interface {
 	Finalize(ctx context.Context, in *FinalizeRequest, opts ...grpc.CallOption) (*FinalizeResponse, error)
 	// HMAC related functions
 	HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, opts ...grpc.CallOption) (*HmacKeyIdResponse, error)
+	// KeyBytes function
+	KeyBytes(ctx context.Context, in *KeyBytesRequest, opts ...grpc.CallOption) (*KeyBytesResponse, error)
 }
 
 type wrappingClient struct {
@@ -110,6 +112,15 @@ func (c *wrappingClient) HmacKeyId(ctx context.Context, in *HmacKeyIdRequest, op
 	return out, nil
 }
 
+func (c *wrappingClient) KeyBytes(ctx context.Context, in *KeyBytesRequest, opts ...grpc.CallOption) (*KeyBytesResponse, error) {
+	out := new(KeyBytesResponse)
+	err := c.cc.Invoke(ctx, "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/KeyBytes", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WrappingServer is the server API for Wrapping service.
 // All implementations must embed UnimplementedWrappingServer
 // for forward compatibility
@@ -124,6 +135,8 @@ type WrappingServer interface {
 	Finalize(context.Context, *FinalizeRequest) (*FinalizeResponse, error)
 	// HMAC related functions
 	HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error)
+	// KeyBytes function
+	KeyBytes(context.Context, *KeyBytesRequest) (*KeyBytesResponse, error)
 	mustEmbedUnimplementedWrappingServer()
 }
 
@@ -154,6 +167,9 @@ func (UnimplementedWrappingServer) Finalize(context.Context, *FinalizeRequest) (
 }
 func (UnimplementedWrappingServer) HmacKeyId(context.Context, *HmacKeyIdRequest) (*HmacKeyIdResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HmacKeyId not implemented")
+}
+func (UnimplementedWrappingServer) KeyBytes(context.Context, *KeyBytesRequest) (*KeyBytesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method KeyBytes not implemented")
 }
 func (UnimplementedWrappingServer) mustEmbedUnimplementedWrappingServer() {}
 
@@ -312,6 +328,24 @@ func _Wrapping_HmacKeyId_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Wrapping_KeyBytes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KeyBytesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WrappingServer).KeyBytes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/KeyBytes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WrappingServer).KeyBytes(ctx, req.(*KeyBytesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Wrapping_ServiceDesc is the grpc.ServiceDesc for Wrapping service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -350,6 +384,10 @@ var Wrapping_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HmacKeyId",
 			Handler:    _Wrapping_HmacKeyId_Handler,
+		},
+		{
+			MethodName: "KeyBytes",
+			Handler:    _Wrapping_KeyBytes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
