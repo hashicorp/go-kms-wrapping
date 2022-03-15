@@ -24,7 +24,7 @@ type TestInitFinalizerHmacComputer struct {
 	*TestInitFinalizer
 }
 
-type TestInitFinalizerHmacComputerKeyByter struct {
+type TestInitFinalizerHmacComputerKeyExporter struct {
 	*TestInitFinalizerHmacComputer
 }
 
@@ -33,7 +33,7 @@ var (
 	_ InitFinalizer = (*TestInitFinalizer)(nil)
 	_ InitFinalizer = (*TestInitFinalizerHmacComputer)(nil)
 	_ HmacComputer  = (*TestInitFinalizerHmacComputer)(nil)
-	_ KeyBytes      = (*TestInitFinalizerHmacComputerKeyByter)(nil)
+	_ KeyExporter   = (*TestInitFinalizerHmacComputerKeyExporter)(nil)
 )
 
 // NewTestWrapper constructs a test wrapper
@@ -69,9 +69,9 @@ func NewTestInitFinalizerHmacComputer(secret []byte) *TestInitFinalizerHmacCompu
 	}
 }
 
-// NewTestInitFinalizerHmacComputerKeyByter constructs a test wrapper
-func NewTestInitFinalizerHmacComputerKeyByter(secret []byte) *TestInitFinalizerHmacComputerKeyByter {
-	return &TestInitFinalizerHmacComputerKeyByter{
+// NewTestInitFinalizerHmacComputerKeyExporter constructs a test wrapper
+func NewTestInitFinalizerHmacComputerKeyExporter(secret []byte) *TestInitFinalizerHmacComputerKeyExporter {
+	return &TestInitFinalizerHmacComputerKeyExporter{
 		TestInitFinalizerHmacComputer: &TestInitFinalizerHmacComputer{
 			TestInitFinalizer: &TestInitFinalizer{
 				TestWrapper: &TestWrapper{
@@ -95,7 +95,7 @@ func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 }
 
 // KeyBytes returns the key bytes
-func (t *TestInitFinalizerHmacComputerKeyByter) KeyBytes(_ context.Context) ([]byte, error) {
+func (t *TestInitFinalizerHmacComputerKeyExporter) KeyBytes(_ context.Context) ([]byte, error) {
 	return t.secret, nil
 }
 

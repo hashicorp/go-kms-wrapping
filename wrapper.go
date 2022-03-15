@@ -44,9 +44,9 @@ type Wrapper interface {
 	Decrypt(ctx context.Context, ciphertext *BlobInfo, options ...Option) ([]byte, error)
 }
 
-// KeyBytes defines an optional interface for wrappers to implement that returns
-// the "current" key bytes
-type KeyBytes interface {
-	// GetKeyBytes returns the "current" key bytes
-	GetKeyBytes() ([]byte, error)
+// KeyExporter defines an optional interface for wrappers to implement that returns
+// the "current" key bytes. This will be implementation-specific.
+type KeyExporter interface {
+	// KeyBytes returns the "current" key bytes
+	KeyBytes(context.Context) ([]byte, error)
 }
