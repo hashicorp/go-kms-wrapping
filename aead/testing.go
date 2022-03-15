@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/multi"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/stretchr/testify/require"
 )
 

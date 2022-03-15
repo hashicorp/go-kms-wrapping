@@ -1,6 +1,6 @@
 # Structwrapping
 
-[![Godoc](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2/structwrapping?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2/structwrapping)
+[![Godoc](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping)
 
 `structwrapping` provides a convenience package for dealing with encrypted
 values in structs in an automated way. This can be used for e.g. performing
