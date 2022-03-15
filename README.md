@@ -1,6 +1,6 @@
 # Go-KMS-Wrapping - Go library for encrypting values through various KMS providers
 
-[![Go Reference](https://pkg.go.dev/github.com/hashicorp/go-kms-wrapping/v2?status.svg)](https://pkg.go.dev/github.com/hashicorp/go-kms-wrapping/v2)
+[![Go Reference](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2)
 
 *NOTE*: This is version 2 of the library. The `v0` branch contains version 0,
 which may be needed for legacy applications or while transitioning to version 2.
