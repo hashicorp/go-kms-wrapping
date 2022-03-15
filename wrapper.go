@@ -43,3 +43,10 @@ type Wrapper interface {
 	// the underlying wrapper. Supported options: WithAad.
 	Decrypt(ctx context.Context, ciphertext *BlobInfo, options ...Option) ([]byte, error)
 }
+
+// KeyBytes defines an optional interface for wrappers to implement that returns
+// the "current" key bytes
+type KeyBytes interface {
+	// GetKeyBytes returns the "current" key bytes
+	GetKeyBytes() ([]byte, error)
+}

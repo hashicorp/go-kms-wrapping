@@ -159,8 +159,12 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 }
 
 // GetKeyBytes returns the current key bytes
-func (s *Wrapper) GetKeyBytes() []byte {
-	return s.keyBytes
+func (s *Wrapper) GetKeyBytes() ([]byte, error) {
+	if s.keyBytes == nil {
+		return nil, fmt.Errorf("missing bytes: %w", wrapping.ErrInvalidParameter)
+
+	}
+	return s.keyBytes, nil
 }
 
 // SetAead allows directly setting an AEAD to use

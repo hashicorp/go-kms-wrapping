@@ -1,7 +1,5 @@
 package wrapping
 
-import "errors"
-
 type WrapperType string
 
 // These values define known types of Wrappers
@@ -78,5 +76,3 @@ func HashTypeMap(t string) HashType {
 		return HashTypeUnknown
 	}
 }
-
-var ErrFunctionNotImplemented = errors.New("the wrapping plugin does not implement this function")
