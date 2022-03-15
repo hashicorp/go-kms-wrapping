@@ -24,11 +24,16 @@ type TestInitFinalizerHmacComputer struct {
 	*TestInitFinalizer
 }
 
+type TestInitFinalizerHmacComputerKeyByter struct {
+	*TestInitFinalizerHmacComputer
+}
+
 var (
 	_ Wrapper       = (*TestWrapper)(nil)
 	_ InitFinalizer = (*TestInitFinalizer)(nil)
 	_ InitFinalizer = (*TestInitFinalizerHmacComputer)(nil)
 	_ HmacComputer  = (*TestInitFinalizerHmacComputer)(nil)
+	_ KeyBytes      = (*TestInitFinalizerHmacComputerKeyByter)(nil)
 )
 
 // NewTestWrapper constructs a test wrapper
@@ -64,6 +69,21 @@ func NewTestInitFinalizerHmacComputer(secret []byte) *TestInitFinalizerHmacCompu
 	}
 }
 
+// NewTestInitFinalizerHmacComputerKeyByter constructs a test wrapper
+func NewTestInitFinalizerHmacComputerKeyByter(secret []byte) *TestInitFinalizerHmacComputerKeyByter {
+	return &TestInitFinalizerHmacComputerKeyByter{
+		TestInitFinalizerHmacComputer: &TestInitFinalizerHmacComputer{
+			TestInitFinalizer: &TestInitFinalizer{
+				TestWrapper: &TestWrapper{
+					wrapperType: WrapperTypeTest,
+					secret:      secret,
+					keyId:       "static-key",
+				},
+			},
+		},
+	}
+}
+
 // NewTestWrapper constructs a test wrapper
 func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 	return &TestWrapper{
@@ -72,6 +92,11 @@ func NewTestEnvelopeWrapper(secret []byte) *TestWrapper {
 		keyId:       "static-key",
 		envelope:    true,
 	}
+}
+
+// KeyBytes returns the key bytes
+func (t *TestInitFinalizerHmacComputerKeyByter) KeyBytes(_ context.Context) ([]byte, error) {
+	return t.secret, nil
 }
 
 // HmacKeyId returns the HMAC key id
