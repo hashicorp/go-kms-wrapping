@@ -13,4 +13,4 @@ type Schema struct {
 }
 
 // TableName defines the table name for the Version type
-func (v *Schema) TableName() string { return "kms_version" }
+func (v *Schema) TableName() string { return "kms_schema_version" }
