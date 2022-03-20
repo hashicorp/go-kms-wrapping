@@ -1,9 +1,9 @@
 begin;
 
 create table kms_root_key (
-  private_id wt_private_id primary key,
-  scope_id wt_scope_id not null unique, -- there can only be one root key for a scope.
-  create_time wt_timestamp
+  private_id kms_private_id primary key,
+  scope_id kms_scope_id not null unique, -- there can only be one root key for a scope.
+  create_time kms_timestamp
 );
 comment on table kms_root_key is
   'kms_root_key defines a root key for a scope';
@@ -22,14 +22,14 @@ insert on kms_root_key
   for each row execute procedure default_create_time();
 
 create table kms_root_key_version (
-  private_id wt_private_id primary key,
-  root_key_id  wt_private_id not null
+  private_id kms_private_id primary key,
+  root_key_id kms_private_id not null
     references kms_root_key(private_id) 
     on delete cascade 
     on update cascade,
-  version wt_version,
+  version kms_version,
   key bytea not null,
-  create_time wt_timestamp,
+  create_time kms_timestamp,
   unique(root_key_id, version)
 );
 comment on table kms_root_key_version is
@@ -50,14 +50,14 @@ insert on kms_root_key_version
 
 
 create trigger
-	kms_version_column
+  kms_version_column
 before insert on kms_root_key_version
-	for each row execute procedure kms_root_key_version_column();
+  for each row execute procedure kms_root_key_version_column();
 
 
 create table kms_data_key (
-  private_id wt_private_id primary key,
-  root_key_id wt_private_id not null
+  private_id kms_private_id primary key,
+  root_key_id kms_private_id not null
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
@@ -66,7 +66,7 @@ create table kms_data_key (
     check (
       length(trim(purpose)) > 0
     ),
-  create_time wt_timestamp,
+  create_time kms_timestamp,
   unique (root_key_id, purpose) -- there can only be one dek for a specific purpose per root key
 );
 comment on table kms_data_key is
@@ -86,18 +86,18 @@ insert on kms_data_key
   for each row execute procedure default_create_time();
 
 create table kms_data_key_version (
-  private_id wt_private_id primary key,
-  data_key_id wt_private_id not null
+  private_id kms_private_id primary key,
+  data_key_id kms_private_id not null
     references kms_data_key(private_id) 
     on delete cascade 
     on update cascade, 
-  root_key_version_id wt_private_id not null
+  root_key_version_id kms_private_id not null
     references kms_root_key_version(private_id) 
     on delete cascade 
     on update cascade,
-  version wt_version,
+  version kms_version,
   key bytea not null,
-  create_time wt_timestamp,
+  create_time kms_timestamp,
   unique(data_key_id, version)
 );
 comment on table kms_data_key is

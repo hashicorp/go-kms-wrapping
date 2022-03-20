@@ -1,35 +1,35 @@
 begin;
 
-create domain wt_private_id as text
+create domain kms_private_id as text
 not null
 check(
   length(trim(value)) > 10
 );
-comment on domain wt_private_id is
+comment on domain kms_private_id is
 'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 
-create domain wt_scope_id as text
+create domain kms_scope_id as text
 check(
   length(trim(value)) > 10 or value = 'global'
 );
-comment on domain wt_scope_id is
+comment on domain kms_scope_id is
 '"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
 
 
-create domain wt_timestamp as
+create domain kms_timestamp as
   timestamp with time zone
   default current_timestamp;
-comment on domain wt_timestamp is
+comment on domain kms_timestamp is
 'Standard timestamp for all create_time and update_time columns';
 
-create domain wt_version as bigint
+create domain kms_version as bigint
   default 1
   not null
   check(
    value > 0
   );
-comment on domain wt_version is
+comment on domain kms_version is
 'standard column for row version';
 
 -- immutable_columns() will make the column names immutable which are passed as

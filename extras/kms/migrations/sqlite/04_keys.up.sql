@@ -1,4 +1,3 @@
-
 create table kms_root_key (
     public_id text not null primary key,
     scope_id text not null unique
@@ -65,7 +64,7 @@ for each row
 begin
   update kms_root_key_version set version =
   (
-    select max(coalesce(version,1)) + 1 
+    select max(coalesce(version,0)) + 1 
     from kms_root_key_version 
     where 
       root_key_id = new.root_key_id 
@@ -147,7 +146,7 @@ for each row
 begin
   update kms_data_key_version set version =
   (
-    select max(coalesce(version,1)) + 1 
+    select max(coalesce(version,0)) + 1 
     from kms_data_key_version 
     where 
       data_key_id = new.data_key_id and  
