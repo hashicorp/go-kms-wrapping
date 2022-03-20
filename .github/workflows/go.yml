@@ -2,9 +2,9 @@ name: Go
 
 on:
   push:
-    branches: [main]
+    branches: [main, "jimlambrt-extras-kms*"] # jimlambrt-extras-kms* is tmp until this initial work is done.
   pull_request:
-    branches: [main]
+    branches: [main, "jimlambrt-extras-kms*"] # jimlambrt-extras-kms* is tmp until this initial work is done.
 
 jobs:
   # Label of the container job
