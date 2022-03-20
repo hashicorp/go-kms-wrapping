@@ -62,7 +62,6 @@ func WithKeyId(keyId string) Option {
 // WithOrderByVersion provides an option to specify ordering by the
 // CreateTime field.
 func WithOrderByVersion(orderBy OrderBy) Option {
-	const col = "version"
 	return func(o *options) {
 		o.withOrderByVersion = orderBy
 	}
