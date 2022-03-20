@@ -3,15 +3,16 @@ module github.com/hashicorp/go-kms-wrapping/extras/kms/v2
 go 1.17
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.15.1
-	github.com/hashicorp/go-dbw v0.0.0-20220317125806-a107b47fd4d0
+	github.com/hashicorp/go-dbw v0.0.0-20220320124330-2bdfafa177a1
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4
 	github.com/stretchr/testify v1.7.0
+	gorm.io/driver/postgres v1.2.2
 	mvdan.cc/gofumpt v0.3.0
 )
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
@@ -48,7 +49,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	gorm.io/driver/postgres v1.2.2 // indirect
 	gorm.io/driver/sqlite v1.2.4 // indirect
 	gorm.io/gorm v1.22.3 // indirect
 	modernc.org/cc/v3 v3.32.4 // indirect
