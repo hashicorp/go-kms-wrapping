@@ -15,11 +15,10 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/sqlite"
 	source "github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
-	pgDriver "gorm.io/driver/postgres"
-
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	"github.com/stretchr/testify/require"
+	pgDriver "gorm.io/driver/postgres"
 )
 
 // TestRepo returns are test repo
