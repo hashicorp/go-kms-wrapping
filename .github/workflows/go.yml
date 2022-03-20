@@ -11,7 +11,7 @@ jobs:
   sqlite:
     strategy:
       matrix:
-        go: ["1.17", "1.16"]
+        go: ["1.18", "1.17", "1.16"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         dbversion: ["postgres:latest"]
-        go: ["1.17", "1.16"]
+        go: ["1.18", "1.17", "1.16"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 
