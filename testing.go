@@ -102,8 +102,15 @@ func (t *TestWrapper) KeyId(_ context.Context) (string, error) {
 	return t.keyId, nil
 }
 
-// SetConfig sets config, but there is currently nothing to set on test wrappers
-func (t *TestWrapper) SetConfig(_ context.Context, _ ...Option) (*WrapperConfig, error) {
+// SetConfig sets config, and currently it only supports the WithKeyId option
+// for test wrappers
+func (t *TestWrapper) SetConfig(_ context.Context, opt ...Option) (*WrapperConfig, error) {
+	opts, err := GetOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+	t.keyId = opts.WithKeyId
+
 	return nil, nil
 }
 
