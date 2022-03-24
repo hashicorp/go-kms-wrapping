@@ -1,5 +1,5 @@
 create table kms_root_key (
-    public_id text not null primary key,
+    private_id text not null primary key,
     scope_id text not null unique
     check(
         scope_id > 10 or scope_id = 'global'
@@ -11,7 +11,7 @@ create trigger immutable_columns_kms_root_key
 before update on kms_root_key
 for each row 
   when 
-    new.public_id <> old.public_id or 
+    new.private_id <> old.private_id or 
     new.scope_id <> old.scope_id or
     new.create_time <> old.create_time 
 	begin
@@ -31,7 +31,7 @@ create table kms_root_key_version (
     references kms_root_key(private_id) 
     on delete cascade 
     on update cascade,
-  version int default 1,
+  version int,
   key bytea not null,
   create_time timestamp not null default current_timestamp,
   unique(root_key_id, version)
@@ -59,7 +59,7 @@ begin
 end;
 
 create trigger version_column_kms_root_key_version
-before insert on kms_root_key_version
+after insert on kms_root_key_version
 for each row
 begin
   update kms_root_key_version set version =
@@ -113,7 +113,7 @@ create table kms_data_key_version (
     references kms_root_key_version(private_id) 
     on delete cascade 
     on update cascade,
-  version int default 1,
+  version int,
   key bytea not null,
   create_time timestamp not null default current_timestamp,
   unique(data_key_id, version)
@@ -141,16 +141,15 @@ begin
 end;
 
 create trigger version_column_kms_data_key_version
-before insert on kms_data_key_version
+after insert on kms_data_key_version
 for each row
 begin
   update kms_data_key_version set version =
   (
-    select max(coalesce(version,0)) + 1 
+    select max(coalesce(version,0)) + 1
     from kms_data_key_version 
     where 
-      data_key_id = new.data_key_id and  
-      purpose = new.purpose
+      data_key_id = new.data_key_id
   )
   where rowid = new.rowid;  
 end;

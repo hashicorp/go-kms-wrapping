@@ -52,7 +52,7 @@ insert on kms_root_key_version
 create trigger
   kms_version_column
 before insert on kms_root_key_version
-  for each row execute procedure kms_root_key_version_column();
+  for each row execute procedure kms_version_column('root_key_id');
 
 
 create table kms_data_key (
@@ -119,6 +119,6 @@ insert on kms_data_key_version
 create trigger
 	kms_version_column
 before insert on kms_data_key_version
-	for each row execute procedure kms_data_key_version_column();
+	for each row execute procedure kms_version_column('data_key_id');
 
 commit;
