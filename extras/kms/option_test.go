@@ -29,7 +29,7 @@ func Test_GetOpts(t *testing.T) {
 		assert.Equal(opts, testOpts)
 	})
 	t.Run("WithRootWrapper", func(t *testing.T) {
-		testWrapper := wrapping.NewTestWrapper([]byte("secret"))
+		testWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
 		assert := assert.New(t)
 		opts := getOpts(WithRootWrapper(testWrapper))
 		testOpts := getDefaultOptions()

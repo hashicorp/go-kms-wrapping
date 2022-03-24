@@ -8,8 +8,12 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 )
 
-// DefaultLimit is the default for results
-const DefaultLimit = 10000
+const (
+	// DefaultLimit is the default for results
+	DefaultLimit = 10000
+
+	DefaultWrapperSecret = "secret"
+)
 
 // OrderBy defines an enum type for declaring a column's order by criteria.
 type OrderBy int

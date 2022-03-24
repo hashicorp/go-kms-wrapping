@@ -1,0 +1,104 @@
+package kms
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/hashicorp/go-dbw"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
+)
+
+type RootKeyVersion struct {
+	// PrivateId is used to access the root key
+	PrivateId string `gorm:"primary_key"`
+	// RootKeyId is the root_key_id for this version
+	RootKeyId string `gorm:"default:null"`
+	// plain-text of the key data.  we are NOT storing this plain-text key
+	// in the db.
+	Key []byte `json:"key,omitempty" gorm:"-" wrapping:"pt,key_data"`
+	// ciphertext key data stored in the database
+	// @inject_tag: `gorm:"column:key;not_null" wrapping:"ct,key_data"`
+	CtKey []byte `json:"ct_key,omitempty" gorm:"column:key;not_null" wrapping:"ct,key_data"`
+	// version of the key data.  This is not used for optimistic locking, since
+	// key versions are immutable.  It's just the version of the key.
+	// @inject_tag: `gorm:"default:null"`
+	Version uint32 `json:"version,omitempty" gorm:"default:null"`
+	// CreateTime from the db
+	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+}
+
+// NewRootKey creates a new in memory root key. No optionsare currently
+// supported.
+func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersion, error) {
+	const op = "kms.NewRootKeyVersion"
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+	}
+	if len(key) == 0 {
+		return nil, fmt.Errorf("%s: missing key id: %w", op, ErrInvalidParameter)
+	}
+
+	k := &RootKeyVersion{
+		RootKeyId: rootKeyId,
+		Key:       key,
+	}
+	return k, nil
+}
+
+// TableName returns the tablename
+func (k *RootKeyVersion) TableName() string { return "kms_root_key_version" }
+
+// Clone creates a clone of the RootKeyVersion
+func (k *RootKeyVersion) Clone() *RootKeyVersion {
+	clone := &RootKeyVersion{
+		PrivateId:  k.PrivateId,
+		RootKeyId:  k.RootKeyId,
+		CreateTime: k.CreateTime,
+	}
+	clone.Key = make([]byte, len(k.Key))
+	copy(clone.Key, k.Key)
+
+	clone.CtKey = make([]byte, len(k.CtKey))
+	copy(clone.CtKey, k.CtKey)
+	return clone
+}
+
+// VetForWrite validates the root key version before it's written.
+func (k *RootKeyVersion) vetForWrite(ctx context.Context, _ dbw.Reader, opType dbw.OpType) error {
+	const op = "kms.(RootKeyVersion).VetForWrite"
+	if k.PrivateId == "" {
+		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
+	}
+	switch opType {
+	case dbw.CreateOp:
+		if k.CtKey == nil {
+			return fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
+		}
+		if k.RootKeyId == "" {
+			return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+		}
+	case dbw.UpdateOp:
+		return fmt.Errorf("%s: key is immutable: %w", op, ErrInvalidParameter)
+	}
+	return nil
+}
+
+// Encrypt will encrypt the root key version's key
+func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(RootKeyVersion).Encrypt"
+	if err := structwrapping.WrapStruct(ctx, cipher, k, nil); err != nil {
+		return fmt.Errorf("%s: unable to encrypt: %w", op, err)
+	}
+	return nil
+}
+
+// Decrypt will decrypt the root key version's key
+func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+	const op = "kms.(RootKeyVersion).Decrypt"
+	if err := structwrapping.UnwrapStruct(ctx, cipher, k, nil); err != nil {
+		return fmt.Errorf("%s: unable to decrypt: %w", op, err)
+	}
+	return nil
+}

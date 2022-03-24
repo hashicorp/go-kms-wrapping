@@ -3,6 +3,7 @@ package kms
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -17,9 +18,90 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 	pgDriver "gorm.io/driver/postgres"
 )
+
+// TestRootKey returns a new test RootKey
+func TestRootKey(t *testing.T, conn *dbw.DB, scopeId string) *RootKey {
+	t.Helper()
+	require := require.New(t)
+	rw := dbw.New(conn)
+	TestDeleteWhere(t, conn, &RootKey{}, "scope_id = ?", scopeId)
+	k, err := NewRootKey(scopeId)
+	require.NoError(err)
+	id, err := newRootKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+// TestRootKeyVersion returns a new test RootKeyVersion with its associated wrapper
+func TestRootKeyVersion(t *testing.T, conn *dbw.DB, wrapper wrapping.Wrapper, rootId string) (kv *RootKeyVersion, kvWrapper wrapping.Wrapper) {
+	t.Helper()
+	require := require.New(t)
+	testCtx := context.Background()
+	rw := dbw.New(conn)
+	rootKeyVersionWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
+	key, err := rootKeyVersionWrapper.KeyBytes(testCtx)
+	require.NoError(err)
+	k, err := NewRootKeyVersion(rootId, key)
+	require.NoError(err)
+	id, err := newRootKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), wrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	err = rw.LookupBy(context.Background(), k)
+	require.NoError(err)
+	rootKeyVersionWrapper.SetConfig(testCtx, wrapping.WithKeyId(k.PrivateId))
+	require.NoError(err)
+	return k, rootKeyVersionWrapper
+}
+
+// TestData returns a new test DataKey
+func TestDataKey(t *testing.T, conn *dbw.DB, rootKeyId, purpose string) *DataKey {
+	t.Helper()
+	require := require.New(t)
+	TestDeleteWhere(t, conn, &DataKey{}, "root_key_id = ?", rootKeyId)
+	rw := dbw.New(conn)
+	k, err := NewDataKey(rootKeyId, purpose)
+	require.NoError(err)
+	id, err := newDataKeyId()
+	require.NoError(err)
+	k.PrivateId = id
+	k.RootKeyId = rootKeyId
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	return k
+}
+
+// TestDataKeyVersion returns a new test DataKeyVersion with its associated wrapper
+func TestDataKeyVersion(t *testing.T, conn *dbw.DB, rootKeyVersionWrapper wrapping.Wrapper, dataKeyId string, key []byte) *DataKeyVersion {
+	t.Helper()
+	require := require.New(t)
+	rw := dbw.New(conn)
+	rootKeyVersionId, err := rootKeyVersionWrapper.KeyId(context.Background())
+	require.NoError(err)
+	require.NotEmpty(rootKeyVersionId)
+	k, err := NewDataKeyVersion(dataKeyId, key, rootKeyVersionId)
+	require.NoError(err)
+	id, err := newDataKeyVersionId()
+	require.NoError(err)
+	k.PrivateId = id
+	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
+	require.NoError(err)
+	err = rw.Create(context.Background(), k)
+	require.NoError(err)
+	err = rw.LookupBy(context.Background(), k)
+	require.NoError(err)
+	return k
+}
 
 // TestRepo returns are test repo
 func TestRepo(t *testing.T, db *dbw.DB, opt ...Option) *Repository {
@@ -85,4 +167,18 @@ func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
 		require.NoError(err)
 		return nil
 	}
+}
+
+// TestDeleteWhere allows you to easily delete resources for testing purposes
+// including all the current resources.
+func TestDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause string, args ...interface{}) {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+	tabler, ok := i.(interface {
+		TableName() string
+	})
+	require.True(ok)
+	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	require.NoError(err)
 }
