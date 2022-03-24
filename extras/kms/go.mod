@@ -6,7 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/hashicorp/go-dbw v0.0.0-20220320124330-2bdfafa177a1
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
 	github.com/stretchr/testify v1.7.0
 	gorm.io/driver/postgres v1.2.2
 	mvdan.cc/gofumpt v0.3.0
@@ -16,9 +16,9 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-hclog v1.0.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
