@@ -51,7 +51,7 @@ func NewDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ 
 	return k, nil
 }
 
-// Clone creates a clone of the OidcKeyVersion
+// Clone creates a clone of the DataKeyVersion
 func (k *DataKeyVersion) Clone() *DataKeyVersion {
 	clone := &DataKeyVersion{
 		PrivateId:  k.PrivateId,
@@ -78,7 +78,7 @@ func (k *DataKeyVersion) vetForWrite(ctx context.Context, r dbw.Reader, opType d
 			return fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
 		}
 		if k.DataKeyId == "" {
-			return fmt.Errorf("%s: missing oidc key id: %w", op, ErrInvalidParameter)
+			return fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
 		}
 		if k.RootKeyVersionId == "" {
 			return fmt.Errorf("%s: missing root key version id: %w", op, ErrInvalidParameter)

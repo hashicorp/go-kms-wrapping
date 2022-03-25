@@ -29,7 +29,7 @@ type RootKeyVersion struct {
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
 }
 
-// NewRootKey creates a new in memory root key. No optionsare currently
+// NewRootKey creates a new in memory root key. No options are currently
 // supported.
 func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersion, error) {
 	const op = "kms.NewRootKeyVersion"

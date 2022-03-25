@@ -35,5 +35,6 @@ func (k *RootKey) Clone() *RootKey {
 	return &RootKey{
 		PrivateId:  k.PrivateId,
 		ScopeId:    k.ScopeId,
-		CreateTime: k.CreateTime}
+		CreateTime: k.CreateTime,
+	}
 }
