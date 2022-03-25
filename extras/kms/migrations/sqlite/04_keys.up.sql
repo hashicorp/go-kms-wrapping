@@ -7,7 +7,7 @@ create table kms_root_key (
     create_time timestamp not null default current_timestamp
 );
 
-create trigger immutable_columns_kms_root_key
+create trigger kms_immutable_columns_kms_root_key
 before update on kms_root_key
 for each row 
   when 
@@ -18,7 +18,7 @@ for each row
 	  select raise(abort, 'immutable column');
 	end;
 
-create trigger default_create_time_column_kms_root_key
+create trigger kms_default_create_time_column_kms_root_key
 before insert on kms_root_key
 for each row
 begin
@@ -37,7 +37,7 @@ create table kms_root_key_version (
   unique(root_key_id, version)
 );
 
-create trigger immutable_columns_kms_root_key_version
+create trigger kms_immutable_columns_kms_root_key_version
 before update on kms_root_key_version
 for each row 
   when 
@@ -51,7 +51,7 @@ for each row
 	  select raise(abort, 'immutable column');
 	end;
 
-create trigger default_create_time_column_kms_root_key_version
+create trigger kms_default_create_time_column_kms_root_key_version
 before insert on kms_root_key_version
 for each row
 begin
@@ -84,7 +84,7 @@ create table kms_data_key (
   unique (root_key_id, purpose) -- there can only be one dek per purpose per root key
 );
 
-create trigger immutable_columns_kms_data_key
+create trigger kms_immutable_columns_kms_data_key
 before update on kms_data_key
 for each row 
   when 
@@ -96,7 +96,7 @@ for each row
 	  select raise(abort, 'immutable column');
 	end;
 
-create trigger default_create_time_column_kms_data_key
+create trigger kms_default_create_time_column_kms_data_key
 before insert on kms_data_key
 for each row
 begin
@@ -119,7 +119,7 @@ create table kms_data_key_version (
   unique(data_key_id, version)
 );
 
-create trigger immutable_columns_kms_data_key_version
+create trigger kms_immutable_columns_kms_data_key_version
 before update on kms_data_key_version
 for each row 
   when 
@@ -133,7 +133,7 @@ for each row
 	  select raise(abort, 'immutable column');
 	end;
 
-create trigger default_create_time_column_kms_data_key_version
+create trigger kms_default_create_time_column_kms_data_key_version
 before insert on kms_data_key_version
 for each row
 begin

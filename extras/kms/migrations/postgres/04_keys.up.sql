@@ -9,17 +9,15 @@ comment on table kms_root_key is
   'kms_root_key defines a root key for a scope';
 
  -- define the immutable fields for kms_root_key (all of them)
-create trigger 
-  immutable_columns
+create trigger kms_immutable_columns
 before
 update on kms_root_key
-  for each row execute procedure immutable_columns('private_id', 'scope_id', 'create_time');
+  for each row execute procedure kms_immutable_columns('private_id', 'scope_id', 'create_time');
 
-create trigger 
-  default_create_time_column
+create trigger kms_default_create_time_column
 before
 insert on kms_root_key
-  for each row execute procedure default_create_time();
+  for each row execute procedure kms_default_create_time();
 
 create table kms_root_key_version (
   private_id kms_private_id primary key,
@@ -36,21 +34,18 @@ comment on table kms_root_key_version is
   'kms_root_key_version contains versions of a kms_root_key';
 
 -- define the immutable fields for kms_root_key_version (all of them)
-create trigger 
-  immutable_columns
+create trigger kms_immutable_columns
 before
 update on kms_root_key_version
-  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'version', 'key', 'create_time');
+  for each row execute procedure kms_immutable_columns('private_id', 'root_key_id', 'version', 'key', 'create_time');
 
-create trigger 
-  default_create_time_column
+create trigger kms_default_create_time_column
 before
 insert on kms_root_key_version
-  for each row execute procedure default_create_time();
+  for each row execute procedure kms_default_create_time();
 
 
-create trigger
-  kms_version_column
+create trigger kms_version_column
 before insert on kms_root_key_version
   for each row execute procedure kms_version_column('root_key_id');
 
@@ -73,17 +68,15 @@ comment on table kms_data_key is
   'kms_data_key contains deks (data keys) for specific purposes derived from a kms_root_key';
 
  -- define the immutable fields for kms_data_key (all of them)
-create trigger 
-  immutable_columns
+create trigger kms_immutable_columns
 before
 update on kms_data_key
-  for each row execute procedure immutable_columns('private_id', 'root_key_id', 'purpose', 'create_time');
+  for each row execute procedure kms_immutable_columns('private_id', 'root_key_id', 'purpose', 'create_time');
 
-create trigger 
-  default_create_time_column
+create trigger kms_default_create_time_column
 before
 insert on kms_data_key
-  for each row execute procedure default_create_time();
+  for each row execute procedure kms_default_create_time();
 
 create table kms_data_key_version (
   private_id kms_private_id primary key,
@@ -104,20 +97,17 @@ comment on table kms_data_key is
   'kms_data_key_version contains versions of a kms_data_key (dek aka data keys)';
 
  -- define the immutable fields for kms_data_key_version (all of them)
-create trigger 
-  immutable_columns
+create trigger kms_immutable_columns
 before
 update on kms_data_key_version
-  for each row execute procedure immutable_columns('private_id', 'data_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
+  for each row execute procedure kms_immutable_columns('private_id', 'data_key_id', 'root_key_version_id', 'version', 'key', 'create_time');
   
-create trigger 
-  default_create_time_column
+create trigger kms_default_create_time_column
 before
 insert on kms_data_key_version
-  for each row execute procedure default_create_time();
+  for each row execute procedure kms_default_create_time();
 
-create trigger
-	kms_version_column
+create trigger kms_version_column
 before insert on kms_data_key_version
 	for each row execute procedure kms_version_column('data_key_id');
 

@@ -9,7 +9,7 @@ create table kms_schema_version (
 create unique index kms_schema_version_one_row
 ON kms_schema_version((version is not null));
 
-create trigger immutable_columns_kms_schema_version
+create trigger kms_immutable_columns_kms_schema_version
 before update on kms_schema_version
 for each row 
   when 

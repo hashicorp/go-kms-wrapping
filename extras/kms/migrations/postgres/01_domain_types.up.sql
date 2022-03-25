@@ -32,11 +32,10 @@ create domain kms_version as bigint
 comment on domain kms_version is
 'standard column for row version';
 
--- immutable_columns() will make the column names immutable which are passed as
+-- kms_immutable_columns() will make the column names immutable which are passed as
 -- parameters when the trigger is created. It raises error code 23601 which is a
 -- class 23 integrity constraint violation: immutable column  
-create or replace function
-  immutable_columns()
+create function kms_immutable_columns()
   returns trigger
 as $$
 declare 
@@ -60,12 +59,12 @@ end;
 $$ language plpgsql;
 
 comment on function
-  immutable_columns()
+  kms_immutable_columns()
 is
   'function used in before update triggers to make columns immutable';
 
 
-create or replace function default_create_time()
+create function kms_default_create_time()
   returns trigger
 as $$
 begin
@@ -76,7 +75,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function
-  default_create_time()
+  kms_default_create_time()
 is
   'function used to properly set create_time columns';
 

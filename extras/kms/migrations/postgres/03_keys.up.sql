@@ -4,8 +4,7 @@ begin;
 -- kms_version_column() will increment the version column whenever row data
 -- is inserted and should only be used in an before insert trigger.  This
 -- function will overwrite any explicit values to the version column.
-create or replace function
-  kms_version_column()
+create function kms_version_column()
   returns trigger
 as $$
 declare 
