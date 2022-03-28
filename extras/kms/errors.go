@@ -9,4 +9,11 @@ var (
 
 	// ErrInvalidParameter represents and invalid parameter error condition.
 	ErrInvalidParameter = errors.New("invalid parameter")
+
+	// ErrMultipleRecords represents multiple records were affected when only
+	// one was expected
+	ErrMultipleRecords = errors.New("multiple records")
+
+	// ErrRecordNotFound represents that no record was found
+	ErrRecordNotFound = errors.New("record not found")
 )

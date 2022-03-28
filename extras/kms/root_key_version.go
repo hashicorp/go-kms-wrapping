@@ -66,7 +66,7 @@ func (k *RootKeyVersion) Clone() *RootKeyVersion {
 }
 
 // VetForWrite validates the root key version before it's written.
-func (k *RootKeyVersion) vetForWrite(ctx context.Context, _ dbw.Reader, opType dbw.OpType) error {
+func (k *RootKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 	const op = "kms.(RootKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -88,6 +88,9 @@ func (k *RootKeyVersion) vetForWrite(ctx context.Context, _ dbw.Reader, opType d
 // Encrypt will encrypt the root key version's key
 func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(RootKeyVersion).Encrypt"
+	if cipher == nil {
+		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
+	}
 	if err := structwrapping.WrapStruct(ctx, cipher, k, nil); err != nil {
 		return fmt.Errorf("%s: unable to encrypt: %w", op, err)
 	}
@@ -97,8 +100,14 @@ func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 // Decrypt will decrypt the root key version's key
 func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(RootKeyVersion).Decrypt"
+	if cipher == nil {
+		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
+	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k, nil); err != nil {
 		return fmt.Errorf("%s: unable to decrypt: %w", op, err)
 	}
 	return nil
 }
+
+// GetPrivateId returns the key's private id
+func (k *RootKeyVersion) GetPrivateId() string { return k.PrivateId }

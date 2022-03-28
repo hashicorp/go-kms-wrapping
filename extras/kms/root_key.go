@@ -38,3 +38,6 @@ func (k *RootKey) Clone() *RootKey {
 		CreateTime: k.CreateTime,
 	}
 }
+
+// GetPrivateId returns the key's private id
+func (k *RootKey) GetPrivateId() string { return k.PrivateId }
