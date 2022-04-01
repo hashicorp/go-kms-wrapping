@@ -11,7 +11,7 @@ import (
 )
 
 // CreateDataKeyVersion inserts into the repository and returns the new key
-// version with its PrivateId.  Supported options: WithRetryCnt,
+// version with its PrivateId. Supported options: WithRetryCnt,
 // WithRetryErrorsMatching
 func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, dataKeyId string, key []byte, opt ...Option) (*DataKeyVersion, error) {
 	const op = "kms.(Repository).CreateDataKeyVersion"
@@ -33,7 +33,6 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 		return nil, fmt.Errorf("%s: missing root key version id: %w", op, ErrInvalidParameter)
 	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
 		return nil, fmt.Errorf("%s: root key version id %q doesn't start with prefix %q: %w", op, rootKeyVersionId, RootKeyVersionPrefix, ErrInvalidParameter)
-
 	}
 	kv := DataKeyVersion{}
 	id, err := newDataKeyVersionId()
@@ -70,8 +69,8 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	return returnedKey.(*DataKeyVersion), nil
 }
 
-// LookupDataKeyVersion will look up a key version in the repository.  If
-// the key version is not found, it will return nil, nil.
+// LookupDataKeyVersion will look up a key version in the repository. If
+// the key version is not found then an ErrRecordNotFound will be returned.
 func (r *Repository) LookupDataKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*DataKeyVersion, error) {
 	const op = "kms.(Repository).LookupDatabaseKeyVersion"
 	if privateId == "" {
@@ -138,8 +137,8 @@ func (r *Repository) DeleteDataKeyVersion(ctx context.Context, privateId string,
 }
 
 // LatestDataKeyVersion searches for the key version with the highest
-// version number.  When no results are found, it returns nil with an
-// errors.RecordNotFound error.
+// version number. When no results are found, it returns nil with an
+// ErrRecordNotFound error.
 func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, dataKeyId string, _ ...Option) (*DataKeyVersion, error) {
 	const op = "kms.(Repository).LatestDataKeyVersion"
 	if dataKeyId == "" {
@@ -161,7 +160,7 @@ func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	return foundKeys[0], nil
 }
 
-// // ListDataKeyVersions will lists versions of a key.  Supported options:
+// ListDataKeyVersions will lists versions of a key. Supported options:
 // WithLimit, WithOrderByVersion
 func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]DekVersion, error) {
 	const op = "kms.(Repository).ListDataVersions"

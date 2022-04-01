@@ -25,8 +25,6 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
 
-	type args struct {
-	}
 	tests := []struct {
 		name            string
 		repo            *kms.Repository

@@ -76,7 +76,7 @@ func WithOrderByVersion(orderBy OrderBy) Option {
 }
 
 // WithRetryCount provides an optional specified retry count, otherwise the
-// StdRetryCnt is used.  You must specify WithRetryErrorsMatching if you want
+// StdRetryCnt is used. You must specify WithRetryErrorsMatching if you want
 // any retries at all.
 func WithRetryCount(cnt uint) Option {
 	return func(o *options) {

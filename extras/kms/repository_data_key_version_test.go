@@ -190,8 +190,6 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 	_, rkvWrapper := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
 	dk := kms.TestDataKey(t, db, rk.PrivateId, testPurpose)
 
-	type args struct {
-	}
 	tests := []struct {
 		name            string
 		repo            *kms.Repository

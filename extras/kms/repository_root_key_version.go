@@ -9,8 +9,8 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// LookupRootKeyVersion will look up a root key version in the repository.  If
-// the key version is not found, it will return nil, nil.
+// LookupRootKeyVersion will look up a root key version in the repository. If
+// the key version is not found then an ErrRecordNotFound will be returned.
 func (r *Repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*RootKeyVersion, error) {
 	const op = "kms.(Repository).LookupRootKeyVersion"
 	if privateId == "" {
@@ -34,7 +34,7 @@ func (r *Repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrappi
 }
 
 // CreateRootKeyVersion inserts into the repository and returns the new root key
-// version with its PrivateId.  Supported options: WithRetryCnt,
+// version with its PrivateId. Supported options: WithRetryCnt,
 // WithRetryErrorsMatching
 func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, key []byte, opt ...Option) (*RootKeyVersion, error) {
 	const op = "kms.(Repository).CreateRootKeyVersion"
@@ -82,7 +82,7 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 }
 
 // DeleteRootKeyVersion deletes the root key version for the provided id from the
-// repository returning a count of the number of records deleted.  Supported
+// repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
 func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteRootKeyVersion"
@@ -126,8 +126,8 @@ func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 }
 
 // LatestRootKeyVersion searches for the root key version with the highest
-// version number.  When no results are found, it returns nil with an
-// errors.RecordNotFound error.
+// version number. When no results are found, it returns nil with an
+// ErrRecordNotFound error.
 func (r *Repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) (*RootKeyVersion, error) {
 	const op = "kms.(Repository).LatestRootKeyVersion"
 	if rootKeyId == "" {
@@ -149,7 +149,7 @@ func (r *Repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	return &foundKeys[0], nil
 }
 
-// ListRootKeyVersions in versions of a root key.  Supported options: WithLimit, WithOrderByVersion
+// ListRootKeyVersions in versions of a root key. Supported options: WithLimit, WithOrderByVersion
 func (r *Repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) ([]*RootKeyVersion, error) {
 	const op = "kms.(Repository).ListRootKeyVersions"
 	if rootKeyId == "" {

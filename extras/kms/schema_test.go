@@ -397,7 +397,6 @@ func TestDataKey_Version(t *testing.T) {
 		require.NoError(rw.LookupBy(testCtx, found))
 		found.Decrypt(testCtx, wrapper)
 		assert.Equal(dkv3, found)
-
 	})
 	t.Run("test-dup-purpose", func(t *testing.T) {
 		const testPurpose = "test"

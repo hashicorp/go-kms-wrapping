@@ -14,7 +14,8 @@ import (
 func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, scopeId string, key []byte, opt ...Option) (*RootKey, *RootKeyVersion, error) {
 	const op = "kms.(Repository).CreateRootKey"
 	opts := getOpts(opt...)
-	var returnedRk, returnedKv interface{}
+	var returnedRk *RootKey
+	var returnedKv *RootKeyVersion
 	_, err := r.writer.DoTx(
 		ctx,
 		opts.withErrorsMatching,
@@ -31,7 +32,7 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: failed for %q: %w", op, scopeId, err)
 	}
-	return returnedRk.(*RootKey), returnedKv.(*RootKeyVersion), nil
+	return returnedRk, returnedKv, nil
 }
 
 // createRootKeyTx inserts into the db (via dbw.Writer) and returns the new root key
@@ -78,8 +79,8 @@ func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrap
 	return &rk, &kv, nil
 }
 
-// LookupRootKey will look up a root key in the repository.  If the key is not
-// found, it will return nil, nil.
+// LookupRootKey will look up a root key in the repository. If the key is not
+// found then an ErrRecordNotFound will be returned.
 func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*RootKey, error) {
 	const op = "kms.(Repository).LookupRootKey"
 	if privateId == "" {
@@ -100,7 +101,7 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 }
 
 // DeleteRootKey deletes the root key for the provided id from the
-// repository returning a count of the number of records deleted.  Supported
+// repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
 func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteRootKey"
@@ -143,7 +144,7 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 	return rowsDeleted, nil
 }
 
-// ListRootKeys will list the root keys.  Supported options: WithLimit,
+// ListRootKeys will list the root keys. Supported options: WithLimit,
 // WithOrderByVersion
 func (r *Repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*RootKey, error) {
 	const op = "kms.(Repository).ListRootKeys"

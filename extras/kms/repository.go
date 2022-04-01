@@ -163,11 +163,11 @@ type KeyWithVersion struct {
 // easily accessed via their KeyPurpose
 type Keys map[KeyPurpose]KeyWithVersion
 
-// CreateKeysTx creates the root key and DEKs returns a map of the new keys.
+// CreateKeysTx creates the root key and DEKs and returns a map of the new keys.
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
-// it's own transaction and is intended to be used within a transaction provide
+// its own transaction and is intended to be used within a transaction provide
 // by the caller.
 func (r *Repository) CreateKeysTx(ctx context.Context, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (Keys, error) {
 	const op = "kms.CreateKeysTx"

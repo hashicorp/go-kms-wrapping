@@ -351,7 +351,6 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			assert.NotNil(keys)
 		})
 	}
-
 }
 
 func TestRepository_DefaultLimit(t *testing.T) {

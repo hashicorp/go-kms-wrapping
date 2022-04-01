@@ -15,7 +15,8 @@ import (
 func (r *Repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrapper, purpose KeyPurpose, key []byte, opt ...Option) (*DataKey, *DataKeyVersion, error) {
 	const op = "kms.(Repository).CreateDataKey"
 	opts := getOpts(opt...)
-	var returnedDk, returnedDv interface{}
+	var returnedDk *DataKey
+	var returnedDv *DataKeyVersion
 	_, err := r.writer.DoTx(
 		ctx,
 		opts.withErrorsMatching,
@@ -32,7 +33,7 @@ func (r *Repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrap
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: unable to create data key for purpose %q: %w", op, purpose, err)
 	}
-	return returnedDk.(*DataKey), returnedDv.(*DataKeyVersion), nil
+	return returnedDk, returnedDv, nil
 }
 
 // createDataKeyTx inserts into the db (via dbw.Writer) and returns the new data key
@@ -102,7 +103,7 @@ func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper
 }
 
 // LookupDataKey will look up a key in the repository.  If the key is not
-// found, it will return nil, nil.
+// found then an ErrRecordNotFound will be returned.
 func (r *Repository) LookupDataKey(ctx context.Context, privateId string, _ ...Option) (*DataKey, error) {
 	const op = "kms.(Repository).LookupDataKey"
 	if privateId == "" {
@@ -120,7 +121,7 @@ func (r *Repository) LookupDataKey(ctx context.Context, privateId string, _ ...O
 }
 
 // DeleteDataKey deletes the key for the provided id from the
-// repository returning a count of the number of records deleted.  Supported
+// repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
 func (r *Repository) DeleteDataKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteDataKey"

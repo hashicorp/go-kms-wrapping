@@ -247,7 +247,6 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	// wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
 	testRepo, err := kms.NewRepository(rw, rw)
 	require.NoError(t, err)
 	const (
@@ -256,9 +255,6 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 	)
 	rk := kms.TestRootKey(t, db, testScopeId)
 
-	db.Debug(true)
-	type args struct {
-	}
 	tests := []struct {
 		name            string
 		repo            *kms.Repository
