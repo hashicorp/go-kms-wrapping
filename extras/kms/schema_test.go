@@ -2,6 +2,7 @@ package kms_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestRootKey_ScopeId(t *testing.T) {
+	t.Parallel()
+	assert, require := assert.New(t), require.New(t)
+	db, _ := kms.TestDb(t)
+	rw := dbw.New(db)
+	testScopeId := "o_1234567890"
+	_ = kms.TestRootKey(t, db, testScopeId)
+
+	k, err := kms.NewRootKey(testScopeId)
+	require.NoError(err)
+	id, err := dbw.NewId(kms.RootKeyPrefix)
+	require.NoError(err)
+	k.PrivateId = id
+	err = rw.Create(context.Background(), k)
+	assert.Error(err)
+	assert.Contains(strings.ToLower(err.Error()), "unique")
+}
 
 func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	t.Parallel()
@@ -378,7 +397,6 @@ func TestDataKey_Version(t *testing.T) {
 		require.NoError(rw.LookupBy(testCtx, found))
 		found.Decrypt(testCtx, wrapper)
 		assert.Equal(dkv3, found)
-
 	})
 	t.Run("test-dup-purpose", func(t *testing.T) {
 		const testPurpose = "test"

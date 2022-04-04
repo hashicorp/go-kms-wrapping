@@ -21,10 +21,18 @@ type options struct {
 	withRepository     *Repository
 	withKeyId          string
 	withOrderByVersion OrderBy
+	withRetryCnt       uint
+	withErrorsMatching func(error) bool
+	withPurpose        KeyPurpose
 }
 
+var noOpErrorMatchingFn = func(error) bool { return false }
+
 func getDefaultOptions() options {
-	return options{}
+	return options{
+		withErrorsMatching: noOpErrorMatchingFn,
+		withRetryCnt:       StdRetryCnt,
+	}
 }
 
 // WithLimit provides an option to provide a limit. Intentionally allowing
@@ -64,5 +72,29 @@ func WithKeyId(keyId string) Option {
 func WithOrderByVersion(orderBy OrderBy) Option {
 	return func(o *options) {
 		o.withOrderByVersion = orderBy
+	}
+}
+
+// WithRetryCount provides an optional specified retry count, otherwise the
+// StdRetryCnt is used. You must specify WithRetryErrorsMatching if you want
+// any retries at all.
+func WithRetryCount(cnt uint) Option {
+	return func(o *options) {
+		o.withRetryCnt = cnt
+	}
+}
+
+// WithRetryErrorsMatching provides an optional function to match transactions
+// errors which should be retried.
+func WithRetryErrorsMatching(matchingFn func(error) bool) Option {
+	return func(o *options) {
+		o.withErrorsMatching = matchingFn
+	}
+}
+
+// WithPurpose provides an optional key purpose
+func WithPurpose(purpose KeyPurpose) Option {
+	return func(o *options) {
+		o.withPurpose = purpose
 	}
 }

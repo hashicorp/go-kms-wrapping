@@ -34,7 +34,7 @@ func TestRootKey(t *testing.T, conn *dbw.DB, scopeId string) *RootKey {
 	id, err := newRootKeyId()
 	require.NoError(err)
 	k.PrivateId = id
-	err = rw.Create(context.Background(), k)
+	err = create(context.Background(), rw, k)
 	require.NoError(err)
 	return k
 }
@@ -55,7 +55,7 @@ func TestRootKeyVersion(t *testing.T, conn *dbw.DB, wrapper wrapping.Wrapper, ro
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), wrapper)
 	require.NoError(err)
-	err = rw.Create(context.Background(), k)
+	err = create(context.Background(), rw, k)
 	require.NoError(err)
 	err = rw.LookupBy(context.Background(), k)
 	require.NoError(err)
@@ -65,7 +65,7 @@ func TestRootKeyVersion(t *testing.T, conn *dbw.DB, wrapper wrapping.Wrapper, ro
 }
 
 // TestData returns a new test DataKey
-func TestDataKey(t *testing.T, conn *dbw.DB, rootKeyId, purpose string) *DataKey {
+func TestDataKey(t *testing.T, conn *dbw.DB, rootKeyId string, purpose KeyPurpose) *DataKey {
 	t.Helper()
 	require := require.New(t)
 	TestDeleteWhere(t, conn, &DataKey{}, "root_key_id = ?", rootKeyId)
@@ -76,7 +76,7 @@ func TestDataKey(t *testing.T, conn *dbw.DB, rootKeyId, purpose string) *DataKey
 	require.NoError(err)
 	k.PrivateId = id
 	k.RootKeyId = rootKeyId
-	err = rw.Create(context.Background(), k)
+	err = create(context.Background(), rw, k)
 	require.NoError(err)
 	return k
 }
@@ -96,7 +96,7 @@ func TestDataKeyVersion(t *testing.T, conn *dbw.DB, rootKeyVersionWrapper wrappi
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
 	require.NoError(err)
-	err = rw.Create(context.Background(), k)
+	err = create(context.Background(), rw, k)
 	require.NoError(err)
 	err = rw.LookupBy(context.Background(), k)
 	require.NoError(err)

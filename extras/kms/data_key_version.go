@@ -54,9 +54,11 @@ func NewDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ 
 // Clone creates a clone of the DataKeyVersion
 func (k *DataKeyVersion) Clone() *DataKeyVersion {
 	clone := &DataKeyVersion{
-		PrivateId:  k.PrivateId,
-		DataKeyId:  k.DataKeyId,
-		CreateTime: k.CreateTime,
+		PrivateId:        k.PrivateId,
+		DataKeyId:        k.DataKeyId,
+		RootKeyVersionId: k.RootKeyVersionId,
+		Version:          k.Version,
+		CreateTime:       k.CreateTime,
 	}
 	clone.Key = make([]byte, len(k.Key))
 	copy(clone.Key, k.Key)
@@ -67,10 +69,10 @@ func (k *DataKeyVersion) Clone() *DataKeyVersion {
 }
 
 // vetForWrite validates the data key version before it's written.
-func (k *DataKeyVersion) vetForWrite(ctx context.Context, r dbw.Reader, opType dbw.OpType) error {
+func (k *DataKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 	const op = "kms.(DataKeyVersion).vetForWrite"
 	if k.PrivateId == "" {
-		return fmt.Errorf("%s: private id: %w", op, ErrInvalidParameter)
+		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
 	switch opType {
 	case dbw.CreateOp:
@@ -95,6 +97,9 @@ func (k *DataKeyVersion) TableName() string { return "kms_data_key_version" }
 // Encrypt will encrypt the data key version's key
 func (k *DataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(DataKeyVersion).Encrypt"
+	if cipher == nil {
+		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
+	}
 	if err := structwrapping.WrapStruct(ctx, cipher, k, nil); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -104,8 +109,17 @@ func (k *DataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 // Decrypt will decrypt the data key version's key
 func (k *DataKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(DataKeyVersion).Decrypt"
+	if cipher == nil {
+		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
+	}
 	if err := structwrapping.UnwrapStruct(ctx, cipher, k, nil); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 	return nil
 }
+
+// GetPrivateId returns the key's private id
+func (k *DataKeyVersion) GetPrivateId() string { return k.PrivateId }
+
+// GetKey returns the key bytes
+func (k *DataKeyVersion) GetKey() []byte { return k.Key }
