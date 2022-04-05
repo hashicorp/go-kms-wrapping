@@ -7,9 +7,13 @@ import (
 )
 
 const (
-	RootKeyPrefix        = "krk"
+	// RootKeyPrefix is a prefix used with RootKey IDs
+	RootKeyPrefix = "krk"
+	// RootKeyVersionPrefix is a prefix used with RootKeyVersion IDs
 	RootKeyVersionPrefix = "krkv"
-	DataKeyPrefix        = "kdk"
+	// DataKeyPrefix is a prefix used with RootKey IDs
+	DataKeyPrefix = "kdk"
+	// DataKeyVersionPrefix is a prefix used with DataKeyVersion IDs
 	DataKeyVersionPrefix = "kdkv"
 )
 

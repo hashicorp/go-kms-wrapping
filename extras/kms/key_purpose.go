@@ -23,6 +23,7 @@ func reservedKeyPurpose() []string {
 	}
 }
 
+// RemoveDuplicatePurposes will de-dup a set of key purposes
 func RemoveDuplicatePurposes(purposes []KeyPurpose) []KeyPurpose {
 	purposesMap := make(map[KeyPurpose]struct{}, len(purposes))
 	for _, purpose := range purposes {

@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
+//  DataKey represents the DEKs (keys to encrypt data) of the system and must
+//  have a parent root key and a purpose.
 type DataKey struct {
 	// PrivateId is used to access the key
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`

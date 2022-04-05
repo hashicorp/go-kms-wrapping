@@ -78,7 +78,11 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed for %q root key id: %w", op, kv.RootKeyId, err)
 	}
-	return returnedKey.(*RootKeyVersion), nil
+	k, ok := returnedKey.(*RootKeyVersion)
+	if !ok {
+		return nil, fmt.Errorf("%s: not a RootKeyVersion: %w", op, ErrInternal)
+	}
+	return k, nil
 }
 
 // DeleteRootKeyVersion deletes the root key version for the provided id from the

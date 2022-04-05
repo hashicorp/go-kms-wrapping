@@ -66,7 +66,11 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed for %q data key id: %w", op, kv.DataKeyId, err)
 	}
-	return returnedKey.(*DataKeyVersion), nil
+	k, ok := returnedKey.(*DataKeyVersion)
+	if !ok {
+		return nil, fmt.Errorf("%s: not a DataKeyVersion: %w", op, ErrInternal)
+	}
+	return k, nil
 }
 
 // LookupDataKeyVersion will look up a key version in the repository. If

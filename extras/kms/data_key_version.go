@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
+// DataKeyVersion represents a version of a DataKey
 type DataKeyVersion struct {
 	// PrivateId is used to access the key version
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`
