@@ -20,9 +20,8 @@ import (
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvAWSKMSWrapperKeyID             = "AWSKMS_WRAPPER_KEY_ID"
-	EnvVaultAWSKMSSealKeyID           = "VAULT_AWSKMS_SEAL_KEY_ID"
-	EnvAWSKMSDecryptWithImplicitKeyID = "AWSKMS_DECRYPT_WITH_IMPLICIT_KEY_ID"
+	EnvAWSKMSWrapperKeyID   = "AWSKMS_WRAPPER_KEY_ID"
+	EnvVaultAWSKMSSealKeyID = "VAULT_AWSKMS_SEAL_KEY_ID"
 )
 
 const (
@@ -36,19 +35,18 @@ const (
 // Wrapper represents credentials and Key information for the KMS Key used to
 // encryption and decryption
 type Wrapper struct {
-	accessKey                string
-	secretKey                string
-	sessionToken             string
-	region                   string
-	keyID                    string
-	endpoint                 string
-	filename                 string
-	profile                  string
-	roleArn                  string
-	roleSessionName          string
-	webIdentityTokenFile     string
-	keyNotRequired           bool
-	decryptWithImplicitKeyID bool
+	accessKey            string
+	secretKey            string
+	sessionToken         string
+	region               string
+	keyID                string
+	endpoint             string
+	filename             string
+	profile              string
+	roleArn              string
+	roleSessionName      string
+	webIdentityTokenFile string
+	keyNotRequired       bool
 
 	currentKeyID *atomic.Value
 
@@ -112,22 +110,8 @@ func (k *Wrapper) SetConfig(config map[string]string) (map[string]string, error)
 
 	k.currentKeyID.Store(k.keyID)
 
-	// Check and set decryptWithImplicitKeyId
-	var err error
-	switch {
-	case os.Getenv(EnvAWSKMSDecryptWithImplicitKeyID) != "" && allowEnv:
-		k.decryptWithImplicitKeyID, err = strconv.ParseBool(os.Getenv(EnvAWSKMSDecryptWithImplicitKeyID))
-		if err != nil {
-			return nil, err
-		}
-	case config["decrypt_with_implicit_key_id"] != "":
-		k.decryptWithImplicitKeyID, err = strconv.ParseBool(config["decrypt_with_implicit_key_id"])
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// Please see GetRegion for an explanation of the order in which region is parsed.
+	var err error
 	k.region, err = awsutil.GetRegion(config["region"])
 	if err != nil {
 		return nil, err
@@ -270,11 +254,6 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	var keyID *string
-	if !k.decryptWithImplicitKeyID {
-		keyID = aws.String(k.keyID)
-	}
-
 	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
 		in.KeyInfo = &wrapping.KeyInfo{
@@ -287,7 +266,6 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 	case AWSKMSEncrypt:
 		input := &kms.DecryptInput{
 			CiphertextBlob: in.Ciphertext,
-			KeyId:          keyID,
 		}
 
 		output, err := k.client.Decrypt(input)
@@ -297,9 +275,10 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 		plaintext = output.Plaintext
 
 	case AWSKMSEnvelopeAESGCMEncrypt:
+		// KeyID is not passed to this call because AWS handles this
+		// internally based on the metadata stored with the encrypted data
 		input := &kms.DecryptInput{
 			CiphertextBlob: in.KeyInfo.WrappedKey,
-			KeyId:          keyID,
 		}
 		output, err := k.client.Decrypt(input)
 		if err != nil {
