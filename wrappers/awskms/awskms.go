@@ -270,7 +270,10 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.EncryptedBlobInfo, aad
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	keyID := aws.String(k.keyID)
+	var keyID *string
+	if !k.decryptWithImplicitKeyID {
+		keyID = aws.String(k.keyID)
+	}
 
 	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
