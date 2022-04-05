@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"sync/atomic"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -22,7 +21,6 @@ import (
 const (
 	EnvAwsKmsWrapperKeyId   = "AWSKMS_WRAPPER_KEY_ID"
 	EnvVaultAwsKmsSealKeyId = "VAULT_AWSKMS_SEAL_KEY_ID"
-	EnvAWSKMSDecryptWithImplicitKeyID = "AWSKMS_DECRYPT_WITH_IMPLICIT_KEY_ID"
 )
 
 const (
@@ -48,7 +46,6 @@ type Wrapper struct {
 	roleSessionName      string
 	webIdentityTokenFile string
 	keyNotRequired       bool
-	decryptWithImplicitKeyID bool
 
 	currentKeyId *atomic.Value
 
@@ -98,16 +95,6 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		// key not required to set config
 	default:
 		return nil, fmt.Errorf("key id not found in env or config for aws kms wrapper configuration")
-	}
-
-	k.currentKeyId.Store(k.keyId)
-
-	// Check and set decryptWithImplicitKeyId
-	if os.Getenv(EnvAWSKMSDecryptWithImplicitKeyID) != ""{
-		k.decryptWithImplicitKeyID, err = strconv.ParseBool(os.Getenv(EnvAWSKMSDecryptWithImplicitKeyID))
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// Please see GetRegion for an explanation of the order in which region is parsed.
@@ -236,11 +223,6 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	var keyID *string
-	if !k.decryptWithImplicitKeyID {
-		keyID = aws.String(k.keyId)
-	}
-
 	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
 		in.KeyInfo = &wrapping.KeyInfo{
@@ -253,7 +235,6 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 	case AwsKmsEncrypt:
 		input := &kms.DecryptInput{
 			CiphertextBlob: in.Ciphertext,
-			KeyId: keyID,
 		}
 
 		output, err := k.client.Decrypt(input)
@@ -263,9 +244,10 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		plaintext = output.Plaintext
 
 	case AwsKmsEnvelopeAesGcmEncrypt:
+		// KeyId is not passed to this call because AWS handles this
+		// internally based on the metadata stored with the encrypted data
 		input := &kms.DecryptInput{
 			CiphertextBlob: in.KeyInfo.WrappedKey,
-			KeyId: keyID,
 		}
 		output, err := k.client.Decrypt(input)
 		if err != nil {
