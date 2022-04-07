@@ -166,7 +166,7 @@ func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 
 // ListDataKeyVersions will lists versions of a key. Supported options:
 // WithLimit, WithOrderByVersion
-func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]DekVersion, error) {
+func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]*DataKeyVersion, error) {
 	const op = "kms.(Repository).ListDataVersions"
 	if databaseKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
@@ -184,9 +184,5 @@ func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 			return nil, fmt.Errorf("%s: error decrypting key num %q: %w", op, i, err)
 		}
 	}
-	dekVersions := make([]DekVersion, 0, len(versions))
-	for _, version := range versions {
-		dekVersions = append(dekVersions, version)
-	}
-	return dekVersions, nil
+	return versions, nil
 }

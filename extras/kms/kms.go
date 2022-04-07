@@ -268,18 +268,6 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	return pooled, rootKeyId, nil
 }
 
-// Dek is an interface wrapping dek types to allow a lot less switching in loadDek
-type Dek interface {
-	GetRootKeyId() string
-	GetPrivateId() string
-}
-
-// DekVersion is an interface wrapping versioned dek types to allow a lot less switching in loadDek
-type DekVersion interface {
-	GetPrivateId() string
-	GetKey() []byte
-}
-
 func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multi.PooledWrapper, error) {
 	const op = "kms.loadDek"
 	if scopeId == "" {
