@@ -23,11 +23,15 @@ func reservedKeyPurpose() []string {
 	}
 }
 
+func (kp KeyPurpose) trimSpace() KeyPurpose {
+	return KeyPurpose(strings.TrimSpace(string(kp)))
+}
+
 // RemoveDuplicatePurposes will de-dup a set of key purposes
 func RemoveDuplicatePurposes(purposes []KeyPurpose) []KeyPurpose {
 	purposesMap := make(map[KeyPurpose]struct{}, len(purposes))
 	for _, purpose := range purposes {
-		purpose = KeyPurpose(strings.TrimSpace(string(purpose)))
+		purpose = purpose.trimSpace()
 		if purpose == "" {
 			continue
 		}

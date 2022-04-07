@@ -243,7 +243,6 @@ func TestKms_loadRoot(t *testing.T) {
 		wantErrIs       error
 		wantErrContains string
 	}{
-
 		{
 			name: "missing-scope-id",
 			kms: func() *Kms {

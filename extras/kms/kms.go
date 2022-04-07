@@ -53,7 +53,8 @@ func New(repo *Repository, purposes []KeyPurpose, _ ...Option) (*Kms, error) {
 
 	return &Kms{
 		purposes: purposes,
-		repo:     repo}, nil
+		repo:     repo,
+	}, nil
 }
 
 func (k *Kms) addKey(ctx context.Context, cachePurpose CachePurpose, purpose KeyPurpose, wrapper wrapping.Wrapper, opt ...Option) error {
