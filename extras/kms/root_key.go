@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// RootKey represents the KEKs (keys to encrypt keys) of the system.
 type RootKey struct {
 	// PrivateId is used to access the root key
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`

@@ -597,7 +597,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 		lastVersion := -1
 		for _, dkv := range got {
 			if lastVersion != -1 {
-				currentVersion := dkv.(*kms.DataKeyVersion).Version
+				currentVersion := dkv.Version
 				assert.Greater(lastVersion, lastVersion)
 				lastVersion = int(currentVersion)
 			}
@@ -609,7 +609,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 		lastVersion = -1
 		for _, dkv := range got {
 			if lastVersion != -1 {
-				currentVersion := dkv.(*kms.DataKeyVersion).Version
+				currentVersion := dkv.Version
 				assert.Less(lastVersion, lastVersion)
 				lastVersion = int(currentVersion)
 			}

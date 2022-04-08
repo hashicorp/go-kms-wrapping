@@ -17,7 +17,8 @@ const (
 	// DefaultLimit is the default for results
 	DefaultLimit = 10000
 
-	DefaultWrapperSecret = "secret"
+	// DefaultWrapperSecret defines a default secret for testing
+	DefaultWrapperSecret = "secret1234567890"
 
 	// StdRetryCnt defines a standard retry count for transactions.
 	StdRetryCnt = 20

@@ -16,4 +16,10 @@ var (
 
 	// ErrRecordNotFound represents that no record was found
 	ErrRecordNotFound = errors.New("record not found")
+
+	// ErrKeyNotFound represents that no key was found
+	ErrKeyNotFound = errors.New("key not found")
+
+	// ErrInternal represents an internal error/issue
+	ErrInternal = errors.New("internal issue")
 )

@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
+// RootKeyVersion represents a version of a RootKey
 type RootKeyVersion struct {
 	// PrivateId is used to access the root key
 	PrivateId string `gorm:"primary_key"`

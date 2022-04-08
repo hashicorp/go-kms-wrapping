@@ -66,7 +66,11 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed for %q data key id: %w", op, kv.DataKeyId, err)
 	}
-	return returnedKey.(*DataKeyVersion), nil
+	k, ok := returnedKey.(*DataKeyVersion)
+	if !ok {
+		return nil, fmt.Errorf("%s: not a DataKeyVersion: %w", op, ErrInternal)
+	}
+	return k, nil
 }
 
 // LookupDataKeyVersion will look up a key version in the repository. If
@@ -162,7 +166,7 @@ func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 
 // ListDataKeyVersions will lists versions of a key. Supported options:
 // WithLimit, WithOrderByVersion
-func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]DekVersion, error) {
+func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]*DataKeyVersion, error) {
 	const op = "kms.(Repository).ListDataVersions"
 	if databaseKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
@@ -180,9 +184,5 @@ func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 			return nil, fmt.Errorf("%s: error decrypting key num %q: %w", op, i, err)
 		}
 	}
-	dekVersions := make([]DekVersion, 0, len(versions))
-	for _, version := range versions {
-		dekVersions = append(dekVersions, version)
-	}
-	return dekVersions, nil
+	return versions, nil
 }
