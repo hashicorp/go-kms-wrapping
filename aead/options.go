@@ -1,8 +1,10 @@
 package aead
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -88,17 +90,19 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	WithAeadType wrapping.AeadType
-	WithHashType wrapping.HashType
-	WithInfo     []byte
-	WithKey      []byte
-	WithSalt     []byte
+	WithAeadType     wrapping.AeadType
+	WithHashType     wrapping.HashType
+	WithInfo         []byte
+	WithKey          []byte
+	WithSalt         []byte
+	WithRandomReader io.Reader
 }
 
 func getDefaultOptions() options {
 	return options{
-		WithAeadType: wrapping.AeadTypeAesGcm,
-		WithHashType: wrapping.HashTypeSha256,
+		WithAeadType:     wrapping.AeadTypeAesGcm,
+		WithHashType:     wrapping.HashTypeSha256,
+		WithRandomReader: rand.Reader,
 	}
 }
 
@@ -147,6 +151,16 @@ func WithSalt(salt []byte) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.WithSalt = salt
+			return nil
+		})
+	}
+}
+
+// WithRandomReader provides an optional random reader
+func WithRandomReader(reader io.Reader) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.WithRandomReader = reader
 			return nil
 		})
 	}

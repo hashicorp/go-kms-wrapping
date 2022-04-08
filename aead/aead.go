@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-uuid"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -223,9 +223,17 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, err
 	}
 
-	iv, err := uuid.GenerateRandomBytes(12)
+	if opts.WithRandomReader == nil {
+		opts.WithRandomReader = rand.Reader
+	}
+
+	iv := make([]byte, 12)
+	n, err := opts.WithRandomReader.Read(iv)
 	if err != nil {
 		return nil, err
+	}
+	if n != 12 {
+		return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", 12, n)
 	}
 
 	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
