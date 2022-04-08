@@ -111,8 +111,9 @@ func (k *Kms) AddExternalWrapper(ctx context.Context, purpose KeyPurpose, wrappe
 	return k.addKey(ctx, ExternalWrapperCache, purpose, wrapper)
 }
 
+// GetExternalWrapper returns the external wrapper for a given purpose and
 // returns ErrKeyNotFound when a key for the given purpose is not found.
-func (k *Kms) GetExternalWrapper(ctx context.Context, purpose KeyPurpose) (wrapping.Wrapper, error) {
+func (k *Kms) GetExternalWrapper(_ context.Context, purpose KeyPurpose) (wrapping.Wrapper, error) {
 	const op = "kms.(Kms).GetExternalWrapper"
 	if purpose == KeyPurposeUnknown {
 		return nil, fmt.Errorf("%s: missing purpose: %w", op, ErrInvalidParameter)
