@@ -1,6 +1,8 @@
 package aead
 
 import (
+	"io"
+
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	baseaead "github.com/hashicorp/go-kms-wrapping/v2/aead"
 )
@@ -18,6 +20,7 @@ var (
 	WithInfo         func([]byte) wrapping.Option            = baseaead.WithInfo
 	WithKey          func([]byte) wrapping.Option            = baseaead.WithKey
 	WithSalt         func([]byte) wrapping.Option            = baseaead.WithSalt
+	WithRandomReader func(io.Reader) wrapping.Option         = baseaead.WithRandomReader
 )
 
 // Ensure that we are implementing Wrapper
