@@ -305,6 +305,58 @@ func (k *Kms) ValidateSchema(ctx context.Context) (string, error) {
 	return k.repo.ValidateSchema(ctx)
 }
 
+// ReconcileKeys will reconcile the keys in the kms against known possible
+// issues.  This function reconciles the global scope unless the
+// WithScopeIds(...) option is provided
+//
+// The WithRandomReader(...) option is supported as well.  If an optional
+// random reader is not provided (is nill), then the reader from crypto/rand
+// will be used as a default.
+func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) error {
+	const op = "kms.ReconcileKeys"
+	if len(scopeIds) == 0 {
+		return fmt.Errorf("%s: missing scope ids: %w", op, ErrInvalidParameter)
+	}
+	for _, p := range purposes {
+		if !purposeListContains(k.purposes, p) {
+			return fmt.Errorf("%s: not a supported key purpose %q: %w", op, p, ErrInvalidParameter)
+		}
+	}
+
+	opts := getOpts(opt...)
+	if isNil(opts.withRandomReader) {
+		opts.withRandomReader = rand.Reader
+	}
+
+	for _, id := range scopeIds {
+		var scopeRootWrapper *multi.PooledWrapper
+
+		for _, purpose := range purposes {
+			if _, err := k.GetWrapper(ctx, id, purpose); err != nil {
+				switch {
+				case errors.Is(err, ErrKeyNotFound):
+					if scopeRootWrapper == nil {
+						if scopeRootWrapper, _, err = k.loadRoot(ctx, id); err != nil {
+							return fmt.Errorf("%s: %w", op, err)
+						}
+					}
+					key, err := generateKey(ctx, opts.withRandomReader)
+					if err != nil {
+						return fmt.Errorf("%s: error generating random bytes for %q key in scope %q: %w", op, purpose, id, err)
+					}
+
+					if _, _, err := k.repo.CreateDataKey(ctx, scopeRootWrapper, purpose, key); err != nil {
+						return fmt.Errorf("%s: error creating %q key in scope %s: %w", op, purpose, id, err)
+					}
+				default:
+					return fmt.Errorf("%s: %w", op, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
 	const op = "kms.loadRoot"
 	if scopeId == "" {

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -18,57 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause string, args ...interface{}) {
-	t.Helper()
-	require := require.New(t)
-	ctx := context.Background()
-	tabler, ok := i.(interface {
-		TableName() string
-	})
-	require.True(ok)
-	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
-	require.NoError(err)
-}
-
-const defaultWrapperSecret = "secret1234567890"
-
-type rootKey struct{}
-
-func (k *rootKey) TableName() string { return "kms_root_key" }
-
-type dataKeyVersion struct{}
-
-func (k *dataKeyVersion) TableName() string { return "kms_data_key_version" }
-
-func removeDuplicatePurposes(purposes []kms.KeyPurpose) []kms.KeyPurpose {
-	purposesMap := make(map[kms.KeyPurpose]struct{}, len(purposes))
-	for _, purpose := range purposes {
-		purpose = kms.KeyPurpose(strings.TrimSpace(string(purpose)))
-		if purpose == "" {
-			continue
-		}
-		purposesMap[purpose] = struct{}{}
-	}
-	purposes = make([]kms.KeyPurpose, 0, len(purposesMap))
-	for purpose := range purposesMap {
-		purposes = append(purposes, purpose)
-	}
-	return purposes
-}
-
-type mockTestWrapper struct {
-	wrapping.Wrapper
-	err   error
-	keyId string
-}
-
-func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
-	if m.err != nil {
-		return "", m.err
-	}
-	return m.keyId, nil
-}
 
 func TestKms_New(t *testing.T) {
 	t.Parallel()
@@ -841,4 +791,304 @@ func TestRepository_ValidateVersion(t *testing.T) {
 			assert.Equal(tc.wantVersion, version)
 		})
 	}
+}
+
+func TestKms_ReconcileKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := kms.TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	const (
+		org  = "o_1234567890"
+		org2 = "o_2234567890"
+	)
+
+	tests := []struct {
+		name            string
+		kms             *kms.Kms
+		scopeIds        []string
+		opt             []kms.Option
+		setup           func(*kms.Kms)
+		wantPurpose     []kms.KeyPurpose
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-scope-ids",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrContains: "missing scope ids",
+		},
+		{
+			name: "invalid-purpose",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeIds:        []string{"global"},
+			wantPurpose:     []kms.KeyPurpose{"invalid-purpose"},
+			wantErr:         true,
+			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrContains: "not a supported key purpose",
+		},
+		{
+			name: "missing-root-key-in-org",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				// start with no keys...
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// create initial keys for the global scope...
+				err := k.CreateKeys(context.Background(), "global", nil)
+				require.NoError(t, err)
+
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err = k.GetWrapper(testCtx, org, kms.KeyPurposeRootKey)
+				require.Error(t, err)
+			},
+			scopeIds:        []string{org},
+			wantPurpose:     []kms.KeyPurpose{"database"},
+			wantErr:         true,
+			wantErrIs:       kms.ErrKeyNotFound,
+			wantErrContains: "missing root key for scope",
+		},
+		{
+			name: "rand-reader-err",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				// start with no keys...
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// create initial keys for the global scope...
+				err := k.CreateKeys(context.Background(), "global", nil)
+				require.NoError(t, err)
+
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err = k.GetWrapper(testCtx, "global", "database")
+				require.Error(t, err)
+			},
+			opt:             []kms.Option{kms.WithRandomReader(&mockReader{err: errors.New("rand-err")})},
+			scopeIds:        []string{"global"},
+			wantPurpose:     []kms.KeyPurpose{"database"},
+			wantErr:         true,
+			wantErrContains: "rand-err",
+		},
+
+		{
+			name: "success-nil-rand-reader-option",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			opt: []kms.Option{
+				kms.WithRandomReader(func() io.Reader { var sr *strings.Reader; var r io.Reader = sr; return r }()),
+			},
+			setup: func(k *kms.Kms) {
+				// start with no keys...
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// create initial keys for the global scope...
+				err := k.CreateKeys(context.Background(), "global", nil)
+				require.NoError(t, err)
+
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err = k.GetWrapper(testCtx, org, "database")
+				require.Error(t, err)
+			},
+			scopeIds:    []string{"global"},
+			wantPurpose: []kms.KeyPurpose{"database"},
+		},
+		{
+			name: "success-rand-reader-option",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			opt: []kms.Option{kms.WithRandomReader(rand.Reader)},
+			setup: func(k *kms.Kms) {
+				// start with no keys...
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// create initial keys for the global scope...
+				err := k.CreateKeys(context.Background(), org, nil)
+				require.NoError(t, err)
+
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err = k.GetWrapper(testCtx, org, "database")
+				require.Error(t, err)
+			},
+			scopeIds:    []string{org},
+			wantPurpose: []kms.KeyPurpose{"database"},
+		},
+		{
+			name: "nothing-to-reconcile",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				// start with no keys...
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// create initial keys for the global scope...
+				err := k.CreateKeys(context.Background(), "global", []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err = k.GetWrapper(testCtx, "global", "database")
+				require.NoError(t, err)
+			},
+			scopeIds:    []string{"global"},
+			wantPurpose: []kms.KeyPurpose{"database"},
+		},
+		{
+			name: "success-reconcile-database-key-in-org",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				// start with no keys...
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// create initial keys for the global scope...
+				err := k.CreateKeys(context.Background(), org, nil)
+				require.NoError(t, err)
+
+				// make sure the kms is in the proper state for the unit test
+				// before proceeding.
+				_, err = k.GetWrapper(testCtx, org, "database")
+				require.Error(t, err)
+			},
+			scopeIds:    []string{org},
+			wantPurpose: []kms.KeyPurpose{"database"},
+			wantErr:     false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tt.setup != nil {
+				tt.setup(tt.kms)
+			}
+			err := tt.kms.ReconcileKeys(testCtx, tt.scopeIds, tt.wantPurpose, tt.opt...)
+			if tt.wantErr {
+				require.Error(err)
+				if tt.wantErrIs != nil {
+					assert.ErrorIs(err, tt.wantErrIs)
+				}
+				if tt.wantErrContains != "" {
+					assert.Contains(err.Error(), tt.wantErrContains)
+				}
+				return
+			}
+			assert.NoError(err)
+			if len(tt.scopeIds) > 0 {
+				for _, id := range tt.scopeIds {
+					for _, p := range tt.wantPurpose {
+						_, err := tt.kms.GetWrapper(testCtx, id, p)
+						require.NoError(err)
+					}
+				}
+			}
+		})
+	}
+}
+
+func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause string, args ...interface{}) {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+	tabler, ok := i.(interface {
+		TableName() string
+	})
+	require.True(ok)
+	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	require.NoError(err)
+}
+
+const defaultWrapperSecret = "secret1234567890"
+
+type rootKey struct{}
+
+func (k *rootKey) TableName() string { return "kms_root_key" }
+
+type dataKey struct{}
+
+func (k *dataKey) TableName() string { return "kms_data_key" }
+
+type dataKeyVersion struct{}
+
+func (k *dataKeyVersion) TableName() string { return "kms_data_key_version" }
+
+func removeDuplicatePurposes(purposes []kms.KeyPurpose) []kms.KeyPurpose {
+	purposesMap := make(map[kms.KeyPurpose]struct{}, len(purposes))
+	for _, purpose := range purposes {
+		purpose = kms.KeyPurpose(strings.TrimSpace(string(purpose)))
+		if purpose == "" {
+			continue
+		}
+		purposesMap[purpose] = struct{}{}
+	}
+	purposes = make([]kms.KeyPurpose, 0, len(purposesMap))
+	for purpose := range purposesMap {
+		purposes = append(purposes, purpose)
+	}
+	return purposes
+}
+
+type mockTestWrapper struct {
+	wrapping.Wrapper
+	err   error
+	keyId string
+}
+
+func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
+	if m.err != nil {
+		return "", m.err
+	}
+	return m.keyId, nil
+}
+
+type mockReader struct {
+	err error
+}
+
+func (r *mockReader) Read(b []byte) (n int, err error) {
+	return 0, r.err
 }
