@@ -1,4 +1,4 @@
-package kms_test
+package kms
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/hashicorp/go-dbw"
-	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,7 @@ import (
 
 func TestNewRepository(t *testing.T) {
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
 	type args struct {
 		r dbw.Reader
@@ -28,7 +27,7 @@ func TestNewRepository(t *testing.T) {
 	tests := []struct {
 		name            string
 		args            args
-		want            *kms.Repository
+		want            *repository
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -39,7 +38,7 @@ func TestNewRepository(t *testing.T) {
 				r: rw,
 				w: rw,
 			},
-			want:    kms.TestRepo(t, db),
+			want:    testRepo(t, db),
 			wantErr: false,
 		},
 		{
@@ -50,7 +49,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:            nil,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "nil writer",
 		},
 		{
@@ -61,7 +60,7 @@ func TestNewRepository(t *testing.T) {
 			},
 			want:            nil,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "nil reader",
 		},
 		{
@@ -75,16 +74,16 @@ func TestNewRepository(t *testing.T) {
 				}(),
 				w: rw,
 			},
-			want:            kms.TestRepo(t, db),
+			want:            testRepo(t, db),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidVersion,
+			wantErrIs:       ErrInvalidVersion,
 			wantErrContains: "invalid schema version",
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := kms.NewRepository(tc.args.r, tc.args.w)
+			got, err := newRepository(tc.args.r, tc.args.w)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -103,10 +102,10 @@ func TestNewRepository(t *testing.T) {
 
 func TestRepository_ValidateVersion(t *testing.T) {
 	testCtx := context.Background()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		wantVersion     string
 		wantErr         bool
 		wantErrIs       error
@@ -114,16 +113,16 @@ func TestRepository_ValidateVersion(t *testing.T) {
 	}{
 		{
 			name:        "valid",
-			repo:        kms.TestRepo(t, db),
+			repo:        testRepo(t, db),
 			wantVersion: migrations.Version,
 		},
 		{
 			name: "invalid-version",
-			repo: func() *kms.Repository {
-				mDb, mock := kms.TestMockDb(t)
+			repo: func() *repository {
+				mDb, mock := testMockDb(t)
 				rw := dbw.New(mDb)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version"}).AddRow(100))
 				return r
@@ -133,11 +132,11 @@ func TestRepository_ValidateVersion(t *testing.T) {
 		},
 		{
 			name: "failed-lookup",
-			repo: func() *kms.Repository {
-				mDb, mock := kms.TestMockDb(t)
+			repo: func() *repository {
+				mDb, mock := testMockDb(t)
 				rw := dbw.New(mDb)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("failed-lookup"))
 				return r
@@ -191,19 +190,19 @@ func (m *mockRandReader) Read(p []byte) (n int, err error) {
 func TestRepository_CreateKeysTx(t *testing.T) {
 	const testScopeId = "o_1234567890"
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	testRepo, err := kms.NewRepository(rw, rw, kms.WithLimit(3))
+	testRepo, err := newRepository(rw, rw, withLimit(3))
 	require.NoError(t, err)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		rootWrapper     wrapping.Wrapper
 		rand            io.Reader
 		scopeId         string
-		purpose         []kms.KeyPurpose
+		purpose         []KeyPurpose
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -214,7 +213,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root wrapper",
 		},
 		{
@@ -223,7 +222,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			scopeId:         testScopeId,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing random reader",
 		},
 		{
@@ -232,7 +231,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing scope id",
 		},
 		{
@@ -241,9 +240,9 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
-			purpose:         []kms.KeyPurpose{"rootKey", "database"},
+			purpose:         []KeyPurpose{"rootKey", "database"},
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "reserved key purpose",
 		},
 		{
@@ -252,9 +251,9 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
-			purpose:         []kms.KeyPurpose{"database", "database"},
+			purpose:         []KeyPurpose{"database", "database"},
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "duplicate key purpose",
 		},
 		{
@@ -263,7 +262,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            newMockRandReader(1, "gen-root-key-error"),
 			scopeId:         testScopeId,
-			purpose:         []kms.KeyPurpose{"database", "session"},
+			purpose:         []KeyPurpose{"database", "session"},
 			wantErr:         true,
 			wantErrContains: "gen-root-key-error",
 		},
@@ -273,17 +272,17 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            newMockRandReader(2, "gen-purpose-key-error"),
 			scopeId:         testScopeId,
-			purpose:         []kms.KeyPurpose{"database", "session"},
+			purpose:         []KeyPurpose{"database", "session"},
 			wantErr:         true,
 			wantErrContains: "gen-purpose-key-error",
 		},
 		{
 			name: "createRootKeyTx-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("createRootKeyTx-error"))
@@ -293,17 +292,17 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
-			purpose:         []kms.KeyPurpose{"database", "session"},
+			purpose:         []KeyPurpose{"database", "session"},
 			wantErr:         true,
 			wantErrContains: "createRootKeyTx-error",
 		},
 		{
 			name: "createDataKeyTx-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin() // rk
 				mock.ExpectQuery(`INSERT INTO`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
@@ -319,7 +318,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
-			purpose:         []kms.KeyPurpose{"database", "session"},
+			purpose:         []KeyPurpose{"database", "session"},
 			wantErr:         true,
 			wantErrContains: "createDataKeyTx-error",
 		},
@@ -329,13 +328,13 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 			rootWrapper: wrapper,
 			rand:        rand.Reader,
 			scopeId:     testScopeId,
-			purpose:     []kms.KeyPurpose{"database", "session"},
+			purpose:     []KeyPurpose{"database", "session"},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			kms.TestDeleteWhere(t, db, func() interface{} { i := kms.RootKey{}; return &i }(), "1=1")
+			testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
 			keys, err := tc.repo.CreateKeysTx(context.Background(), tc.rootWrapper, tc.rand, tc.scopeId, tc.purpose...)
 			if tc.wantErr {
 				require.Error(err)
@@ -355,9 +354,9 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 
 func TestRepository_DefaultLimit(t *testing.T) {
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	testRepo, err := kms.NewRepository(rw, rw, kms.WithLimit(3))
+	testRepo, err := newRepository(rw, rw, withLimit(3))
 	require.NoError(t, err)
 	assert.Equal(t, 3, testRepo.DefaultLimit())
 }

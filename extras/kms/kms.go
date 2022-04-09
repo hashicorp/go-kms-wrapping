@@ -3,27 +3,29 @@ package kms
 import (
 	"context"
 	"fmt"
+	"io"
 	"reflect"
 	"sync"
 
+	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 )
 
-// CachePurpose defines an enum for wrapper cache purposes
-type CachePurpose int
+// cachePurpose defines an enum for wrapper cache purposes
+type cachePurpose int
 
 const (
-	// UnknownWrapperCache is the default, and indicates that a purpose wasn't
+	// unknownWrapperCache is the default, and indicates that a purpose wasn't
 	// specified
-	UnknownWrapperCache CachePurpose = iota
+	unknownWrapperCache cachePurpose = iota
 
-	// ExternalWrapperCache defines an external wrapper cache
-	ExternalWrapperCache
+	// externalWrapperCache defines an external wrapper cache
+	externalWrapperCache
 
-	// ScopeWrapperCache defines an scope wrapper cache
-	ScopeWrapperCache
+	// scopeWrapperCache defines an scope wrapper cache
+	scopeWrapperCache
 )
 
 // Kms is a way to access wrappers for a given scope and purpose. Since keys can
@@ -37,19 +39,21 @@ type Kms struct {
 	externalWrapperCache sync.Map
 
 	purposes []KeyPurpose
-	repo     *Repository
+	repo     *repository
 }
 
-// New takes in a repo and a list of key purposes it will support. Every kms
-// will support a KeyPurposeRootKey by default and it doesn't need to be passed
-// in as one of the supported purposes.  No options are currently supported.
-func New(repo *Repository, purposes []KeyPurpose, _ ...Option) (*Kms, error) {
+// New takes in a reader, writer and a list of key purposes it will support.
+// Every kms will support a KeyPurposeRootKey by default and it doesn't need to
+// be passed in as one of the supported purposes.  No options are currently
+// supported.
+func New(r dbw.Reader, w dbw.Writer, purposes []KeyPurpose, _ ...Option) (*Kms, error) {
 	const op = "kms.New"
-	if repo == nil {
-		return nil, fmt.Errorf("%s: missing underlying repo: %w", op, ErrInvalidParameter)
+	repo, err := newRepository(r, w)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to initialize repository: %w", op, err)
 	}
 	purposes = append(purposes, KeyPurposeRootKey)
-	RemoveDuplicatePurposes(purposes)
+	removeDuplicatePurposes(purposes)
 
 	return &Kms{
 		purposes: purposes,
@@ -57,19 +61,19 @@ func New(repo *Repository, purposes []KeyPurpose, _ ...Option) (*Kms, error) {
 	}, nil
 }
 
-func (k *Kms) addKey(ctx context.Context, cachePurpose CachePurpose, purpose KeyPurpose, wrapper wrapping.Wrapper, opt ...Option) error {
+func (k *Kms) addKey(ctx context.Context, cPurpose cachePurpose, kPurpose KeyPurpose, wrapper wrapping.Wrapper, opt ...Option) error {
 	const (
 		op        = "kms.addKey"
 		missingId = ""
 	)
-	if purpose == KeyPurposeUnknown {
+	if kPurpose == KeyPurposeUnknown {
 		return fmt.Errorf("%s: missing purpose: %w", op, ErrInvalidParameter)
 	}
 	if isNil(wrapper) {
 		return fmt.Errorf("%s: missing wrapper: %w", op, ErrInvalidParameter)
 	}
-	if !purposeListContains(k.purposes, purpose) {
-		return fmt.Errorf("%s: not a supported key purpose %q: %w", op, purpose, ErrInvalidParameter)
+	if !purposeListContains(k.purposes, kPurpose) {
+		return fmt.Errorf("%s: not a supported key purpose %q: %w", op, kPurpose, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
 
@@ -80,16 +84,16 @@ func (k *Kms) addKey(ctx context.Context, cachePurpose CachePurpose, purpose Key
 	if keyId == missingId {
 		return fmt.Errorf("%s: wrapper has no key ID: %w", op, ErrInvalidParameter)
 	}
-	switch cachePurpose {
-	case ExternalWrapperCache:
-		k.externalWrapperCache.Store(purpose, wrapper)
-	case ScopeWrapperCache:
+	switch cPurpose {
+	case externalWrapperCache:
+		k.externalWrapperCache.Store(kPurpose, wrapper)
+	case scopeWrapperCache:
 		if opts.withKeyId == "" {
 			return fmt.Errorf("%s: missing key id for scoped wrapper cache: %w", op, ErrInvalidParameter)
 		}
 		k.scopedWrapperCache.Store(opts.withKeyId, wrapper)
 	default:
-		return fmt.Errorf("%s: unsupported cache purpose %q: %w", op, cachePurpose, ErrInvalidParameter)
+		return fmt.Errorf("%s: unsupported cache purpose %q: %w", op, cPurpose, ErrInvalidParameter)
 	}
 	return nil
 }
@@ -102,13 +106,12 @@ func (k *Kms) Purposes() []KeyPurpose {
 }
 
 // AddExternalWrapper allows setting the external keys which are defined outside
-// of the kms, e.g. in a configuration file.
-//
-// TODO: If we support more than one, e.g. for encrypting against many in case
-// of a key loss, there will need to be some refactoring here to have the values
-// being stored in the struct be a multiwrapper, but that's for a later project.
+// of the kms (e.g. in a configuration file).
 func (k *Kms) AddExternalWrapper(ctx context.Context, purpose KeyPurpose, wrapper wrapping.Wrapper) error {
-	return k.addKey(ctx, ExternalWrapperCache, purpose, wrapper)
+	// TODO: If we support more than one, e.g. for encrypting against many in case
+	// of a key loss, there will need to be some refactoring here to have the values
+	// being stored in the struct be a multiwrapper, but that's for a later project.
+	return k.addKey(ctx, externalWrapperCache, purpose, wrapper)
 }
 
 // GetExternalWrapper returns the external wrapper for a given purpose and
@@ -192,7 +195,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	if err != nil {
 		return nil, fmt.Errorf("%s: error loading %q for scope %q: %w", op, purpose, scopeId, err)
 	}
-	k.addKey(ctx, ScopeWrapperCache, purpose, wrapper, WithKeyId(scopeId+string(purpose)))
+	k.addKey(ctx, scopeWrapperCache, purpose, wrapper, WithKeyId(scopeId+string(purpose)))
 
 	if opts.withKeyId != "" {
 		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
@@ -202,6 +205,25 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	return wrapper, nil
+}
+
+func (k *Kms) CreateKeysTx(ctx context.Context, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) error {
+	const op = "kms.(Kms).CreateKeysTx"
+	rootWrapper, err := k.GetExternalRootWrapper()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if _, err := k.repo.CreateKeysTx(ctx, rootWrapper, randomReader, scopeId, purpose...); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}
+
+// ValidateSchema will validate the database schema against the module's
+// required migrations.Version
+func (k *Kms) ValidateSchema(ctx context.Context) (string, error) {
+	const op = "kms.(Repository).validateVersion"
+	return k.repo.ValidateSchema(ctx)
 }
 
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
@@ -236,7 +258,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		return nil, "", fmt.Errorf("%s: missing root key wrapper for scope %q: %w", op, scopeId, ErrKeyNotFound)
 	}
 
-	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, WithOrderByVersion(DescendingOrderBy))
+	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy))
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: error looking up root key versions for scope %q: %w", op, scopeId, err)
 	}
@@ -290,7 +312,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	if repo == nil {
 		repo = k.repo
 	}
-	keys, err := repo.ListDataKeys(ctx, WithPurpose(purpose))
+	keys, err := repo.ListDataKeys(ctx, withPurpose(purpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error listing keys for purpose %q: %w", op, purpose, err)
 	}
@@ -304,7 +326,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	if keyId == "" {
 		return nil, fmt.Errorf("%s: error finding %q key for scope %q: %w", op, purpose, scopeId, ErrKeyNotFound)
 	}
-	keyVersions, err := repo.ListDataKeyVersions(ctx, rootWrapper, keyId, WithOrderByVersion(DescendingOrderBy))
+	keyVersions, err := repo.ListDataKeyVersions(ctx, rootWrapper, keyId, withOrderByVersion(descendingOrderBy))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error looking up %q key versions for scope %q: %w", op, purpose, scopeId, err)
 	}

@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
-// RootKeyVersion represents a version of a RootKey
-type RootKeyVersion struct {
+// rootKeyVersion represents a version of a RootKey
+type rootKeyVersion struct {
 	// PrivateId is used to access the root key
 	PrivateId string `gorm:"primary_key"`
 	// RootKeyId is the root_key_id for this version
@@ -32,7 +32,7 @@ type RootKeyVersion struct {
 
 // NewRootKey creates a new in memory root key. No options are currently
 // supported.
-func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersion, error) {
+func newRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*rootKeyVersion, error) {
 	const op = "kms.NewRootKeyVersion"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
@@ -41,7 +41,7 @@ func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersi
 		return nil, fmt.Errorf("%s: missing key id: %w", op, ErrInvalidParameter)
 	}
 
-	k := &RootKeyVersion{
+	k := &rootKeyVersion{
 		RootKeyId: rootKeyId,
 		Key:       key,
 	}
@@ -49,11 +49,11 @@ func NewRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*RootKeyVersi
 }
 
 // TableName returns the tablename
-func (k *RootKeyVersion) TableName() string { return "kms_root_key_version" }
+func (k *rootKeyVersion) TableName() string { return "kms_root_key_version" }
 
 // Clone creates a clone of the RootKeyVersion
-func (k *RootKeyVersion) Clone() *RootKeyVersion {
-	clone := &RootKeyVersion{
+func (k *rootKeyVersion) Clone() *rootKeyVersion {
+	clone := &rootKeyVersion{
 		PrivateId:  k.PrivateId,
 		RootKeyId:  k.RootKeyId,
 		CreateTime: k.CreateTime,
@@ -67,7 +67,7 @@ func (k *RootKeyVersion) Clone() *RootKeyVersion {
 }
 
 // VetForWrite validates the root key version before it's written.
-func (k *RootKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
+func (k *rootKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 	const op = "kms.(RootKeyVersion).VetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -87,7 +87,7 @@ func (k *RootKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) err
 }
 
 // Encrypt will encrypt the root key version's key
-func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (k *rootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(RootKeyVersion).Encrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
@@ -99,7 +99,7 @@ func (k *RootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 }
 
 // Decrypt will decrypt the root key version's key
-func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (k *rootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(RootKeyVersion).Decrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
@@ -111,4 +111,4 @@ func (k *RootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) e
 }
 
 // GetPrivateId returns the key's private id
-func (k *RootKeyVersion) GetPrivateId() string { return k.PrivateId }
+func (k *rootKeyVersion) GetPrivateId() string { return k.PrivateId }

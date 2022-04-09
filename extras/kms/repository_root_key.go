@@ -11,11 +11,11 @@ import (
 
 // CreateRootKey inserts into the repository and returns the new root key and
 // root key version. Supported options: WithRetryCnt, WithRetryErrorsMatching
-func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, scopeId string, key []byte, opt ...Option) (*RootKey, *RootKeyVersion, error) {
+func (r *repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, scopeId string, key []byte, opt ...Option) (*rootKey, *rootKeyVersion, error) {
 	const op = "kms.(Repository).CreateRootKey"
 	opts := getOpts(opt...)
-	var returnedRk *RootKey
-	var returnedKv *RootKeyVersion
+	var returnedRk *rootKey
+	var returnedKv *rootKeyVersion
 	_, err := r.writer.DoTx(
 		ctx,
 		opts.withErrorsMatching,
@@ -38,7 +38,7 @@ func (r *Repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 // createRootKeyTx inserts into the db (via dbw.Writer) and returns the new root key
 // and root key version. This function encapsulates all the work required within
 // a dbw.TxHandler
-func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*RootKey, *RootKeyVersion, error) {
+func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*rootKey, *rootKeyVersion, error) {
 	const op = "kms.createRootKeyTx"
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
@@ -49,8 +49,8 @@ func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrap
 	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
 	}
-	rk := RootKey{}
-	kv := RootKeyVersion{}
+	rk := rootKey{}
+	kv := rootKeyVersion{}
 	id, err := newRootKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
@@ -81,7 +81,7 @@ func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrap
 
 // LookupRootKey will look up a root key in the repository. If the key is not
 // found then an ErrRecordNotFound will be returned.
-func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*RootKey, error) {
+func (r *repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*rootKey, error) {
 	const op = "kms.(Repository).LookupRootKey"
 	if privateId == "" {
 		return nil, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -89,7 +89,7 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	k := RootKey{}
+	k := rootKey{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
@@ -103,18 +103,18 @@ func (r *Repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 // DeleteRootKey deletes the root key for the provided id from the
 // repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
-func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteRootKey"
 	if privateId == "" {
-		return NoRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
+		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := RootKey{}
+	k := rootKey{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
+			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 
 	opts := getOpts(opt...)
@@ -139,16 +139,16 @@ func (r *Repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 		},
 	)
 	if err != nil {
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 	return rowsDeleted, nil
 }
 
 // ListRootKeys will list the root keys. Supported options: WithLimit,
 // WithOrderByVersion
-func (r *Repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*RootKey, error) {
+func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKey, error) {
 	const op = "kms.(Repository).ListRootKeys"
-	var keys []*RootKey
+	var keys []*rootKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

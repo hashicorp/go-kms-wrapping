@@ -18,7 +18,7 @@ func Test_NewDataKeyVersion(t *testing.T) {
 		dataKeyId        string
 		rootKeyVersionId string
 		key              []byte
-		want             *DataKeyVersion
+		want             *dataKeyVersion
 		wantErr          bool
 		wantErrIs        error
 		wantErrContains  string
@@ -52,7 +52,7 @@ func Test_NewDataKeyVersion(t *testing.T) {
 			dataKeyId:        "data-key-id",
 			rootKeyVersionId: "root-key-version-id",
 			key:              []byte("key"),
-			want: &DataKeyVersion{
+			want: &dataKeyVersion{
 				DataKeyId:        "data-key-id",
 				RootKeyVersionId: "root-key-version-id",
 				Key:              []byte("key"),
@@ -62,7 +62,7 @@ func Test_NewDataKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewDataKeyVersion(tc.dataKeyId, tc.key, tc.rootKeyVersionId)
+			got, err := newDataKeyVersion(tc.dataKeyId, tc.key, tc.rootKeyVersionId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -84,7 +84,7 @@ func TestDataKeyVersion_vetForWrite(t *testing.T) {
 	testCtx := context.Background()
 	tests := []struct {
 		name            string
-		key             *DataKeyVersion
+		key             *dataKeyVersion
 		opType          dbw.OpType
 		wantErr         bool
 		wantErrIs       error
@@ -92,7 +92,7 @@ func TestDataKeyVersion_vetForWrite(t *testing.T) {
 	}{
 		{
 			name: "create-missing-private-id",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				DataKeyId:        "data-key-id",
 				RootKeyVersionId: "root-key-version-id",
 				CtKey:            []byte("key"),
@@ -104,7 +104,7 @@ func TestDataKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-ct-key",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				PrivateId:        "private-id",
 				DataKeyId:        "data-key-id",
 				RootKeyVersionId: "root-key-version-id",
@@ -116,7 +116,7 @@ func TestDataKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-data-key-id",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				PrivateId:        "private-id",
 				CtKey:            []byte("key"),
 				RootKeyVersionId: "root-key-version-id",
@@ -128,7 +128,7 @@ func TestDataKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-root-key-version-id",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				PrivateId: "private-id",
 				CtKey:     []byte("key"),
 				DataKeyId: "data-key-id",
@@ -140,7 +140,7 @@ func TestDataKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "update-immutable",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				PrivateId: "private-id",
 			},
 			opType:          dbw.UpdateOp,
@@ -174,10 +174,10 @@ func TestDataKeyVersion_Encrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
+	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
 	tests := []struct {
 		name            string
-		key             *DataKeyVersion
+		key             *dataKeyVersion
 		wrapper         wrapping.Wrapper
 		wantErr         bool
 		wantErrIs       error
@@ -185,7 +185,7 @@ func TestDataKeyVersion_Encrypt(t *testing.T) {
 	}{
 		{
 			name: "bad-cipher",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				Key: []byte(testKey),
 			},
 			wrapper:         aead.NewWrapper(),
@@ -194,7 +194,7 @@ func TestDataKeyVersion_Encrypt(t *testing.T) {
 		},
 		{
 			name: "missing-cipher",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				Key: []byte(testKey),
 			},
 			wantErr:         true,
@@ -202,7 +202,7 @@ func TestDataKeyVersion_Encrypt(t *testing.T) {
 		},
 		{
 			name: "success",
-			key: &DataKeyVersion{
+			key: &dataKeyVersion{
 				Key: []byte(testKey),
 			},
 			wrapper: testWrapper,
@@ -240,15 +240,15 @@ func TestDataKeyVersion_Decrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
-	testDataKey := &DataKeyVersion{
+	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testDataKey := &dataKeyVersion{
 		Key: []byte(testKey),
 	}
 	err := testDataKey.Encrypt(testCtx, testWrapper)
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
-		key             *DataKeyVersion
+		key             *dataKeyVersion
 		wrapper         wrapping.Wrapper
 		wantErr         bool
 		wantErrIs       error

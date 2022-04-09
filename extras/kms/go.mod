@@ -9,7 +9,6 @@ require (
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-uuid v1.0.2
-	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	gorm.io/driver/postgres v1.2.2
 	mvdan.cc/gofumpt v0.3.0

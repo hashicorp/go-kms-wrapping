@@ -13,7 +13,7 @@ import (
 // CreateDataKeyVersion inserts into the repository and returns the new key
 // version with its PrivateId. Supported options: WithRetryCnt,
 // WithRetryErrorsMatching
-func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, dataKeyId string, key []byte, opt ...Option) (*DataKeyVersion, error) {
+func (r *repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, dataKeyId string, key []byte, opt ...Option) (*dataKeyVersion, error) {
 	const op = "kms.(Repository).CreateDataKeyVersion"
 	if rkvWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root key version wrapper: %w", op, ErrInvalidParameter)
@@ -31,10 +31,10 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	switch {
 	case rootKeyVersionId == "":
 		return nil, fmt.Errorf("%s: missing root key version id: %w", op, ErrInvalidParameter)
-	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, fmt.Errorf("%s: root key version id %q doesn't start with prefix %q: %w", op, rootKeyVersionId, RootKeyVersionPrefix, ErrInvalidParameter)
+	case !strings.HasPrefix(rootKeyVersionId, rootKeyVersionPrefix):
+		return nil, fmt.Errorf("%s: root key version id %q doesn't start with prefix %q: %w", op, rootKeyVersionId, rootKeyVersionPrefix, ErrInvalidParameter)
 	}
-	kv := DataKeyVersion{}
+	kv := dataKeyVersion{}
 	id, err := newDataKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -66,7 +66,7 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed for %q data key id: %w", op, kv.DataKeyId, err)
 	}
-	k, ok := returnedKey.(*DataKeyVersion)
+	k, ok := returnedKey.(*dataKeyVersion)
 	if !ok {
 		return nil, fmt.Errorf("%s: not a DataKeyVersion: %w", op, ErrInternal)
 	}
@@ -75,7 +75,7 @@ func (r *Repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 
 // LookupDataKeyVersion will look up a key version in the repository. If
 // the key version is not found then an ErrRecordNotFound will be returned.
-func (r *Repository) LookupDataKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*DataKeyVersion, error) {
+func (r *repository) LookupDataKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*dataKeyVersion, error) {
 	const op = "kms.(Repository).LookupDatabaseKeyVersion"
 	if privateId == "" {
 		return nil, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -83,7 +83,7 @@ func (r *Repository) LookupDataKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	k := DataKeyVersion{}
+	k := dataKeyVersion{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
@@ -100,18 +100,18 @@ func (r *Repository) LookupDataKeyVersion(ctx context.Context, keyWrapper wrappi
 // DeleteDataKeyVersion deletes the key version for the provided id from the
 // repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
-func (r *Repository) DeleteDataKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *repository) DeleteDataKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteDataKeyVersion"
 	if privateId == "" {
-		return NoRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
+		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := DataKeyVersion{}
+	k := dataKeyVersion{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
+			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 	opts := getOpts(opt...)
 
@@ -135,7 +135,7 @@ func (r *Repository) DeleteDataKeyVersion(ctx context.Context, privateId string,
 		},
 	)
 	if err != nil {
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 	return rowsDeleted, nil
 }
@@ -143,7 +143,7 @@ func (r *Repository) DeleteDataKeyVersion(ctx context.Context, privateId string,
 // LatestDataKeyVersion searches for the key version with the highest
 // version number. When no results are found, it returns nil with an
 // ErrRecordNotFound error.
-func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, dataKeyId string, _ ...Option) (*DataKeyVersion, error) {
+func (r *repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrapping.Wrapper, dataKeyId string, _ ...Option) (*dataKeyVersion, error) {
 	const op = "kms.(Repository).LatestDataKeyVersion"
 	if dataKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
@@ -151,7 +151,7 @@ func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 	if rkvWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root key version wrapper: %w", op, ErrInvalidParameter)
 	}
-	var foundKeys []*DataKeyVersion
+	var foundKeys []*dataKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "data_key_id = ?", []interface{}{dataKeyId}, dbw.WithLimit(1), dbw.WithOrder("version desc")); err != nil {
 		return nil, fmt.Errorf("%s: failed for %q: %w", op, dataKeyId, err)
 	}
@@ -166,7 +166,7 @@ func (r *Repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 
 // ListDataKeyVersions will lists versions of a key. Supported options:
 // WithLimit, WithOrderByVersion
-func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]*DataKeyVersion, error) {
+func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]*dataKeyVersion, error) {
 	const op = "kms.(Repository).ListDataVersions"
 	if databaseKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
@@ -174,7 +174,7 @@ func (r *Repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 	if rkvWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root key version wrapper: %w", op, ErrInvalidParameter)
 	}
-	var versions []*DataKeyVersion
+	var versions []*dataKeyVersion
 	err := r.list(ctx, &versions, "data_key_id = ?", []interface{}{databaseKeyId}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

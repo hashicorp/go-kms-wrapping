@@ -17,7 +17,7 @@ func Test_NewRootKeyVersion(t *testing.T) {
 		name            string
 		rootKeyId       string
 		key             []byte
-		want            *RootKeyVersion
+		want            *rootKeyVersion
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -40,7 +40,7 @@ func Test_NewRootKeyVersion(t *testing.T) {
 			name:      "valid",
 			rootKeyId: "root-key-id",
 			key:       []byte("key"),
-			want: &RootKeyVersion{
+			want: &rootKeyVersion{
 				RootKeyId: "root-key-id",
 				Key:       []byte("key"),
 			},
@@ -49,7 +49,7 @@ func Test_NewRootKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewRootKeyVersion(tc.rootKeyId, tc.key)
+			got, err := newRootKeyVersion(tc.rootKeyId, tc.key)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -71,7 +71,7 @@ func TestRootKeyVersion_vetForWrite(t *testing.T) {
 	testCtx := context.Background()
 	tests := []struct {
 		name            string
-		key             *RootKeyVersion
+		key             *rootKeyVersion
 		opType          dbw.OpType
 		wantErr         bool
 		wantErrIs       error
@@ -79,7 +79,7 @@ func TestRootKeyVersion_vetForWrite(t *testing.T) {
 	}{
 		{
 			name: "create-missing-private-id",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				RootKeyId: "root-key-id",
 				CtKey:     []byte("key"),
 			},
@@ -90,7 +90,7 @@ func TestRootKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-ct-key",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				PrivateId: "private-id",
 				RootKeyId: "root-key-id",
 			},
@@ -101,7 +101,7 @@ func TestRootKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-root-key-id",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				PrivateId: "private-id",
 				CtKey:     []byte("key"),
 			},
@@ -112,7 +112,7 @@ func TestRootKeyVersion_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "update-immutable",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				PrivateId: "private-id",
 			},
 			opType:          dbw.UpdateOp,
@@ -146,10 +146,10 @@ func TestRootKeyVersion_Encrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
+	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
 	tests := []struct {
 		name            string
-		key             *RootKeyVersion
+		key             *rootKeyVersion
 		wrapper         wrapping.Wrapper
 		wantErr         bool
 		wantErrIs       error
@@ -157,7 +157,7 @@ func TestRootKeyVersion_Encrypt(t *testing.T) {
 	}{
 		{
 			name: "bad-cipher",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				Key: []byte(testKey),
 			},
 			wrapper:         aead.NewWrapper(),
@@ -166,7 +166,7 @@ func TestRootKeyVersion_Encrypt(t *testing.T) {
 		},
 		{
 			name: "missing-cipher",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				Key: []byte(testKey),
 			},
 			wantErr:         true,
@@ -174,7 +174,7 @@ func TestRootKeyVersion_Encrypt(t *testing.T) {
 		},
 		{
 			name: "success",
-			key: &RootKeyVersion{
+			key: &rootKeyVersion{
 				Key: []byte(testKey),
 			},
 			wrapper: testWrapper,
@@ -212,15 +212,15 @@ func TestRootKeyVersion_Decrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
-	testDataKey := &RootKeyVersion{
+	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testDataKey := &rootKeyVersion{
 		Key: []byte(testKey),
 	}
 	err := testDataKey.Encrypt(testCtx, testWrapper)
 	require.NoError(t, err)
 	tests := []struct {
 		name            string
-		key             *RootKeyVersion
+		key             *rootKeyVersion
 		wrapper         wrapping.Wrapper
 		wantErr         bool
 		wantErrIs       error

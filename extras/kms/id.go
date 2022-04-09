@@ -7,19 +7,19 @@ import (
 )
 
 const (
-	// RootKeyPrefix is a prefix used with RootKey IDs
-	RootKeyPrefix = "krk"
-	// RootKeyVersionPrefix is a prefix used with RootKeyVersion IDs
-	RootKeyVersionPrefix = "krkv"
-	// DataKeyPrefix is a prefix used with RootKey IDs
-	DataKeyPrefix = "kdk"
-	// DataKeyVersionPrefix is a prefix used with DataKeyVersion IDs
-	DataKeyVersionPrefix = "kdkv"
+	// rootKeyPrefix is a prefix used with RootKey IDs
+	rootKeyPrefix = "krk"
+	// rootKeyVersionPrefix is a prefix used with RootKeyVersion IDs
+	rootKeyVersionPrefix = "krkv"
+	// dataKeyPrefix is a prefix used with RootKey IDs
+	dataKeyPrefix = "kdk"
+	// dataKeyVersionPrefix is a prefix used with DataKeyVersion IDs
+	dataKeyVersionPrefix = "kdkv"
 )
 
 func newRootKeyId() (string, error) {
 	const op = "kms.newRootKeyId"
-	id, err := dbw.NewId(RootKeyPrefix)
+	id, err := dbw.NewId(rootKeyPrefix)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -28,7 +28,7 @@ func newRootKeyId() (string, error) {
 
 func newRootKeyVersionId() (string, error) {
 	const op = "kms.newRootKeyVersionId"
-	id, err := dbw.NewId(RootKeyVersionPrefix)
+	id, err := dbw.NewId(rootKeyVersionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -37,7 +37,7 @@ func newRootKeyVersionId() (string, error) {
 
 func newDataKeyId() (string, error) {
 	const op = "kms.newDataKeyId"
-	id, err := dbw.NewId(DataKeyPrefix)
+	id, err := dbw.NewId(dataKeyPrefix)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -46,7 +46,7 @@ func newDataKeyId() (string, error) {
 
 func newDataKeyVersionId() (string, error) {
 	const op = "kms.newDataKeyVersionId"
-	id, err := dbw.NewId(DataKeyVersionPrefix)
+	id, err := dbw.NewId(dataKeyVersionPrefix)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}

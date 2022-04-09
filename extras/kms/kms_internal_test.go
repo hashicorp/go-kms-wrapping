@@ -23,18 +23,16 @@ func TestKms_loadDek(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	testRepo, err := NewRepository(rw, rw)
-	require.NoError(t, err)
-	wrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
-	rk := TestRootKey(t, db, "global")
-	_, rkw := TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	dk := TestDataKey(t, db, rk.PrivateId, "database")
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	rk := testRootKey(t, db, "global")
+	_, rkw := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	dk := testDataKey(t, db, rk.PrivateId, "database")
 	const (
 		testKey1 = "1234567890123456"
 		testKey2 = "2234567890123456"
 	)
-	_ = TestDataKeyVersion(t, db, rkw, dk.PrivateId, []byte(testKey1))
-	dkv := TestDataKeyVersion(t, db, rkw, dk.PrivateId, []byte(testKey2))
+	_ = testDataKeyVersion(t, db, rkw, dk.PrivateId, []byte(testKey1))
+	dkv := testDataKeyVersion(t, db, rkw, dk.PrivateId, []byte(testKey2))
 
 	tests := []struct {
 		name            string
@@ -52,7 +50,7 @@ func TestKms_loadDek(t *testing.T) {
 		{
 			name: "missing-scope-id",
 			kms: func() *Kms {
-				k, err := New(testRepo, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -66,7 +64,7 @@ func TestKms_loadDek(t *testing.T) {
 		{
 			name: "missing-wrapper",
 			kms: func() *Kms {
-				k, err := New(testRepo, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -80,7 +78,7 @@ func TestKms_loadDek(t *testing.T) {
 		{
 			name: "missing-root-key-id",
 			kms: func() *Kms {
-				k, err := New(testRepo, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -94,7 +92,7 @@ func TestKms_loadDek(t *testing.T) {
 		{
 			name: "invalid-purpose",
 			kms: func() *Kms {
-				k, err := New(testRepo, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -113,9 +111,7 @@ func TestKms_loadDek(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-keys-error"))
-				r, err := NewRepository(rw, rw)
-				require.NoError(t, err)
-				k, err := New(r, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -129,7 +125,7 @@ func TestKms_loadDek(t *testing.T) {
 		{
 			name: "list-keys-not-found",
 			kms: func() *Kms {
-				k, err := New(testRepo, []KeyPurpose{"database", "auth"})
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -149,9 +145,7 @@ func TestKms_loadDek(t *testing.T) {
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "create_time"}).AddRow(dk.PrivateId, rk.PrivateId, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-key-version-error"))
-				r, err := NewRepository(rw, rw)
-				require.NoError(t, err)
-				k, err := New(r, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -170,9 +164,7 @@ func TestKms_loadDek(t *testing.T) {
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "create_time"}).AddRow(dk.PrivateId, rk.PrivateId, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "create_time"}))
-				r, err := NewRepository(rw, rw)
-				require.NoError(t, err)
-				k, err := New(r, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -186,7 +178,7 @@ func TestKms_loadDek(t *testing.T) {
 		{
 			name: "success",
 			kms: func() *Kms {
-				k, err := New(testRepo, []KeyPurpose{"database"})
+				k, err := New(rw, rw, []KeyPurpose{"database"})
 				require.NoError(t, err)
 				return k
 			}(),
@@ -223,14 +215,12 @@ func TestKms_loadRoot(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	testRepo, err := NewRepository(rw, rw)
-	require.NoError(t, err)
-	wrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
 	db.Debug(true)
-	rk := TestRootKey(t, db, "global")
+	rk := testRootKey(t, db, "global")
 
-	rkv1, rkw1 := TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	rkv2, rkw2 := TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	rkv1, rkw1 := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	rkv2, rkw2 := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
 
 	tests := []struct {
 		name            string
@@ -246,7 +236,7 @@ func TestKms_loadRoot(t *testing.T) {
 		{
 			name: "missing-scope-id",
 			kms: func() *Kms {
-				k, err := New(testRepo, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -263,9 +253,7 @@ func TestKms_loadRoot(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-keys-error"))
-				r, err := NewRepository(rw, rw)
-				require.NoError(t, err)
-				k, err := New(r, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -278,7 +266,7 @@ func TestKms_loadRoot(t *testing.T) {
 		{
 			name: "missing-root-key-for-scope",
 			kms: func() *Kms {
-				k, err := New(testRepo, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				return k
 			}(),
@@ -290,7 +278,7 @@ func TestKms_loadRoot(t *testing.T) {
 		{
 			name: "missing-root-key-wrapper-for-scope",
 			kms: func() *Kms {
-				k, err := New(testRepo, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				return k
 			}(),
@@ -307,9 +295,7 @@ func TestKms_loadRoot(t *testing.T) {
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "scope_id", "create_time"}).AddRow(rk.PrivateId, rk.PrivateId, "global", time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-key-version-error"))
-				r, err := NewRepository(rw, rw)
-				require.NoError(t, err)
-				k, err := New(r, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -327,9 +313,7 @@ func TestKms_loadRoot(t *testing.T) {
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "scope_id", "create_time"}).AddRow(rk.PrivateId, rk.PrivateId, "global", time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "create_time"}))
-				r, err := NewRepository(rw, rw)
-				require.NoError(t, err)
-				k, err := New(r, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -342,7 +326,7 @@ func TestKms_loadRoot(t *testing.T) {
 		{
 			name: "success",
 			kms: func() *Kms {
-				k, err := New(testRepo, nil)
+				k, err := New(rw, rw, nil)
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -357,7 +341,7 @@ func TestKms_loadRoot(t *testing.T) {
 					require.NoError(t, err)
 					_, err = w.SetConfig(testCtx, wrapping.WithKeyId(keyId))
 					require.NoError(t, err)
-					err = w.SetAesGcmKeyBytes([]byte(DefaultWrapperSecret))
+					err = w.SetAesGcmKeyBytes([]byte(defaultWrapperSecret))
 					require.NoError(t, err)
 					switch pool {
 					case nil:
@@ -406,21 +390,20 @@ func TestKms_KeyId(t *testing.T) {
 	ctx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	extWrapper := wrapping.NewTestWrapper([]byte(DefaultWrapperSecret))
-	repo, err := NewRepository(rw, rw)
+	extWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	repo, err := newRepository(rw, rw)
 	require.NoError(err)
 
 	const globalScope = "global"
 	databaseKeyPurpose := KeyPurpose("database")
 
-	// Make the global scope base keys
-	_, err = repo.CreateKeysTx(ctx, extWrapper, rand.Reader, globalScope, databaseKeyPurpose)
-	require.NoError(err)
-
 	// Get the global scope's root wrapper
-	kmsCache, err := New(repo, []KeyPurpose{"database"})
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
+	// Make the global scope base keys
+	err = kmsCache.CreateKeysTx(ctx, rand.Reader, globalScope, databaseKeyPurpose)
+	require.NoError(err)
 	globalRootWrapper, _, err := kmsCache.loadRoot(ctx, globalScope)
 	require.NoError(err)
 
@@ -465,7 +448,7 @@ func TestKms_KeyId(t *testing.T) {
 	require.Error(err)
 
 	// empty cache and pull from database
-	kmsCache, err = New(repo, []KeyPurpose{"database"})
+	kmsCache, err = New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// ask for each in turn

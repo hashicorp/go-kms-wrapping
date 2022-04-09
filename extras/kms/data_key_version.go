@@ -10,8 +10,8 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
-// DataKeyVersion represents a version of a DataKey
-type DataKeyVersion struct {
+// dataKeyVersion represents a version of a DataKey
+type dataKeyVersion struct {
 	// PrivateId is used to access the key version
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`
 	// DataKeyId for the key version
@@ -30,9 +30,9 @@ type DataKeyVersion struct {
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
 }
 
-// NewDataKeyVersion creates a new in memory data key version. No options
+// newDataKeyVersion creates a new in memory data key version. No options
 // are currently supported.
-func NewDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*DataKeyVersion, error) {
+func newDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*dataKeyVersion, error) {
 	const op = "kms.NewDataKeyVersion"
 	if dataKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
@@ -44,7 +44,7 @@ func NewDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ 
 		return nil, fmt.Errorf("%s: missing root key version id: %w", op, ErrInvalidParameter)
 	}
 
-	k := &DataKeyVersion{
+	k := &dataKeyVersion{
 		DataKeyId:        dataKeyId,
 		RootKeyVersionId: rootKeyVersionId,
 		Key:              key,
@@ -53,8 +53,8 @@ func NewDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ 
 }
 
 // Clone creates a clone of the DataKeyVersion
-func (k *DataKeyVersion) Clone() *DataKeyVersion {
-	clone := &DataKeyVersion{
+func (k *dataKeyVersion) Clone() *dataKeyVersion {
+	clone := &dataKeyVersion{
 		PrivateId:        k.PrivateId,
 		DataKeyId:        k.DataKeyId,
 		RootKeyVersionId: k.RootKeyVersionId,
@@ -70,7 +70,7 @@ func (k *DataKeyVersion) Clone() *DataKeyVersion {
 }
 
 // vetForWrite validates the data key version before it's written.
-func (k *DataKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
+func (k *dataKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 	const op = "kms.(DataKeyVersion).vetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -93,10 +93,10 @@ func (k *DataKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) err
 }
 
 // TableName returns the tablename
-func (k *DataKeyVersion) TableName() string { return "kms_data_key_version" }
+func (k *dataKeyVersion) TableName() string { return "kms_data_key_version" }
 
 // Encrypt will encrypt the data key version's key
-func (k *DataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (k *dataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(DataKeyVersion).Encrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
@@ -108,7 +108,7 @@ func (k *DataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 }
 
 // Decrypt will decrypt the data key version's key
-func (k *DataKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
+func (k *dataKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
 	const op = "kms.(DataKeyVersion).Decrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
@@ -120,7 +120,7 @@ func (k *DataKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) e
 }
 
 // GetPrivateId returns the key's private id
-func (k *DataKeyVersion) GetPrivateId() string { return k.PrivateId }
+func (k *dataKeyVersion) GetPrivateId() string { return k.PrivateId }
 
 // GetKey returns the key bytes
-func (k *DataKeyVersion) GetKey() []byte { return k.Key }
+func (k *dataKeyVersion) GetKey() []byte { return k.Key }

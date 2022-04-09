@@ -11,7 +11,7 @@ import (
 
 // LookupRootKeyVersion will look up a root key version in the repository. If
 // the key version is not found then an ErrRecordNotFound will be returned.
-func (r *Repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*RootKeyVersion, error) {
+func (r *repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*rootKeyVersion, error) {
 	const op = "kms.(Repository).LookupRootKeyVersion"
 	if privateId == "" {
 		return nil, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -19,7 +19,7 @@ func (r *Repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	k := RootKeyVersion{}
+	k := rootKeyVersion{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
@@ -36,7 +36,7 @@ func (r *Repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrappi
 // CreateRootKeyVersion inserts into the repository and returns the new root key
 // version with its PrivateId. Supported options: WithRetryCnt,
 // WithRetryErrorsMatching
-func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, key []byte, opt ...Option) (*RootKeyVersion, error) {
+func (r *repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, key []byte, opt ...Option) (*rootKeyVersion, error) {
 	const op = "kms.(Repository).CreateRootKeyVersion"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
@@ -47,7 +47,7 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if len(key) == 0 {
 		return nil, fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
 	}
-	kv := RootKeyVersion{}
+	kv := rootKeyVersion{}
 	id, err := newRootKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -78,7 +78,7 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed for %q root key id: %w", op, kv.RootKeyId, err)
 	}
-	k, ok := returnedKey.(*RootKeyVersion)
+	k, ok := returnedKey.(*rootKeyVersion)
 	if !ok {
 		return nil, fmt.Errorf("%s: not a RootKeyVersion: %w", op, ErrInternal)
 	}
@@ -88,18 +88,18 @@ func (r *Repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 // DeleteRootKeyVersion deletes the root key version for the provided id from the
 // repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
-func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *repository) DeleteRootKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteRootKeyVersion"
 	if privateId == "" {
-		return NoRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
+		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := RootKeyVersion{}
+	k := rootKeyVersion{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
+			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 
 	opts := getOpts(opt...)
@@ -124,7 +124,7 @@ func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 		},
 	)
 	if err != nil {
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 	return rowsDeleted, nil
 }
@@ -132,7 +132,7 @@ func (r *Repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 // LatestRootKeyVersion searches for the root key version with the highest
 // version number. When no results are found, it returns nil with an
 // ErrRecordNotFound error.
-func (r *Repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) (*RootKeyVersion, error) {
+func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) (*rootKeyVersion, error) {
 	const op = "kms.(Repository).LatestRootKeyVersion"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
@@ -140,7 +140,7 @@ func (r *Repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	var foundKeys []RootKeyVersion
+	var foundKeys []rootKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "root_key_id = ?", []interface{}{rootKeyId}, dbw.WithLimit(1), dbw.WithOrder("version desc")); err != nil {
 		return nil, fmt.Errorf("%s: failed for %q: %w", op, rootKeyId, err)
 	}
@@ -154,7 +154,7 @@ func (r *Repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 }
 
 // ListRootKeyVersions in versions of a root key. Supported options: WithLimit, WithOrderByVersion
-func (r *Repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) ([]*RootKeyVersion, error) {
+func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) ([]*rootKeyVersion, error) {
 	const op = "kms.(Repository).ListRootKeyVersions"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
@@ -162,7 +162,7 @@ func (r *Repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	var versions []*RootKeyVersion
+	var versions []*rootKeyVersion
 	err := r.list(ctx, &versions, "root_key_id = ?", []interface{}{rootKeyId}, opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

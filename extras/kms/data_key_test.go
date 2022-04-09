@@ -16,7 +16,7 @@ func Test_NewDataKey(t *testing.T) {
 		name            string
 		rootKeyId       string
 		purpose         KeyPurpose
-		want            *DataKey
+		want            *dataKey
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -47,7 +47,7 @@ func Test_NewDataKey(t *testing.T) {
 			name:      "valid",
 			rootKeyId: "root-key-id",
 			purpose:   "database",
-			want: &DataKey{
+			want: &dataKey{
 				RootKeyId: "root-key-id",
 				Purpose:   "database",
 			},
@@ -56,7 +56,7 @@ func Test_NewDataKey(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := NewDataKey(tc.rootKeyId, tc.purpose)
+			got, err := newDataKey(tc.rootKeyId, tc.purpose)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -78,7 +78,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 	testCtx := context.Background()
 	tests := []struct {
 		name            string
-		key             *DataKey
+		key             *dataKey
 		opType          dbw.OpType
 		wantErr         bool
 		wantErrIs       error
@@ -86,7 +86,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 	}{
 		{
 			name: "create-missing-private-id",
-			key: &DataKey{
+			key: &dataKey{
 				RootKeyId: "root-key-id",
 				Purpose:   "database",
 			},
@@ -97,7 +97,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-root-key",
-			key: &DataKey{
+			key: &dataKey{
 				PrivateId: "private-key-id",
 				Purpose:   "database",
 			},
@@ -108,7 +108,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-invalid-purpose",
-			key: &DataKey{
+			key: &dataKey{
 				PrivateId: "private-key-id",
 				RootKeyId: "root-key-id",
 				Purpose:   KeyPurposeRootKey,
@@ -120,7 +120,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "create-missing-purpose",
-			key: &DataKey{
+			key: &dataKey{
 				PrivateId: "private-key-id",
 				RootKeyId: "root-key-id",
 			},
@@ -131,7 +131,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 		},
 		{
 			name: "invalid-update",
-			key: &DataKey{
+			key: &dataKey{
 				PrivateId: "private-key-id",
 				RootKeyId: "root-key-id",
 				Purpose:   "database",
@@ -163,7 +163,7 @@ func TestDataKey_vetForWrite(t *testing.T) {
 
 func TestDataKey_GetRootKeyId(t *testing.T) {
 	t.Parallel()
-	k := &DataKey{
+	k := &dataKey{
 		RootKeyId: "root-key-id",
 	}
 	assert.Equal(t, "root-key-id", k.GetRootKeyId())

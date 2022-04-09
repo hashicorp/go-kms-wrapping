@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// RootKey represents the KEKs (keys to encrypt keys) of the system.
-type RootKey struct {
+// rootKey represents the KEKs (keys to encrypt keys) of the system.
+type rootKey struct {
 	// PrivateId is used to access the root key
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`
 	// ScopeId for the root key
@@ -15,25 +15,25 @@ type RootKey struct {
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
 }
 
-// NewRootKey creates a new in memory root key. No optionsare currently
+// newRootKey creates a new in memory root key. No optionsare currently
 // supported.
-func NewRootKey(scopeId string, _ ...Option) (*RootKey, error) {
+func newRootKey(scopeId string, _ ...Option) (*rootKey, error) {
 	const op = "kms.NewRootKey"
 	if scopeId == "" {
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	c := &RootKey{
+	c := &rootKey{
 		ScopeId: scopeId,
 	}
 	return c, nil
 }
 
 // TableName returns the tablename
-func (k *RootKey) TableName() string { return "kms_root_key" }
+func (k *rootKey) TableName() string { return "kms_root_key" }
 
 // Clone creates a clone of the RootKeyVersion
-func (k *RootKey) Clone() *RootKey {
-	return &RootKey{
+func (k *rootKey) Clone() *rootKey {
+	return &rootKey{
 		PrivateId:  k.PrivateId,
 		ScopeId:    k.ScopeId,
 		CreateTime: k.CreateTime,
@@ -41,4 +41,4 @@ func (k *RootKey) Clone() *RootKey {
 }
 
 // GetPrivateId returns the key's private id
-func (k *RootKey) GetPrivateId() string { return k.PrivateId }
+func (k *rootKey) GetPrivateId() string { return k.PrivateId }
