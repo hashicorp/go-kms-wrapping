@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -20,7 +19,6 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
-	pgDriver "gorm.io/driver/postgres"
 )
 
 // testRootKey returns a new test RootKey
@@ -116,22 +114,6 @@ func testRepo(t *testing.T, db *dbw.DB, opt ...Option) *repository {
 // TestDb will return a test db and a url for that db
 func TestDb(t *testing.T) (*dbw.DB, string) {
 	return dbw.TestSetup(t, dbw.WithTestMigrationUsingDB(testMigrationFn(t)))
-}
-
-// testMockDb returns a db with an underlying mock.  TODO: can be replaced with
-// a similar feature in go-dbw, once this PR is merged:
-// https://github.com/hashicorp/go-dbw/pull/16
-func testMockDb(t *testing.T) (*dbw.DB, sqlmock.Sqlmock) {
-	t.Helper()
-	require := require.New(t)
-	db, mock, err := sqlmock.New()
-	require.NoError(err)
-	require.NoError(err)
-	dbw, err := dbw.OpenWith(pgDriver.New(pgDriver.Config{
-		Conn: db,
-	}))
-	require.NoError(err)
-	return dbw, mock
 }
 
 func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
