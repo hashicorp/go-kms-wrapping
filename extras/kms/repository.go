@@ -160,17 +160,17 @@ type keyWithVersion struct {
 	KeyVersion keyIder
 }
 
-// keys defines a return type for CreateKeysTx so the returned keys can be
+// keys defines a return type for createKeysTx so the returned keys can be
 // easily accessed via their KeyPurpose
 type keys map[KeyPurpose]keyWithVersion
 
-// CreateKeysTx creates the root key and DEKs and returns a map of the new keys.
+// createKeysTx creates the root key and DEKs and returns a map of the new keys.
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
 // its own transaction and is intended to be used within a transaction provide
 // by the caller.
-func (r *repository) CreateKeysTx(ctx context.Context, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
+func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
 	const op = "kms.CreateKeysTx"
 	if rootWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
@@ -196,7 +196,7 @@ func (r *repository) CreateKeysTx(ctx context.Context, rootWrapper wrapping.Wrap
 	if err != nil {
 		return nil, fmt.Errorf("%s: error generating random bytes for root key in scope %q: %w", op, scopeId, err)
 	}
-	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, r.writer, rootWrapper, scopeId, k)
+	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, w, rootWrapper, scopeId, k)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to create root key in scope %q: %w", op, scopeId, err)
 	}
@@ -220,7 +220,7 @@ func (r *repository) CreateKeysTx(ctx context.Context, rootWrapper wrapping.Wrap
 		if err != nil {
 			return nil, fmt.Errorf("%s: error generating random bytes for data key of purpose %q in scope %q: %w", op, p, scopeId, err)
 		}
-		dataKey, dataKeyVersion, err := createDataKeyTx(ctx, r.reader, r.writer, rkvWrapper, p, k)
+		dataKey, dataKeyVersion, err := createDataKeyTx(ctx, r, w, rkvWrapper, p, k)
 		if err != nil {
 			return nil, fmt.Errorf("%s: unable to create data key of purpose %q in scope %q: %w", op, p, scopeId, err)
 		}

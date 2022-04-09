@@ -1,5 +1,11 @@
 package kms
 
+import (
+	"io"
+
+	"github.com/hashicorp/go-dbw"
+)
+
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
 	opts := getDefaultOptions()
@@ -21,6 +27,10 @@ type options struct {
 	withRetryCnt       uint
 	withErrorsMatching func(error) bool
 	withPurpose        KeyPurpose
+	withTx             *dbw.RW
+	withRandomReader   io.Reader
+	withReader         dbw.Reader
+	withWriter         dbw.Writer
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -86,5 +96,36 @@ func withRetryErrorsMatching(matchingFn func(error) bool) Option {
 func withPurpose(purpose KeyPurpose) Option {
 	return func(o *options) {
 		o.withPurpose = purpose
+	}
+}
+
+// WithTx allows the caller to pass an inflight transaction to be used for all
+// database operations. If WithTx(...) is used, then the caller is responsible
+// for managing the transaction. The purpose of the WithTx(...) option is to
+// allow the caller to create the scope and all of its keys in the same
+// transaction.
+func WithTx(tx *dbw.RW) Option {
+	return func(o *options) {
+		o.withTx = tx
+	}
+}
+
+// WithRandomReadear(...) option allows an optional random reader to be
+// provided.  By default the reader from crypto/rand will be used.
+func WithRandomReader(randomReader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = randomReader
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r dbw.Reader, w dbw.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }
