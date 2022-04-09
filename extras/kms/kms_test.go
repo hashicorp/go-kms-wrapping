@@ -428,7 +428,7 @@ func TestKms_GetWrapper(t *testing.T) {
 			wantErrContains: `error loading "database" for scope`,
 		},
 		{
-			name: "success",
+			name: "success-database",
 			kms: func() *kms.Kms {
 				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
@@ -442,6 +442,22 @@ func TestKms_GetWrapper(t *testing.T) {
 			},
 			scopeId: "global",
 			purpose: "database",
+		},
+		{
+			name: "success-rootkey",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+				err := k.CreateKeys(testCtx, "o_1234567890", []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+			},
+			scopeId: "o_1234567890",
+			purpose: kms.KeyPurposeRootKey,
 		},
 	}
 	for _, tc := range tests {
