@@ -151,6 +151,9 @@ func (k *Kms) GetExternalRootWrapper() (wrapping.Wrapper, error) {
 // passed, it will ensure that the returning wrapper has that key ID in the
 // multiwrapper. This is not necessary for encryption but should be supplied for
 // decryption.
+//
+// Note: getting a wrapper for KeyPurposeRootKey is supported, but a root
+// wrapper is a KEK and should never be used for data encryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
 	const op = "kms.GetWrapper"
 	if scopeId == "" {
@@ -191,6 +194,10 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 	if isNil(rootWrapper) {
 		return nil, fmt.Errorf("%s: got nil root wrapper for scope %q: %w", op, scopeId, ErrInvalidParameter)
+	}
+
+	if purpose == KeyPurposeRootKey {
+		return rootWrapper, nil
 	}
 
 	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId, opt...)
