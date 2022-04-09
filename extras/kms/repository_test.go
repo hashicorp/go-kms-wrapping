@@ -187,18 +187,16 @@ func (m *mockRandReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New(m.errMsg)
 }
 
-func TestRepository_CreateKeysTx(t *testing.T) {
+func TestRepository_createKeysTx(t *testing.T) {
 	const testScopeId = "o_1234567890"
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	testRepo, err := newRepository(rw, rw, withLimit(3))
-	require.NoError(t, err)
 	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
 
 	tests := []struct {
 		name            string
-		repo            *repository
+		rw              *dbw.RW
 		rootWrapper     wrapping.Wrapper
 		rand            io.Reader
 		scopeId         string
@@ -209,7 +207,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 	}{
 		{
 			name:            "missing-wrapper",
-			repo:            testRepo,
+			rw:              rw,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
 			wantErr:         true,
@@ -218,7 +216,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:            "missing-random-reader",
-			repo:            testRepo,
+			rw:              rw,
 			rootWrapper:     wrapper,
 			scopeId:         testScopeId,
 			wantErr:         true,
@@ -227,7 +225,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:            "missing-scope-id",
-			repo:            testRepo,
+			rw:              rw,
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			wantErr:         true,
@@ -236,7 +234,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:            "reserved-purpose",
-			repo:            testRepo,
+			rw:              rw,
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
@@ -247,7 +245,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:            "dup-purpose",
-			repo:            testRepo,
+			rw:              rw,
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
 			scopeId:         testScopeId,
@@ -258,7 +256,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:            "gen-root-key-error",
-			repo:            testRepo,
+			rw:              rw,
 			rootWrapper:     wrapper,
 			rand:            newMockRandReader(1, "gen-root-key-error"),
 			scopeId:         testScopeId,
@@ -268,7 +266,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:            "gen-purpose-key-error",
-			repo:            testRepo,
+			rw:              rw,
 			rootWrapper:     wrapper,
 			rand:            newMockRandReader(2, "gen-purpose-key-error"),
 			scopeId:         testScopeId,
@@ -278,16 +276,15 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name: "createRootKeyTx-error",
-			repo: func() *repository {
+			rw: func() *dbw.RW {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
-				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := newRepository(rw, rw)
-				require.NoError(t, err)
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("createRootKeyTx-error"))
 				mock.ExpectRollback()
-				return r
+				rw, err := rw.Begin(context.Background())
+				require.NoError(t, err)
+				return rw
 			}(),
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
@@ -298,22 +295,18 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name: "createDataKeyTx-error",
-			repo: func() *repository {
+			rw: func() *dbw.RW {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
-				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := newRepository(rw, rw)
-				require.NoError(t, err)
-				mock.ExpectBegin() // rk
-				mock.ExpectQuery(`INSERT INTO`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
-				mock.ExpectCommit()
+				mock.ExpectBegin()
+				mock.ExpectQuery(`INSERT INTO`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now())) // rk
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
-				mock.ExpectBegin() // rkv
-				mock.ExpectQuery(`INSERT INTO`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
-				mock.ExpectCommit()
+				mock.ExpectQuery(`INSERT INTO`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now())) // rkv
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("createDataKeyTx-error"))
-				return r
+				rw, err := rw.Begin(context.Background())
+				require.NoError(t, err)
+				return rw
 			}(),
 			rootWrapper:     wrapper,
 			rand:            rand.Reader,
@@ -324,7 +317,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		},
 		{
 			name:        "success",
-			repo:        testRepo,
+			rw:          rw,
 			rootWrapper: wrapper,
 			rand:        rand.Reader,
 			scopeId:     testScopeId,
@@ -335,7 +328,7 @@ func TestRepository_CreateKeysTx(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
-			keys, err := tc.repo.CreateKeysTx(context.Background(), tc.rootWrapper, tc.rand, tc.scopeId, tc.purpose...)
+			keys, err := createKeysTx(context.Background(), tc.rw, tc.rootWrapper, tc.rand, tc.scopeId, tc.purpose...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {

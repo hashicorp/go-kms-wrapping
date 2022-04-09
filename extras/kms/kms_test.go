@@ -467,7 +467,7 @@ func TestKms_GetWrapper(t *testing.T) {
 			setup: func(k *kms.Kms) {
 				testDeleteWhere(t, db, &rootKey{}, "1=1")
 
-				err := k.CreateKeysTx(testCtx, rand.Reader, "global", "database", "auth")
+				err := k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
 				testDeleteWhere(t, db, &dataKeyVersion{}, "1=1")
 				require.NoError(t, err)
@@ -487,7 +487,7 @@ func TestKms_GetWrapper(t *testing.T) {
 			}(),
 			setup: func(k *kms.Kms) {
 				testDeleteWhere(t, db, &rootKey{}, "1=1")
-				err := k.CreateKeysTx(testCtx, rand.Reader, "global", "database", "auth")
+				err := k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
 			},
 			scopeId: "global",
@@ -515,6 +515,213 @@ func TestKms_GetWrapper(t *testing.T) {
 			assert.NotNil(got)
 		})
 	}
+}
+
+func TestKms_CreateKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := kms.TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	tests := []struct {
+		name            string
+		kms             *kms.Kms
+		scopeId         string
+		purposes        []kms.KeyPurpose
+		opt             []kms.Option
+		setup           func(*kms.Kms)
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-scope-id",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrContains: "missing scope id",
+		},
+		{
+			name: "missing-external-root-wrapper",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrIs:       kms.ErrKeyNotFound,
+			wantErrContains: "missing external root wrapper",
+		},
+		{
+			name: "begin-error",
+			kms: func() *kms.Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin().WillReturnError(errors.New("begin-error"))
+				rw := dbw.New(db)
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId: "global",
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+			},
+			wantErr:         true,
+			wantErrContains: "begin-error",
+		},
+		{
+			name: "create-error",
+			kms: func() *kms.Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("create-error"))
+				mock.ExpectRollback()
+				rw := dbw.New(db)
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId: "global",
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+			},
+			wantErr:         true,
+			wantErrContains: "create-error",
+		},
+		{
+			name: "rollback-error",
+			kms: func() *kms.Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("create-error"))
+				mock.ExpectRollback().WillReturnError(errors.New("rollback-error"))
+				rw := dbw.New(db)
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId: "global",
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+			},
+			wantErr:         true,
+			wantErrContains: "rollback-error",
+		},
+		{
+			name: "success-no-opts",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId: "global",
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+			},
+		},
+		{
+			name: "success-with-rand",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId: "global",
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+			},
+			opt: []kms.Option{kms.WithRandomReader(rand.Reader)},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tc.setup != nil {
+				tc.setup(tc.kms)
+			}
+			err := tc.kms.CreateKeys(testCtx, tc.scopeId, tc.purposes, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			for _, kp := range tc.purposes {
+				w, err := tc.kms.GetWrapper(testCtx, tc.scopeId, kp)
+				require.NoError(err)
+				assert.NotNil(w)
+			}
+		})
+	}
+	t.Run("WithTx", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := kms.TestDb(t)
+		rw := dbw.New(db)
+		purposes := []kms.KeyPurpose{"database"}
+		k, err := kms.New(rw, rw, purposes)
+		require.NoError(err)
+		err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		tx, err := rw.Begin(testCtx)
+		require.NoError(err)
+
+		err = k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithTx(tx))
+		require.NoError(err)
+
+		assert.NoError(tx.Commit(testCtx))
+
+		for _, kp := range purposes {
+			w, err := k.GetWrapper(testCtx, "global", kp)
+			require.NoError(err)
+			assert.NotNil(w)
+		}
+	})
+	t.Run("WithTx-missing", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := kms.TestDb(t)
+		rw := dbw.New(db)
+		purposes := []kms.KeyPurpose{"database"}
+		k, err := kms.New(rw, rw, purposes)
+		require.NoError(err)
+		err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		err = k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithTx(rw))
+		require.Error(err)
+		assert.ErrorIs(err, kms.ErrInvalidParameter)
+
+		for _, kp := range purposes {
+			w, err := k.GetWrapper(testCtx, "global", kp)
+			require.Error(err)
+			assert.Nil(w)
+		}
+	})
 }
 
 func TestRepository_ValidateVersion(t *testing.T) {

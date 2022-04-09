@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"testing"
 	"time"
@@ -402,7 +401,7 @@ func TestKms_KeyId(t *testing.T) {
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
-	err = kmsCache.CreateKeysTx(ctx, rand.Reader, globalScope, databaseKeyPurpose)
+	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
 	globalRootWrapper, _, err := kmsCache.loadRoot(ctx, globalScope)
 	require.NoError(err)

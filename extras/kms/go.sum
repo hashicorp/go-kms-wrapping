@@ -557,6 +557,10 @@ github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brv
 github.com/hashicorp/go-cleanhttp v0.5.1/go.mod h1:JpRdi6/HCYpAwUzNwuwqhbovhLtngrth3wmdIIUrZ80=
 github.com/hashicorp/go-dbw v0.0.0-20220330205051-f8b3b24f5f9d h1:jcjwOmpjQRS84YijtP9RAFVnVUxrBLwS8363U/4VPfc=
 github.com/hashicorp/go-dbw v0.0.0-20220330205051-f8b3b24f5f9d/go.mod h1:w9gD0GS/RPaf1BQ//LmdWfQpW8SFwamwL1hmtzQ58p0=
+github.com/hashicorp/go-dbw v0.0.0-20220409133707-2db509f6747f h1:e7P7HiszgFlcXR7J1a8ZEcE7nnRh8LSNZvIC7KI50Yw=
+github.com/hashicorp/go-dbw v0.0.0-20220409133707-2db509f6747f/go.mod h1:w9gD0GS/RPaf1BQ//LmdWfQpW8SFwamwL1hmtzQ58p0=
+github.com/hashicorp/go-dbw v0.0.0-20220409193558-ba55a31040a1 h1:G3tzu6oK/wVrw9ioQvZ1iRAEDQAOEaxBVumy5sF8xRM=
+github.com/hashicorp/go-dbw v0.0.0-20220409193558-ba55a31040a1/go.mod h1:w9gD0GS/RPaf1BQ//LmdWfQpW8SFwamwL1hmtzQ58p0=
 github.com/hashicorp/go-hclog v1.0.0 h1:bkKf0BeBXcSYa7f5Fyi9gMuQ8gNsxeiNpZjR6VxNZeo=
 github.com/hashicorp/go-hclog v1.0.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=

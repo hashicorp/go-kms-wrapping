@@ -2,8 +2,9 @@ package kms
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"fmt"
-	"io"
 	"reflect"
 	"sync"
 
@@ -11,6 +12,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
+	"github.com/hashicorp/go-multierror"
 )
 
 // cachePurpose defines an enum for wrapper cache purposes
@@ -207,15 +209,70 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	return wrapper, nil
 }
 
-func (k *Kms) CreateKeysTx(ctx context.Context, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) error {
+// CreateKeys creates the root key and DEKs for the given scope id.  By
+// default, CreateKeys manages its own transaction (begin/rollback/commit).
+//
+// It's valid to provide a no KeyPurposes (nil or empty), which means that the
+// scope will only end up with a root key (and one rk version) with no DEKs.
+//
+// CreateKeys also supports the WithTx(...) option which allows the caller to
+// pass an inflight transaction to be used for all database operations.  If
+// WithTx(...) is used, then the caller is responsible for managing the
+// transaction.  The purpose of the WithTx(...) option is to allow the caller to
+// create the scope and all of its keys in the same transaction.
+//
+// The WithRandomReadear(...) option is supported as well.  If not optional
+// random reader is provided, then the reader from crypto/rand will be used as
+// a default.
+func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurpose, opt ...Option) error {
 	const op = "kms.(Kms).CreateKeysTx"
+	if scopeId == "" {
+		return fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	for _, p := range purposes {
+		if !purposeListContains(k.purposes, p) {
+			return fmt.Errorf("%s: not a supported key purpose %q: %w", op, p, ErrInvalidParameter)
+		}
+	}
+
 	rootWrapper, err := k.GetExternalRootWrapper()
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if _, err := k.repo.CreateKeysTx(ctx, rootWrapper, randomReader, scopeId, purpose...); err != nil {
+
+	opts := getOpts(opt...)
+
+	if isNil(opts.withRandomReader) {
+		opts.withRandomReader = rand.Reader
+	}
+
+	var tx *dbw.RW
+	switch {
+	case opts.withTx != nil:
+		if ok := opts.withTx.IsTx(); !ok {
+			return fmt.Errorf("%s: provided transaction has no inflight tranaction: %w", op, ErrInvalidParameter)
+		}
+		tx = opts.withTx
+	default:
+		tx, err = k.repo.writer.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("%s: unable to begin transaction: %w", op, err)
+		}
+	}
+
+	if _, err := createKeysTx(ctx, tx, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
+		rollBackErr := tx.Rollback(ctx)
+		if rollBackErr != nil {
+			err = multierror.Append(err, rollBackErr)
+		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
+	if opts.withTx == nil {
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
 	return nil
 }
 
