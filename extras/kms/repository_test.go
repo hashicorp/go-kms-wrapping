@@ -119,7 +119,7 @@ func TestRepository_ValidateVersion(t *testing.T) {
 		{
 			name: "invalid-version",
 			repo: func() *repository {
-				mDb, mock := testMockDb(t)
+				mDb, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(mDb)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				r, err := newRepository(rw, rw)
@@ -133,7 +133,7 @@ func TestRepository_ValidateVersion(t *testing.T) {
 		{
 			name: "failed-lookup",
 			repo: func() *repository {
-				mDb, mock := testMockDb(t)
+				mDb, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(mDb)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				r, err := newRepository(rw, rw)
