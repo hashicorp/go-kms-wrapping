@@ -109,7 +109,7 @@ func WithTx(tx *dbw.RW) Option {
 }
 
 // WithRandomReadear(...) option allows an optional random reader to be
-// provided.  By default the the reader from crypto/rand will be used.
+// provided.  By default the reader from crypto/rand will be used.
 func WithRandomReader(randomReader io.Reader) Option {
 	return func(o *options) {
 		o.withRandomReader = randomReader

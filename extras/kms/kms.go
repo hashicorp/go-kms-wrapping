@@ -219,7 +219,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 // CreateKeys creates the root key and DEKs for the given scope id.  By
 // default, CreateKeys manages its own transaction (begin/rollback/commit).
 //
-// It's valid to provide a no KeyPurposes (nil or empty), which means that the
+// It's valid to provide no KeyPurposes (nil or empty), which means that the
 // scope will only end up with a root key (and one rk version) with no DEKs.
 //
 // CreateKeys also supports the WithTx(...) option which allows the caller to
@@ -228,7 +228,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 // transaction.  The purpose of the WithTx(...) option is to allow the caller to
 // create the scope and all of its keys in the same transaction.
 //
-// The WithRandomReadear(...) option is supported as well.  If not optional
+// The WithRandomReadear(...) option is supported as well.  If no optional
 // random reader is provided, then the reader from crypto/rand will be used as
 // a default.
 func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurpose, opt ...Option) error {
@@ -257,7 +257,7 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	switch {
 	case opts.withTx != nil:
 		if ok := opts.withTx.IsTx(); !ok {
-			return fmt.Errorf("%s: provided transaction has no inflight tranaction: %w", op, ErrInvalidParameter)
+			return fmt.Errorf("%s: provided transaction has no inflight transaction: %w", op, ErrInvalidParameter)
 		}
 		tx = opts.withTx
 	default:
