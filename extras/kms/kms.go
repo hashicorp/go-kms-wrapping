@@ -268,9 +268,11 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	}
 
 	if _, err := createKeysTx(ctx, tx, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
-		rollBackErr := tx.Rollback(ctx)
-		if rollBackErr != nil {
-			err = multierror.Append(err, rollBackErr)
+		if opts.withTx == nil {
+			rollBackErr := tx.Rollback(ctx)
+			if rollBackErr != nil {
+				err = multierror.Append(err, rollBackErr)
+			}
 		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
