@@ -667,6 +667,10 @@ func TestKms_CreateKeys(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(w)
 		}
+
+		err = k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithTx(tx), kms.WithReaderWriter(tx, tx))
+		require.Error(err)
+		assert.Contains(err.Error(), "WithTx(...) and WithReaderWriter(...) options cannot be used at the same time")
 	})
 	t.Run("WithTx-missing", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
@@ -687,6 +691,65 @@ func TestKms_CreateKeys(t *testing.T) {
 			require.Error(err)
 			assert.Nil(w)
 		}
+	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := kms.TestDb(t)
+		rw := dbw.New(db)
+		purposes := []kms.KeyPurpose{"database"}
+		k, err := kms.New(rw, rw, purposes)
+		require.NoError(err)
+		err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithReaderWriter(r, w))
+			},
+		)
+		require.NoError(err)
+
+		for _, kp := range purposes {
+			w, err := k.GetWrapper(testCtx, "global", kp)
+			require.NoError(err)
+			assert.NotNil(w)
+		}
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithReaderWriter(nil, w))
+			},
+		)
+		require.Error(err)
+		assert.Contains(err.Error(), "missing the reader")
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithReaderWriter(r, nil))
+			},
+		)
+		require.Error(err)
+		assert.Contains(err.Error(), "missing the writer")
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithReaderWriter(r, w), kms.WithTx(rw))
+			},
+		)
+		require.Error(err)
+		assert.Contains(err.Error(), "WithTx(...) and WithReaderWriter(...) options cannot be used at the same time")
 	})
 }
 

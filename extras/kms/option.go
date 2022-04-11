@@ -29,6 +29,8 @@ type options struct {
 	withPurpose        KeyPurpose
 	withTx             *dbw.RW
 	withRandomReader   io.Reader
+	withReader         dbw.Reader
+	withWriter         dbw.Writer
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -113,5 +115,17 @@ func WithTx(tx *dbw.RW) Option {
 func WithRandomReader(randomReader io.Reader) Option {
 	return func(o *options) {
 		o.withRandomReader = randomReader
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r dbw.Reader, w dbw.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }

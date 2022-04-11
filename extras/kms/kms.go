@@ -222,10 +222,11 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 // It's valid to provide no KeyPurposes (nil or empty), which means that the
 // scope will only end up with a root key (and one rk version) with no DEKs.
 //
-// CreateKeys also supports the WithTx(...) option which allows the caller to
-// pass an inflight transaction to be used for all database operations.  If
-// WithTx(...) is used, then the caller is responsible for managing the
-// transaction.  The purpose of the WithTx(...) option is to allow the caller to
+// CreateKeys also supports the WithTx(...) and WithReaderWriter(...) options
+// which allows the caller to pass an inflight transaction to be used for all
+// database operations.  If WithTx(...) or WithReaderWriter(...) are used, then
+// the caller is responsible for managing the transaction.  The purpose of the
+// WithTx(...) and WithReaderWriter(...) options are to allow the caller to
 // create the scope and all of its keys in the same transaction.
 //
 // The WithRandomReadear(...) option is supported as well.  If no optional
@@ -253,32 +254,52 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 		opts.withRandomReader = rand.Reader
 	}
 
-	var tx *dbw.RW
+	var localTx *dbw.RW
+	var r dbw.Reader
+	var w dbw.Writer
 	switch {
 	case opts.withTx != nil:
+		if opts.withReader != nil || opts.withWriter != nil {
+			return fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
 		if ok := opts.withTx.IsTx(); !ok {
 			return fmt.Errorf("%s: provided transaction has no inflight transaction: %w", op, ErrInvalidParameter)
 		}
-		tx = opts.withTx
+		r = opts.withTx
+		w = opts.withTx
+	case opts.withReader != nil, opts.withWriter != nil:
+		if opts.withTx != nil {
+			return fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
+		if opts.withReader == nil {
+			return fmt.Errorf("%s: WithReaderWriter(...) option is missing the reader: %w", op, ErrInvalidParameter)
+		}
+		if opts.withWriter == nil {
+			return fmt.Errorf("%s: WithReaderWriter(...) option is missing the writer: %w", op, ErrInvalidParameter)
+		}
+		r = opts.withReader
+		w = opts.withWriter
 	default:
-		tx, err = k.repo.writer.Begin(ctx)
+		localTx, err = k.repo.writer.Begin(ctx)
 		if err != nil {
 			return fmt.Errorf("%s: unable to begin transaction: %w", op, err)
 		}
+		r = localTx
+		w = localTx
 	}
 
-	if _, err := createKeysTx(ctx, tx, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
-		if opts.withTx == nil {
-			rollBackErr := tx.Rollback(ctx)
+	if _, err := createKeysTx(ctx, r, w, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
+		if localTx != nil {
+			rollBackErr := localTx.Rollback(ctx)
 			if rollBackErr != nil {
 				err = multierror.Append(err, rollBackErr)
 			}
 		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	if opts.withTx == nil {
-		if err := tx.Commit(ctx); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
+	if localTx != nil {
+		if err := localTx.Commit(ctx); err != nil {
+			return fmt.Errorf("%s: unable to commit transaction: %w", op, err)
 		}
 	}
 

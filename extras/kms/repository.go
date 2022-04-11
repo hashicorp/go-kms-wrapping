@@ -170,7 +170,7 @@ type keys map[KeyPurpose]keyWithVersion
 // within a transaction.  To be clear, this repository function doesn't include
 // its own transaction and is intended to be used within a transaction provide
 // by the caller.
-func createKeysTx(ctx context.Context, tx *dbw.RW, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
+func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
 	const op = "kms.CreateKeysTx"
 	if rootWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
@@ -196,7 +196,7 @@ func createKeysTx(ctx context.Context, tx *dbw.RW, rootWrapper wrapping.Wrapper,
 	if err != nil {
 		return nil, fmt.Errorf("%s: error generating random bytes for root key in scope %q: %w", op, scopeId, err)
 	}
-	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, tx, rootWrapper, scopeId, k)
+	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, w, rootWrapper, scopeId, k)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to create root key in scope %q: %w", op, scopeId, err)
 	}
@@ -220,7 +220,7 @@ func createKeysTx(ctx context.Context, tx *dbw.RW, rootWrapper wrapping.Wrapper,
 		if err != nil {
 			return nil, fmt.Errorf("%s: error generating random bytes for data key of purpose %q in scope %q: %w", op, p, scopeId, err)
 		}
-		dataKey, dataKeyVersion, err := createDataKeyTx(ctx, tx, tx, rkvWrapper, p, k)
+		dataKey, dataKeyVersion, err := createDataKeyTx(ctx, r, w, rkvWrapper, p, k)
 		if err != nil {
 			return nil, fmt.Errorf("%s: unable to create data key of purpose %q in scope %q: %w", op, p, scopeId, err)
 		}
