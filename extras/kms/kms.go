@@ -316,7 +316,7 @@ func (k *Kms) ValidateSchema(ctx context.Context) (string, error) {
 // issues.  This function reconciles the global scope unless the
 // WithScopeIds(...) option is provided
 //
-// The WithRandomReadear(...) option is supported as well.  If an optional
+// The WithRandomReader(...) option is supported as well.  If an optional
 // random reader is not provided (is nill), then the reader from crypto/rand
 // will be used as a default.
 func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) error {
