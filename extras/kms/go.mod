@@ -5,11 +5,10 @@ go 1.17
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.15.1
-	github.com/hashicorp/go-dbw v0.0.0-20220330205051-f8b3b24f5f9d
+	github.com/hashicorp/go-dbw v0.0.0-20220409193558-ba55a31040a1
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-uuid v1.0.2
-	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	gorm.io/driver/postgres v1.2.2
 	mvdan.cc/gofumpt v0.3.0

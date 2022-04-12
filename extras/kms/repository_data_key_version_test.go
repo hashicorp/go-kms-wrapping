@@ -1,4 +1,4 @@
-package kms_test
+package kms
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/hashicorp/go-dbw"
-	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
@@ -23,22 +22,22 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 	)
 	t.Parallel()
 	testCtx := context.Background()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
-	rk := kms.TestRootKey(t, db, testScopeId)
-	rkv, rkvWrapper := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	dk := kms.TestDataKey(t, db, rk.PrivateId, testPurpose)
+	rk := testRootKey(t, db, testScopeId)
+	rkv, rkvWrapper := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	dk := testDataKey(t, db, rk.PrivateId, testPurpose)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		key             []byte
 		dataKeyId       string
 		keyWrapper      wrapping.Wrapper
-		opt             []kms.Option
+		opt             []Option
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -46,20 +45,20 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 		{
 			name:            "nil-wrapper",
 			repo:            testRepo,
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			keyWrapper:      nil,
 			dataKeyId:       dk.PrivateId,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key version wrapper",
 		},
 		{
 			name:            "missing-data-key-id",
 			repo:            testRepo,
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			keyWrapper:      rkvWrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing data key id",
 		},
 		{
@@ -68,7 +67,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			keyWrapper:      rkvWrapper,
 			dataKeyId:       dk.PrivateId,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key",
 		},
 		{
@@ -78,7 +77,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			dataKeyId:       dk.PrivateId,
 			key:             []byte(""),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key",
 		},
 		{
@@ -86,7 +85,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			repo:            testRepo,
 			keyWrapper:      &mockTestWrapper{err: errors.New("KeyId error")},
 			dataKeyId:       dk.PrivateId,
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			wantErr:         true,
 			wantErrContains: "KeyId error",
 		},
@@ -95,9 +94,9 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			repo:            testRepo,
 			keyWrapper:      aead.NewWrapper(),
 			dataKeyId:       dk.PrivateId,
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key version id",
 		},
 		{
@@ -108,9 +107,9 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 				w.SetConfig(testCtx, wrapping.WithKeyId("invalid-root-key-version-id"))
 				return w
 			}(), dataKeyId: dk.PrivateId,
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "doesn't start with prefix",
 		},
 		{
@@ -121,24 +120,24 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 				w.SetConfig(testCtx, wrapping.WithKeyId(rkv.PrivateId))
 				return w
 			}(), dataKeyId: dk.PrivateId,
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			wantErr:         true,
 			wantErrContains: "error wrapping value",
 		},
 		{
 			name: "create-dkv-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				testRepo, err := kms.NewRepository(rw, rw)
+				testRepo, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT INTO "kms_data_key_version"`).WillReturnError(errors.New("create-dkv-error"))
 				mock.ExpectRollback()
 				return testRepo
 			}(),
-			key:             []byte(kms.DefaultWrapperSecret),
+			key:             []byte(defaultWrapperSecret),
 			keyWrapper:      rkvWrapper,
 			dataKeyId:       dk.PrivateId,
 			wantErr:         true,
@@ -147,7 +146,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 		{
 			name:       "valid",
 			repo:       testRepo,
-			key:        []byte(kms.DefaultWrapperSecret),
+			key:        []byte(defaultWrapperSecret),
 			keyWrapper: rkvWrapper,
 			dataKeyId:  dk.PrivateId,
 		},
@@ -181,20 +180,20 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		testPurpose = "database"
 	)
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
-	rk := kms.TestRootKey(t, db, testScopeId)
-	_, rkvWrapper := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	dk := kms.TestDataKey(t, db, rk.PrivateId, testPurpose)
+	rk := testRootKey(t, db, testScopeId)
+	_, rkvWrapper := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	dk := testDataKey(t, db, rk.PrivateId, testPurpose)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
-		key             *kms.DataKeyVersion
-		opt             []kms.Option
+		repo            *repository
+		key             *dataKeyVersion
+		opt             []Option
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrIs       error
@@ -203,38 +202,38 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		{
 			name: "no-private-id",
 			repo: testRepo,
-			key: func() *kms.DataKeyVersion {
-				return &kms.DataKeyVersion{}
+			key: func() *dataKeyVersion {
+				return &dataKeyVersion{}
 			}(),
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing private id",
 		},
 		{
 			name: "not-found",
 			repo: testRepo,
-			key: func() *kms.DataKeyVersion {
-				id, err := dbw.NewId(kms.DataKeyPrefix)
+			key: func() *dataKeyVersion {
+				id, err := dbw.NewId(dataKeyPrefix)
 				require.NoError(t, err)
-				k := kms.DataKeyVersion{}
+				k := dataKeyVersion{}
 				k.PrivateId = id
 				require.NoError(t, err)
 				return &k
 			}(),
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrIs:       kms.ErrRecordNotFound,
+			wantErrIs:       ErrRecordNotFound,
 			wantErrContains: "record not found",
 		},
 		{
 			name: "lookup-by-error",
-			key:  kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(kms.DefaultWrapperSecret)),
-			repo: func() *kms.Repository {
+			key:  testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(defaultWrapperSecret)),
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("lookup-by-error"))
 				mock.ExpectRollback()
@@ -246,19 +245,19 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		},
 		{
 			name: "delete-error",
-			key: func() *kms.DataKeyVersion {
-				id, err := dbw.NewId(kms.RootKeyPrefix)
+			key: func() *dataKeyVersion {
+				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(t, err)
-				k := kms.DataKeyVersion{}
+				k := dataKeyVersion{}
 				k.PrivateId = id
 				require.NoError(t, err)
 				return &k
 			}(),
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
@@ -272,19 +271,19 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		},
 		{
 			name: "delete-too-many-error",
-			key: func() *kms.DataKeyVersion {
-				id, err := dbw.NewId(kms.RootKeyPrefix)
+			key: func() *dataKeyVersion {
+				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(t, err)
-				k := kms.DataKeyVersion{}
+				k := dataKeyVersion{}
 				k.PrivateId = id
 				require.NoError(t, err)
 				return &k
 			}(),
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
@@ -294,13 +293,13 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 			}(),
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrIs:       kms.ErrMultipleRecords,
+			wantErrIs:       ErrMultipleRecords,
 			wantErrContains: "multiple records",
 		},
 		{
 			name:            "success",
 			repo:            testRepo,
-			key:             kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(kms.DefaultWrapperSecret)),
+			key:             testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(defaultWrapperSecret)),
 			wantRowsDeleted: 1,
 			wantErr:         false,
 		},
@@ -324,7 +323,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 			foundKey, err := tc.repo.LookupDataKeyVersion(context.Background(), wrapper, tc.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.ErrorIs(err, kms.ErrRecordNotFound)
+			assert.ErrorIs(err, ErrRecordNotFound)
 		})
 	}
 }
@@ -335,18 +334,18 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 		testPurpose = "database"
 	)
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
-	rk := kms.TestRootKey(t, db, testScopeId)
-	_, rkvWrapper := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	dk := kms.TestDataKey(t, db, rk.PrivateId, testPurpose)
+	rk := testRootKey(t, db, testScopeId)
+	_, rkvWrapper := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	dk := testDataKey(t, db, rk.PrivateId, testPurpose)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		createCnt       int
 		dataKeyId       string
 		keyWrapper      wrapping.Wrapper
@@ -378,7 +377,7 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 			createCnt:       0,
 			keyWrapper:      rkvWrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrRecordNotFound,
+			wantErrIs:       ErrRecordNotFound,
 			wantErrContains: "not found",
 		},
 		{
@@ -387,7 +386,7 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 			createCnt:       5,
 			keyWrapper:      wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing data key id",
 		},
 		{
@@ -397,16 +396,16 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 			createCnt:       5,
 			keyWrapper:      nil,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key version wrapper",
 		},
 		{
 			name: "search-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("search-error"))
 				return r
@@ -430,10 +429,10 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			kms.TestDeleteWhere(t, db, func() interface{} { i := kms.DataKeyVersion{}; return &i }(), "1=1")
-			testKeys := []*kms.DataKeyVersion{}
+			testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{}; return &i }(), "1=1")
+			testKeys := []*dataKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
-				k := kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("test key"))
+				k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("test key"))
 				testKeys = append(testKeys, k)
 			}
 			assert.Equal(tc.createCnt, len(testKeys))
@@ -462,21 +461,21 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 		testScopeId = "o_1234567890"
 	)
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw, withLimit(testLimit))
 	require.NoError(t, err)
-	rk := kms.TestRootKey(t, db, testScopeId)
-	_, rkvWrapper := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	dk := kms.TestDataKey(t, db, rk.PrivateId, testPurpose)
+	rk := testRootKey(t, db, testScopeId)
+	_, rkvWrapper := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	dk := testDataKey(t, db, rk.PrivateId, testPurpose)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		dataKeyId       string
 		keyWrapper      wrapping.Wrapper
-		opt             []kms.Option
+		opt             []Option
 		createCnt       int
 		wantCnt         int
 		wantErr         bool
@@ -489,7 +488,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 			createCnt:  testLimit * 2,
 			dataKeyId:  dk.PrivateId,
 			keyWrapper: rkvWrapper,
-			opt:        []kms.Option{kms.WithLimit(-1)},
+			opt:        []Option{withLimit(-1)},
 			wantCnt:    testLimit * 2,
 		},
 		{
@@ -506,7 +505,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 			createCnt:  testLimit + 1,
 			keyWrapper: rkvWrapper,
 			dataKeyId:  dk.PrivateId,
-			opt:        []kms.Option{kms.WithLimit(3)},
+			opt:        []Option{withLimit(3)},
 			wantCnt:    3,
 		},
 		{
@@ -524,7 +523,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 			createCnt:       1,
 			keyWrapper:      wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing data key id",
 		},
 		{
@@ -535,16 +534,16 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 			dataKeyId:       dk.PrivateId,
 			wantCnt:         0,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key version wrapper",
 		},
 		{
 			name: "list-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-error"))
 				return r
@@ -559,10 +558,10 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			kms.TestDeleteWhere(t, db, func() interface{} { i := kms.DataKeyVersion{}; return &i }(), "1=1")
-			keyVersions := []*kms.DataKeyVersion{}
+			testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{}; return &i }(), "1=1")
+			keyVersions := []*dataKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
-				k := kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
+				k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
 				keyVersions = append(keyVersions, k)
 			}
 			assert.Equal(tc.createCnt, len(keyVersions))
@@ -584,14 +583,14 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 	t.Run("order-by", func(t *testing.T) {
 		const createCnt = 10
 		assert, require := assert.New(t), require.New(t)
-		kms.TestDeleteWhere(t, db, func() interface{} { i := kms.DataKeyVersion{}; return &i }(), "1=1")
-		keyVersions := []*kms.DataKeyVersion{}
+		testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{}; return &i }(), "1=1")
+		keyVersions := []*dataKeyVersion{}
 		for i := 0; i < createCnt; i++ {
-			k := kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
+			k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
 			keyVersions = append(keyVersions, k)
 		}
 		assert.Equal(createCnt, len(keyVersions))
-		got, err := testRepo.ListDataKeyVersions(context.Background(), wrapper, dk.PrivateId, kms.WithOrderByVersion(kms.DescendingOrderBy))
+		got, err := testRepo.ListDataKeyVersions(context.Background(), wrapper, dk.PrivateId, withOrderByVersion(descendingOrderBy))
 		require.NoError(err)
 		assert.NotNil(got)
 		lastVersion := -1
@@ -603,7 +602,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 			}
 		}
 
-		got, err = testRepo.ListDataKeyVersions(context.Background(), wrapper, dk.PrivateId, kms.WithOrderByVersion(kms.AscendingOrderBy))
+		got, err = testRepo.ListDataKeyVersions(context.Background(), wrapper, dk.PrivateId, withOrderByVersion(ascendingOrderBy))
 		require.NoError(err)
 		assert.NotNil(got)
 		lastVersion = -1
@@ -624,17 +623,17 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 	)
 	t.Parallel()
 	testCtx := context.Background()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
-	rk := kms.TestRootKey(t, db, testScopeId)
-	_, rkvWrapper := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
-	dk := kms.TestDataKey(t, db, rk.PrivateId, testPurpose)
+	rk := testRootKey(t, db, testScopeId)
+	_, rkvWrapper := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
+	dk := testDataKey(t, db, rk.PrivateId, testPurpose)
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		wrapper         wrapping.Wrapper
 		privateKeyId    string
 		wantErr         bool
@@ -646,7 +645,7 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 			repo:            testRepo,
 			wrapper:         wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing private id",
 		},
 		{
@@ -655,20 +654,20 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 			privateKeyId: func() string {
 				id, err := dbw.NewId("o")
 				require.NoError(t, err)
-				k := kms.TestRootKey(t, db, id)
+				k := testRootKey(t, db, id)
 				return k.PrivateId
 			}(),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key wrapper",
 		},
 		{
 			name: "lookup-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("lookup-error"))
 				return r
@@ -677,7 +676,7 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 			privateKeyId: func() string {
 				id, err := dbw.NewId("o")
 				require.NoError(t, err)
-				k := kms.TestRootKey(t, db, id)
+				k := testRootKey(t, db, id)
 				return k.PrivateId
 			}(),
 			wantErr:         true,
@@ -688,7 +687,7 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 			repo:    testRepo,
 			wrapper: aead.NewWrapper(),
 			privateKeyId: func() string {
-				k := kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
+				k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
 				return k.PrivateId
 			}(),
 			wantErr:         true,
@@ -699,7 +698,7 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 			repo:    testRepo,
 			wrapper: wrapper,
 			privateKeyId: func() string {
-				k := kms.TestDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
+				k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
 				return k.PrivateId
 			}(),
 		},

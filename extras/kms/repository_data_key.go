@@ -12,11 +12,11 @@ import (
 
 // CreateDataKey inserts into the repository and returns the new data key and
 // data key version. Supported options: WithRetryCnt, WithRetryErrorsMatching
-func (r *Repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrapper, purpose KeyPurpose, key []byte, opt ...Option) (*DataKey, *DataKeyVersion, error) {
+func (r *repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrapper, purpose KeyPurpose, key []byte, opt ...Option) (*dataKey, *dataKeyVersion, error) {
 	const op = "kms.(Repository).CreateDataKey"
 	opts := getOpts(opt...)
-	var returnedDk *DataKey
-	var returnedDv *DataKeyVersion
+	var returnedDk *dataKey
+	var returnedDv *dataKeyVersion
 	_, err := r.writer.DoTx(
 		ctx,
 		opts.withErrorsMatching,
@@ -39,7 +39,7 @@ func (r *Repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrap
 // createDataKeyTx inserts into the db (via dbw.Writer) and returns the new data key
 // and data key version. This function encapsulates all the work required within
 // a dbw.TxHandler and allows this capability to be shared within this repository
-func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper wrapping.Wrapper, purpose KeyPurpose, key []byte) (*DataKey, *DataKeyVersion, error) {
+func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper wrapping.Wrapper, purpose KeyPurpose, key []byte) (*dataKey, *dataKeyVersion, error) {
 	const op = "kms.createDataKeyTx"
 	if rkvWrapper == nil {
 		return nil, nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
@@ -57,20 +57,20 @@ func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper
 	switch {
 	case rootKeyVersionId == "":
 		return nil, nil, fmt.Errorf("%s: missing root key version id: %w", op, ErrInvalidParameter)
-	case !strings.HasPrefix(rootKeyVersionId, RootKeyVersionPrefix):
-		return nil, nil, fmt.Errorf("%s: root key version id %q doesn't start with prefix %q: %w", op, rootKeyVersionId, RootKeyVersionPrefix, ErrInvalidParameter)
+	case !strings.HasPrefix(rootKeyVersionId, rootKeyVersionPrefix):
+		return nil, nil, fmt.Errorf("%s: root key version id %q doesn't start with prefix %q: %w", op, rootKeyVersionId, rootKeyVersionPrefix, ErrInvalidParameter)
 	}
-	rv := RootKeyVersion{}
+	rv := rootKeyVersion{}
 	rv.PrivateId = rootKeyVersionId
 	err = r.LookupBy(ctx, &rv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: unable to lookup root key version %q: %w", op, rootKeyVersionId, err)
 	}
 
-	dk := DataKey{
+	dk := dataKey{
 		Purpose: purpose,
 	}
-	dv := DataKeyVersion{}
+	dv := dataKeyVersion{}
 	id, err := newDataKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
@@ -104,12 +104,12 @@ func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper
 
 // LookupDataKey will look up a key in the repository.  If the key is not
 // found then an ErrRecordNotFound will be returned.
-func (r *Repository) LookupDataKey(ctx context.Context, privateId string, _ ...Option) (*DataKey, error) {
+func (r *repository) LookupDataKey(ctx context.Context, privateId string, _ ...Option) (*dataKey, error) {
 	const op = "kms.(Repository).LookupDataKey"
 	if privateId == "" {
 		return nil, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := DataKey{}
+	k := dataKey{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
@@ -123,18 +123,18 @@ func (r *Repository) LookupDataKey(ctx context.Context, privateId string, _ ...O
 // DeleteDataKey deletes the key for the provided id from the
 // repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
-func (r *Repository) DeleteDataKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
+func (r *repository) DeleteDataKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
 	const op = "kms.(Repository).DeleteDataKey"
 	if privateId == "" {
-		return NoRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
+		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := DataKey{}
+	k := dataKey{}
 	k.PrivateId = privateId
 	if err := r.reader.LookupBy(ctx, &k); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
-			return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
+			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 	opts := getOpts(opt...)
 
@@ -158,15 +158,15 @@ func (r *Repository) DeleteDataKey(ctx context.Context, privateId string, opt ..
 		},
 	)
 	if err != nil {
-		return NoRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
+		return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, err)
 	}
 	return rowsDeleted, nil
 }
 
 // ListDataKeys will list the keys.  Supports options: WithPurpose, WithLimit, WithOrderByVersion
-func (r *Repository) ListDataKeys(ctx context.Context, opt ...Option) ([]*DataKey, error) {
+func (r *repository) ListDataKeys(ctx context.Context, opt ...Option) ([]*dataKey, error) {
 	const op = "kms.(Repository).ListDataKeys"
-	var keys []*DataKey
+	var keys []*dataKey
 	where := "1=1"
 	var whereArgs []interface{}
 	opts := getOpts(opt...)

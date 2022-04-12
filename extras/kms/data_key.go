@@ -8,9 +8,9 @@ import (
 	"github.com/hashicorp/go-dbw"
 )
 
-// DataKey represents the DEKs (keys to encrypt data) of the system and must
+// dataKey represents the DEKs (keys to encrypt data) of the system and must
 // have a parent root key and a purpose.
-type DataKey struct {
+type dataKey struct {
 	// PrivateId is used to access the key
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`
 	// RootKeyId for the key
@@ -21,9 +21,9 @@ type DataKey struct {
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
 }
 
-// NewDataKey creates a new in memory data key.  This key is used for wrapper
+// newDataKey creates a new in memory data key.  This key is used for wrapper
 // operations.  No options are currently supported.
-func NewDataKey(rootKeyId string, purpose KeyPurpose, _ ...Option) (*DataKey, error) {
+func newDataKey(rootKeyId string, purpose KeyPurpose, _ ...Option) (*dataKey, error) {
 	const op = "kms.NewDataKey"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
@@ -34,7 +34,7 @@ func NewDataKey(rootKeyId string, purpose KeyPurpose, _ ...Option) (*DataKey, er
 	case KeyPurposeRootKey:
 		return nil, fmt.Errorf("%s: cannot be a purpose of %q: %w", op, purpose, ErrInvalidParameter)
 	}
-	c := &DataKey{
+	c := &dataKey{
 		RootKeyId: rootKeyId,
 		Purpose:   purpose,
 	}
@@ -42,8 +42,8 @@ func NewDataKey(rootKeyId string, purpose KeyPurpose, _ ...Option) (*DataKey, er
 }
 
 // Clone creates a clone of the DataKey
-func (k *DataKey) Clone() *DataKey {
-	return &DataKey{
+func (k *dataKey) Clone() *dataKey {
+	return &dataKey{
 		PrivateId:  k.PrivateId,
 		RootKeyId:  k.RootKeyId,
 		Purpose:    k.Purpose,
@@ -52,7 +52,7 @@ func (k *DataKey) Clone() *DataKey {
 }
 
 // VetForWrite validates the key before it's written.
-func (k *DataKey) vetForWrite(ctx context.Context, opType dbw.OpType) error {
+func (k *dataKey) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 	const op = "kms.(DataKey).vetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
@@ -75,10 +75,10 @@ func (k *DataKey) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 }
 
 // TableName returns the tablename
-func (k *DataKey) TableName() string { return "kms_data_key" }
+func (k *dataKey) TableName() string { return "kms_data_key" }
 
 // GetPrivateId returns the key's private id
-func (k *DataKey) GetPrivateId() string { return k.PrivateId }
+func (k *dataKey) GetPrivateId() string { return k.PrivateId }
 
 // GetRootKeyId returns the key's root key id
-func (k *DataKey) GetRootKeyId() string { return k.RootKeyId }
+func (k *dataKey) GetRootKeyId() string { return k.RootKeyId }

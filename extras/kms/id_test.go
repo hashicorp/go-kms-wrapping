@@ -13,11 +13,11 @@ func Test_Ids(t *testing.T) {
 	t.Run("krk", func(t *testing.T) {
 		id, err := newRootKeyId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, RootKeyPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, rootKeyPrefix+"_"))
 	})
 	t.Run("krkv", func(t *testing.T) {
 		id, err := newRootKeyVersionId()
 		require.NoError(t, err)
-		assert.True(t, strings.HasPrefix(id, RootKeyVersionPrefix+"_"))
+		assert.True(t, strings.HasPrefix(id, rootKeyVersionPrefix+"_"))
 	})
 }

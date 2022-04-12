@@ -1,6 +1,10 @@
 package kms
 
-import wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+import (
+	"io"
+
+	"github.com/hashicorp/go-dbw"
+)
 
 // getOpts - iterate the inbound Options and return a struct
 func getOpts(opt ...Option) options {
@@ -17,13 +21,16 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit          int
-	withRootWrapper    wrapping.Wrapper
-	withRepository     *Repository
+	withRepository     *repository
 	withKeyId          string
-	withOrderByVersion OrderBy
+	withOrderByVersion orderBy
 	withRetryCnt       uint
 	withErrorsMatching func(error) bool
 	withPurpose        KeyPurpose
+	withTx             *dbw.RW
+	withRandomReader   io.Reader
+	withReader         dbw.Reader
+	withWriter         dbw.Writer
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -31,29 +38,22 @@ var noOpErrorMatchingFn = func(error) bool { return false }
 func getDefaultOptions() options {
 	return options{
 		withErrorsMatching: noOpErrorMatchingFn,
-		withRetryCnt:       StdRetryCnt,
+		withRetryCnt:       stdRetryCnt,
 	}
 }
 
-// WithLimit provides an option to provide a limit. Intentionally allowing
-// negative integers. If WithLimit < 0, then unlimited results are returned. If
-// WithLimit == 0, then default limits are used for results.
-func WithLimit(limit int) Option {
+// withLimit provides an option to provide a limit. Intentionally allowing
+// negative integers. If withLimit < 0, then unlimited results are returned. If
+// withLimit == 0, then default limits are used for results.
+func withLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
 	}
 }
 
-// WithRootWrapper sets the external root wrapper for a given scope
-func WithRootWrapper(w wrapping.Wrapper) Option {
-	return func(o *options) {
-		o.withRootWrapper = w
-	}
-}
-
-// WithRepository sets a repository for a given wrapper lookup, useful if in the
+// withRepository sets a repository for a given wrapper lookup, useful if in the
 // middle of a transaction where the reader/writer need to be specified
-func WithRepository(repo *Repository) Option {
+func withRepository(repo *repository) Option {
 	return func(o *options) {
 		o.withRepository = repo
 	}
@@ -67,34 +67,65 @@ func WithKeyId(keyId string) Option {
 	}
 }
 
-// WithOrderByVersion provides an option to specify ordering by the
+// withOrderByVersion provides an option to specify ordering by the
 // CreateTime field.
-func WithOrderByVersion(orderBy OrderBy) Option {
+func withOrderByVersion(by orderBy) Option {
 	return func(o *options) {
-		o.withOrderByVersion = orderBy
+		o.withOrderByVersion = by
 	}
 }
 
-// WithRetryCount provides an optional specified retry count, otherwise the
+// withRetryCount provides an optional specified retry count, otherwise the
 // StdRetryCnt is used. You must specify WithRetryErrorsMatching if you want
 // any retries at all.
-func WithRetryCount(cnt uint) Option {
+func withRetryCount(cnt uint) Option {
 	return func(o *options) {
 		o.withRetryCnt = cnt
 	}
 }
 
-// WithRetryErrorsMatching provides an optional function to match transactions
+// withRetryErrorsMatching provides an optional function to match transactions
 // errors which should be retried.
-func WithRetryErrorsMatching(matchingFn func(error) bool) Option {
+func withRetryErrorsMatching(matchingFn func(error) bool) Option {
 	return func(o *options) {
 		o.withErrorsMatching = matchingFn
 	}
 }
 
-// WithPurpose provides an optional key purpose
-func WithPurpose(purpose KeyPurpose) Option {
+// withPurpose provides an optional key purpose
+func withPurpose(purpose KeyPurpose) Option {
 	return func(o *options) {
 		o.withPurpose = purpose
+	}
+}
+
+// WithTx allows the caller to pass an inflight transaction to be used for all
+// database operations. If WithTx(...) is used, then the caller is responsible
+// for managing the transaction. The purpose of the WithTx(...) option is to
+// allow the caller to create the scope and all of its keys in the same
+// transaction.
+func WithTx(tx *dbw.RW) Option {
+	return func(o *options) {
+		o.withTx = tx
+	}
+}
+
+// WithRandomReadear(...) option allows an optional random reader to be
+// provided.  By default the reader from crypto/rand will be used.
+func WithRandomReader(randomReader io.Reader) Option {
+	return func(o *options) {
+		o.withRandomReader = randomReader
+	}
+}
+
+// WithReaderWriter allows the caller to pass an inflight transaction to be used
+// for all database operations. If WithReaderWriter(...) is used, then the
+// caller is responsible for managing the transaction. The purpose of the
+// WithReaderWriter(...) option is to allow the caller to create the scope and
+// all of its keys in the same transaction.
+func WithReaderWriter(r dbw.Reader, w dbw.Writer) Option {
+	return func(o *options) {
+		o.withReader = r
+		o.withWriter = w
 	}
 }

@@ -2,8 +2,8 @@ package kms
 
 import "time"
 
-// Schema represents the current schema in the database
-type Schema struct {
+// schema represents the current schema in the database
+type schema struct {
 	// Version of the schema
 	Version string
 	// UpdateTime is the last update of the version
@@ -13,4 +13,4 @@ type Schema struct {
 }
 
 // TableName defines the table name for the Version type
-func (v *Schema) TableName() string { return "kms_schema_version" }
+func (v *schema) TableName() string { return "kms_schema_version" }

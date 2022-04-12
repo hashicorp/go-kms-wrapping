@@ -1,4 +1,4 @@
-package kms_test
+package kms
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/hashicorp/go-dbw"
-	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
@@ -18,21 +17,21 @@ import (
 
 func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
-	rk := kms.TestRootKey(t, db, testScopeId)
+	rk := testRootKey(t, db, testScopeId)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		rootKeyId       string
 		key             []byte
 		keyWrapper      wrapping.Wrapper
-		opt             []kms.Option
+		opt             []Option
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -43,7 +42,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			keyWrapper:      wrapper,
 			key:             []byte("test key"),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key id",
 		},
 		{
@@ -52,7 +51,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			rootKeyId:       rk.PrivateId,
 			key:             []byte("test key"),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key wrapper",
 		},
 		{
@@ -61,7 +60,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			rootKeyId:       rk.PrivateId,
 			keyWrapper:      wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key",
 		},
 		{
@@ -75,11 +74,11 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		},
 		{
 			name: "create-rkv-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				testRepo, err := kms.NewRepository(rw, rw)
+				testRepo, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
 				mock.ExpectQuery(`INSERT INTO "kms_root_key_version"`).WillReturnError(errors.New("create-rkv-error"))
@@ -126,19 +125,19 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 
 func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
-	rk := kms.TestRootKey(t, db, testScopeId)
+	rk := testRootKey(t, db, testScopeId)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
-		key             *kms.RootKeyVersion
-		opt             []kms.Option
+		repo            *repository
+		key             *rootKeyVersion
+		opt             []Option
 		wantRowsDeleted int
 		wantErr         bool
 		wantErrIs       error
@@ -147,42 +146,42 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		{
 			name: "missing-private-id",
 			repo: testRepo,
-			key: func() *kms.RootKeyVersion {
-				return &kms.RootKeyVersion{}
+			key: func() *rootKeyVersion {
+				return &rootKeyVersion{}
 			}(),
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing private id",
 		},
 		{
 			name: "not-found",
 			repo: testRepo,
-			key: func() *kms.RootKeyVersion {
-				id, err := dbw.NewId(kms.RootKeyPrefix)
+			key: func() *rootKeyVersion {
+				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(t, err)
-				k := kms.RootKeyVersion{}
+				k := rootKeyVersion{}
 				k.PrivateId = id
 				return &k
 			}(),
 			wantErr:         true,
-			wantErrIs:       kms.ErrRecordNotFound,
+			wantErrIs:       ErrRecordNotFound,
 			wantErrContains: "record not found",
 		},
 		{
 			name: "lookup-by-error",
-			key: func() *kms.RootKeyVersion {
-				id, err := dbw.NewId(kms.RootKeyPrefix)
+			key: func() *rootKeyVersion {
+				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(t, err)
-				k := kms.RootKeyVersion{}
+				k := rootKeyVersion{}
 				k.PrivateId = id
 				require.NoError(t, err)
 				return &k
 			}(),
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("lookup-by-error"))
 				mock.ExpectRollback()
@@ -194,19 +193,19 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		},
 		{
 			name: "delete-error",
-			key: func() *kms.RootKeyVersion {
-				id, err := dbw.NewId(kms.RootKeyPrefix)
+			key: func() *rootKeyVersion {
+				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(t, err)
-				k := kms.RootKeyVersion{}
+				k := rootKeyVersion{}
 				k.PrivateId = id
 				require.NoError(t, err)
 				return &k
 			}(),
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
@@ -220,19 +219,19 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		},
 		{
 			name: "delete-too-many-error",
-			key: func() *kms.RootKeyVersion {
-				id, err := dbw.NewId(kms.RootKeyPrefix)
+			key: func() *rootKeyVersion {
+				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(t, err)
-				k := kms.RootKeyVersion{}
+				k := rootKeyVersion{}
 				k.PrivateId = id
 				require.NoError(t, err)
 				return &k
 			}(),
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
@@ -242,14 +241,14 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			}(),
 			wantRowsDeleted: 0,
 			wantErr:         true,
-			wantErrIs:       kms.ErrMultipleRecords,
+			wantErrIs:       ErrMultipleRecords,
 			wantErrContains: "multiple records",
 		},
 		{
 			name: "valid",
 			repo: testRepo,
-			key: func() *kms.RootKeyVersion {
-				k, _ := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
+			key: func() *rootKeyVersion {
+				k, _ := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
 				return k
 			}(),
 			wantRowsDeleted: 1,
@@ -274,24 +273,24 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			foundKey, err := tc.repo.LookupRootKeyVersion(context.Background(), wrapper, tc.key.PrivateId)
 			assert.Error(err)
 			assert.Nil(foundKey)
-			assert.ErrorIs(err, kms.ErrRecordNotFound)
+			assert.ErrorIs(err, ErrRecordNotFound)
 		})
 	}
 }
 
 func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw)
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
-	rk := kms.TestRootKey(t, db, testScopeId)
+	rk := testRootKey(t, db, testScopeId)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		createCnt       int
 		rootKeyId       string
 		keyWrapper      wrapping.Wrapper
@@ -323,7 +322,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			rootKeyId:       rk.PrivateId,
 			keyWrapper:      wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrRecordNotFound,
+			wantErrIs:       ErrRecordNotFound,
 			wantErrContains: "record not found",
 		},
 		{
@@ -332,7 +331,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			createCnt:       5,
 			keyWrapper:      wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key id",
 		},
 		{
@@ -342,16 +341,16 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 			rootKeyId:       rk.PrivateId,
 			keyWrapper:      nil,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key wrapper",
 		},
 		{
 			name: "search-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("search-error"))
 				return r
@@ -375,10 +374,10 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			kms.TestDeleteWhere(t, db, func() interface{} { i := kms.RootKeyVersion{}; return &i }(), "1=1")
-			testKeys := []*kms.RootKeyVersion{}
+			testDeleteWhere(t, db, func() interface{} { i := rootKeyVersion{}; return &i }(), "1=1")
+			testKeys := []*rootKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
-				k, _ := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
+				k, _ := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
 				testKeys = append(testKeys, k)
 			}
 			assert.Equal(tc.createCnt, len(testKeys))
@@ -403,21 +402,21 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 func TestRepository_ListRootKeyVersions(t *testing.T) {
 	const testLimit = 10
 	t.Parallel()
-	db, _ := kms.TestDb(t)
+	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(kms.DefaultWrapperSecret))
-	testRepo, err := kms.NewRepository(rw, rw, kms.WithLimit(testLimit))
+	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw, withLimit(testLimit))
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
-	rk := kms.TestRootKey(t, db, testScopeId)
+	rk := testRootKey(t, db, testScopeId)
 
 	tests := []struct {
 		name            string
-		repo            *kms.Repository
+		repo            *repository
 		createCnt       int
 		rootKeyId       string
 		keyWrapper      wrapping.Wrapper
-		opt             []kms.Option
+		opt             []Option
 		wantCnt         int
 		wantErr         bool
 		wantErrIs       error
@@ -429,7 +428,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			createCnt:  testLimit * 2,
 			rootKeyId:  rk.PrivateId,
 			keyWrapper: wrapper,
-			opt:        []kms.Option{kms.WithLimit(-1)},
+			opt:        []Option{withLimit(-1)},
 			wantCnt:    testLimit * 2,
 		},
 		{
@@ -447,7 +446,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			createCnt:  testLimit + 1,
 			keyWrapper: wrapper,
 			rootKeyId:  rk.PrivateId,
-			opt:        []kms.Option{kms.WithLimit(3)},
+			opt:        []Option{withLimit(3)},
 			wantCnt:    3,
 			wantErr:    false,
 		},
@@ -466,7 +465,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			createCnt:       1,
 			keyWrapper:      wrapper,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key id",
 		},
 		{
@@ -477,16 +476,16 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			rootKeyId:       rk.PrivateId,
 			wantCnt:         0,
 			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
+			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing key wrapper",
 		},
 		{
 			name: "list-error",
-			repo: func() *kms.Repository {
+			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
-				r, err := kms.NewRepository(rw, rw)
+				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-error"))
 				return r
@@ -501,10 +500,10 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			kms.TestDeleteWhere(t, db, func() interface{} { i := kms.RootKeyVersion{}; return &i }(), "1=1")
-			testRootKeyVersions := []*kms.RootKeyVersion{}
+			testDeleteWhere(t, db, func() interface{} { i := rootKeyVersion{}; return &i }(), "1=1")
+			testRootKeyVersions := []*rootKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
-				k, _ := kms.TestRootKeyVersion(t, db, wrapper, rk.PrivateId)
+				k, _ := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
 				testRootKeyVersions = append(testRootKeyVersions, k)
 			}
 			assert.Equal(tc.createCnt, len(testRootKeyVersions))
