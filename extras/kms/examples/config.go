@@ -81,7 +81,7 @@ func parseConfig(d string) (*configutil.KMS, error) {
 		return nil, err
 	}
 	if len(sharedConfig.Seals) != 1 {
-		return nil, err
+		return nil, fmt.Errorf("expected 1 seal and got %d", len(sharedConfig.Seals))
 	}
 	return sharedConfig.Seals[0], nil
 }
