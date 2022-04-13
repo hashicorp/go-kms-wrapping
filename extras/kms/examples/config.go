@@ -40,7 +40,7 @@ func RootWrapperFromConfig(ctx context.Context, kmsHcl string, useTransit bool) 
 		}
 		rootWrapper = w
 	default:
-		fmt.Fprintf(os.Stderr, "using a generated aead key root wrapper\n")
+		fmt.Fprintf(os.Stderr, "using a generated aead key root wrapper...\n")
 		w := aead.NewWrapper()
 		if _, err := w.SetConfig(ctx, wrapping.WithKeyId(parsedKmsConfig.Config["key_id"])); err != nil {
 			return nil, err

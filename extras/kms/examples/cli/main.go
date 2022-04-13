@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/examples/v2"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
 )
 
 const globalScope = "global"
@@ -63,13 +63,10 @@ func main() {
 	// open the db and run migrations for both for the kms and this cli app.
 	// the cli app migration adds a scope table and a fk to the kms_root_key
 	// table.
-	rw, err := examples.OpenDB(mainCtx)
+	rw, err := examples.OpenDB(mainCtx, *debug)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open db: %s\n\n", err)
 		return
-	}
-	if *debug {
-		rw.DB().Debug(true)
 	}
 	// create a kms that supports both the default kms.KeyPurposeRootKey KEK and
 	// a "database" DEK
@@ -88,7 +85,7 @@ func main() {
 	// Create the global scope and it's related kms wrappers
 	if _, err := rw.DoTx(mainCtx, func(error) bool { return false }, 10, dbw.ExpBackoff{},
 		func(r dbw.Reader, w dbw.Writer) error {
-			if err := w.Create(mainCtx, &examples.Scope{PrivateId: globalScope}); err != nil {
+			if err := w.Create(mainCtx, &examples.Scope{PrivateId: globalScope}, dbw.WithLookup(true)); err != nil {
 				return err
 			}
 			if err := k.CreateKeys(mainCtx, globalScope, []kms.KeyPurpose{"database"}, kms.WithReaderWriter(r, w)); err != nil {
@@ -100,37 +97,80 @@ func main() {
 		return
 	}
 
-	// get the db wrapper and do some crypto operations with it.
+	// get the db wrapper (DEK)
 	dbWrapper, err := k.GetWrapper(mainCtx, globalScope, "database")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get wrapper for database: %s\n\n", err)
 		return
 	}
-	ct, err := dbWrapper.Encrypt(mainCtx, []byte(*pt))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to encrypt plaintext: %s\n\n", err)
-		return
-	}
-	keyId, err := dbWrapper.KeyId(mainCtx)
+
+	// get the DEK's key id so we can save it with the oidc row (since it will
+	// be used to encrypt/decrypt ciphertext in the row)
+	dbWrapperKeyId, err := dbWrapper.KeyId(mainCtx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get key id: %s\n\n", err)
 		return
 	}
-	got, err := dbWrapper.Decrypt(mainCtx, ct, wrapping.WithKeyId(keyId))
+
+	oidcId, err := dbw.NewId("oidc")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to decrypt ciphertext: %s\n\n", err)
+		fmt.Fprintf(os.Stderr, "failed to get oidc id: %s\n\n", err)
+		return
+	}
+	// init a new OIDC record and initialize it's client_secret with our
+	// plaintext secret (pt)
+	o := &examples.OIDC{
+		PrivateId:    oidcId,
+		ClientId:     "example-client-id",
+		ClientSecret: *pt,
+		KeyId:        dbWrapperKeyId,
+	}
+
+	fmt.Fprintf(os.Stderr, "using the structwrapping pkg to wrap (encrypt) the new oidc record...\n")
+	if err := structwrapping.WrapStruct(mainCtx, dbWrapper, o); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to wrap: %s\n\n", err)
+		return
+	}
+	if o.CtClientSecret == nil {
+		fmt.Fprintf(os.Stderr, "failed to encrypt the client_secret: %s\n\n", err)
 		return
 	}
 
-	if string(got) != *pt {
-		fmt.Fprintf(os.Stderr, "%q doesn't equal %q\n\n", string(got), *pt)
+	fmt.Fprintf(os.Stderr, "writing the oidc record to the db...\n")
+	if _, err := rw.DoTx(mainCtx, func(error) bool { return false }, 10, dbw.ExpBackoff{},
+		func(r dbw.Reader, w dbw.Writer) error {
+			if err := w.Create(mainCtx, o, dbw.WithLookup(true)); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create oidc resource: %s\n\n", err)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "encrypted/decrypted %q using the kms\n", *pt)
+	fmt.Fprintf(os.Stderr, "reading the oidc record from the db...\n")
+	found := examples.OIDC{
+		PrivateId: o.PrivateId,
+	}
+	if err := rw.LookupBy(mainCtx, &found); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to lookup oidc: %s\n\n", err)
+		return
+	}
 
-	// Delete the global scope and it's related kms wrappers. NOTE: this is why it's
-	// important to define FK, so there are no orphan wrappers when a scope is deleted.
+	fmt.Fprintf(os.Stderr, "using the structwrapping pkg to unwrap (decrypt) the oidc record read from the db...\n")
+	if err := structwrapping.UnwrapStruct(mainCtx, dbWrapper, &found); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to unwrap: %s\n\n", err)
+		return
+	}
+
+	if string(found.ClientSecret) != *pt {
+		fmt.Fprintf(os.Stderr, "%q doesn't equal %q\n\n", string(found.ClientSecret), *pt)
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "successfully encrypted/decrypted %q using the kms\n", *pt)
+
+	fmt.Fprintf(os.Stderr, "attempting to delete scope with its associated DEKs...\n")
 	if _, err := rw.DoTx(mainCtx, func(error) bool { return false }, 10, dbw.ExpBackoff{},
 		func(r dbw.Reader, w dbw.Writer) error {
 			rowsDeleted, err := w.Delete(mainCtx, &examples.Scope{PrivateId: globalScope})
@@ -139,6 +179,24 @@ func main() {
 			}
 			if rowsDeleted != 1 {
 				return fmt.Errorf("%q rows delete and only wanted 1", rowsDeleted)
+			}
+			return nil
+		}); err == nil {
+		fmt.Fprintf(os.Stderr, "whoa... we should have failed to delete scope and its keys, since there's a FK to the oidc record\n\n")
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "attempting to first delete the oidc record, then delete scope with its associated DEKs...\n")
+	if _, err := rw.DoTx(mainCtx, func(error) bool { return false }, 10, dbw.ExpBackoff{},
+		func(r dbw.Reader, w dbw.Writer) error {
+			_, err := w.Delete(mainCtx, &found)
+			if err != nil {
+				return err
+			}
+
+			_, err = w.Delete(mainCtx, &examples.Scope{PrivateId: globalScope})
+			if err != nil {
+				return err
 			}
 			return nil
 		}); err != nil {

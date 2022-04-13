@@ -13,12 +13,13 @@ import (
 	sqliteMigrator "github.com/golang-migrate/migrate/v4/database/sqlite"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/hashicorp/go-dbw"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	"gorm.io/driver/sqlite"
 )
 
 // OpenDB returns an open db connection with it's migrations already run
-func OpenDB(ctx context.Context) (*dbw.RW, error) {
+func OpenDB(ctx context.Context, debug bool) (*dbw.RW, error) {
 	const (
 		dialect          = "sqlite"
 		inMemorySqlite   = "file::memory:?cache=shared"
@@ -27,7 +28,11 @@ func OpenDB(ctx context.Context) (*dbw.RW, error) {
 	)
 
 	dialector := sqlite.Open(inMemorySqlite)
-	db, err := dbw.OpenWith(dialector, nil)
+	var dbOpts []dbw.Option
+	if !debug {
+		dbOpts = append(dbOpts, dbw.WithLogger(hclog.NewNullLogger()))
+	}
+	db, err := dbw.OpenWith(dialector, dbOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,5 +88,9 @@ func OpenDB(ctx context.Context) (*dbw.RW, error) {
 	if err != nil {
 		return nil, err
 	}
-	return dbw.New(db), nil
+	rw := dbw.New(db)
+	if debug {
+		rw.DB().Debug(true)
+	}
+	return rw, nil
 }

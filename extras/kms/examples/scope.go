@@ -2,6 +2,8 @@ package examples
 
 import "time"
 
+// Scope represents an application scope like "global" or some unique id for an
+// org or proj.
 type Scope struct {
 	// PrivateId is used to access the root key
 	PrivateId string `json:"private_id,omitempty" gorm:"primary_key"`

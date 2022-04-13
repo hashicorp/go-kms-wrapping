@@ -3,7 +3,6 @@ create table scope (
     create_time timestamp not null default current_timestamp
 );
 
-
 drop table kms_root_key;
 
 create table kms_root_key (
@@ -17,6 +16,3 @@ create table kms_root_key (
         ),
     create_time timestamp not null default current_timestamp
 );
-
-
-
