@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220411165934-311df46de71e
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220412151744-6844b7adc694
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
 	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.0
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.3
