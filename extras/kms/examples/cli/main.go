@@ -16,7 +16,7 @@ import (
 const globalScope = "global"
 
 // default to an aead root kms
-const rootKmsAead = `
+const rootKmsAeadTemplate = `
 kms "aead" {
 	purpose = "root"
 	aead_type = "aes-gcm"
@@ -26,7 +26,7 @@ kms "aead" {
 
 // support the --use-transit flag which requires the caller to run:
 // "docker-compose up" before executing the example
-const rootKmsTransit = `
+const rootKmsTransitHcl = `
 kms "transit" {
 	purpose            = "root"
 	address            = "http://localhost:8200"
@@ -48,10 +48,10 @@ func main() {
 	var kmsHcl string
 	switch {
 	case *useTransit:
-		kmsHcl = rootKmsTransit
+		kmsHcl = rootKmsTransitHcl
 	default:
 		key := examples.GenerateKey()
-		kmsHcl = fmt.Sprintf(rootKmsAead, key)
+		kmsHcl = fmt.Sprintf(rootKmsAeadTemplate, key)
 	}
 
 	// get the root wrapper from the provided configuration hcl
