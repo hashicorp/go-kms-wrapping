@@ -35,7 +35,7 @@ kms "transit" {
 	key_name           = "examplekey"
 	mount_path         = "transit/"
 	namespace          = "ns1/"
-  }`
+}`
 
 func main() {
 	mainCtx := context.Background()

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 
@@ -47,7 +46,7 @@ func OpenDB(ctx context.Context, debug bool) (*dbw.RW, error) {
 
 	dir, err := ioutil.TempDir(".", tempDirPrefix)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer os.RemoveAll(dir)
 
@@ -58,7 +57,7 @@ func OpenDB(ctx context.Context, debug bool) (*dbw.RW, error) {
 			return nil, err
 		}
 		if err := os.WriteFile(fmt.Sprintf("%s/%s", dir, m.Name()), sql, 0666); err != nil {
-			log.Printf("error os.WriteFile error: %v", err)
+			return nil, err
 		}
 	}
 	cliMigrations, _ := fs.ReadDir(LocalSqliteFS, cliMigrationsDir)
@@ -68,7 +67,7 @@ func OpenDB(ctx context.Context, debug bool) (*dbw.RW, error) {
 			return nil, err
 		}
 		if err := os.WriteFile(fmt.Sprintf("%s/%s", dir, m.Name()), sql, 0666); err != nil {
-			log.Printf("error os.WriteFile error: %v", err)
+			return nil, err
 		}
 	}
 

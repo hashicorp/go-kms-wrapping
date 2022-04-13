@@ -81,6 +81,7 @@ func parseConfig(d string) (*configutil.KMS, error) {
 		return nil, err
 	}
 	if len(sharedConfig.Seals) != 1 {
+		return nil, err
 	}
 	return sharedConfig.Seals[0], nil
 }
