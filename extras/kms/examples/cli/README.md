@@ -12,20 +12,23 @@ project represented in application.  It's completely up to the app to decide
 what sort of model it wants to use for scopes, but the kms requires an app to
 define at least one scope.
 
+Running the cli will:
+- Initialize a root wrapper using either a vault transit wrapper or a
+  self-generated key wrapper
+- Create a global scope with a database DEK
+- Encrypt/decrypt a default string using the global scope database DEK.  
+- Before exiting, it will delete the global scope and all the DEKs associated
+  with it.  NOTE: typically you won't do this delete, but it's include in the
+  example to demonstrate why it's important to declare a FK between your scope
+  table and the kms_root_key table in order to prevent orphan wrappers when you
+  app deletes an unneeded scope.   
+
 <hr>
 
-### Running the CLI
 Build the example:
 ```
 go build
 ```
-Runing the cli will:
-- Initialize a root wrapper
-- Create a global scope with a database DEK
-- Encrypt/decrypt a default string using the database DEK.  
-- Before exiting, it will delete the global scope and all the DEKs associated
-  with it.  
-
 Usage:
 ```
 ./cli -h
