@@ -56,7 +56,7 @@ create table kms_data_key (
     references kms_root_key(private_id)
     on delete cascade
     on update cascade,
-  purpose text not null unique
+  purpose text not null
     constraint not_empty_purpose
     check (
       length(trim(purpose)) > 0

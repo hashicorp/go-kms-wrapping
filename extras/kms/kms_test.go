@@ -459,6 +459,22 @@ func TestKms_GetWrapper(t *testing.T) {
 			scopeId: "o_1234567890",
 			purpose: kms.KeyPurposeRootKey,
 		},
+		{
+			name: "success-database-with-cache",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"}, kms.WithCache(true))
+				require.NoError(t, err)
+				k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+				err := k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+			},
+			scopeId: "global",
+			purpose: "database",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

@@ -31,6 +31,8 @@ type options struct {
 	withRandomReader   io.Reader
 	withReader         dbw.Reader
 	withWriter         dbw.Writer
+	withCache          bool
+	withScopeIds       []string
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -127,5 +129,19 @@ func WithReaderWriter(r dbw.Reader, w dbw.Writer) Option {
 	return func(o *options) {
 		o.withReader = r
 		o.withWriter = w
+	}
+}
+
+// WithCache will enable the optional kms cache
+func WithCache(enable bool) Option {
+	return func(o *options) {
+		o.withCache = enable
+	}
+}
+
+// WithScopeIds allows an optional set of scope ids to be specified
+func WithScopeIds(id ...string) Option {
+	return func(o *options) {
+		o.withScopeIds = id
 	}
 }
