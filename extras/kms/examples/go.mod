@@ -4,10 +4,12 @@ go 1.18
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
-	github.com/hashicorp/go-dbw v0.0.0-20220411234052-ff3f212a1473
+	github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f
 	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220411165934-311df46de71e
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
+	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.0
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.3
+	google.golang.org/protobuf v1.27.1
 	gorm.io/driver/sqlite v1.2.4
 )
 
@@ -30,7 +32,6 @@ require (
 	github.com/hashicorp/go-hclog v1.1.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 // indirect
-	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.4.3 // indirect
 	github.com/hashicorp/go-retryablehttp v0.6.6 // indirect
@@ -94,7 +95,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20220208230804-65c12eb4c068 // indirect
 	google.golang.org/grpc v1.44.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/postgres v1.2.2 // indirect
