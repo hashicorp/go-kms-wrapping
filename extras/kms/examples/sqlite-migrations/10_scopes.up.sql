@@ -12,7 +12,7 @@ create table kms_root_key (
         on delete cascade
         on update cascade
         check(
-            scope_id > 10 or scope_id = 'global'
+            scope_id > 0
         ),
     create_time timestamp not null default current_timestamp
 );
