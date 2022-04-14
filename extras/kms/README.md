@@ -32,7 +32,7 @@ it:
 - `data key`:  the DEKs (data-encryption-key) of the system and must have a
   parent root key and a purpose.  
 
-- `data_key_version`: versions of DEKs (data-encryption-key) which are used to
+- `data key version`: versions of DEKs (data-encryption-key) which are used to
   encrypt/decrypt data.  
 
   **IMPORTANT**: You should define a FK with a restricted delete from any
