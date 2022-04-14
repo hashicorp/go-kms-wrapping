@@ -225,6 +225,7 @@ func TestDataKeyVersion_Encrypt(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+			assert.NotEqual(tc.key.CtKey, tc.key.Key)
 			assert.NotEmpty(tc.key.CtKey)
 			tc.key.Key = nil
 			err = tc.key.Decrypt(testCtx, tc.wrapper)
