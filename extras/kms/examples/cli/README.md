@@ -18,9 +18,9 @@ Running the cli will:
 - Create a global scope with a database DEK
 - Encrypt/decrypt a default string using the global scope database DEK.  
 - Before exiting, it will delete the global scope and all the DEKs associated
-  with it.  NOTE: typically you won't do this delete, but it's include in the
+  with it.  NOTE: typically you won't do this delete, but it's included in the
   example to demonstrate why it's important to declare a FK between your scope
-  table and the kms_root_key table in order to prevent orphan wrappers when you
+  table and the kms_root_key table in order to prevent orphan wrappers when your
   app deletes an unneeded scope.   
 
 <hr>
