@@ -18,7 +18,7 @@ type dataKeyVersion struct {
 	DataKeyId string `json:"data_key_id,omitempty" gorm:"default:null"`
 	// RootKeyVersionId of the version of the root key data.
 	RootKeyVersionId string `json:"root_key_version_id,omitempty" gorm:"default:null"`
-	// Key is the plain-text of the key data.  we are NOT storing this plain-text key
+	// Key is the plain-text of the key data.  We are NOT storing this plain-text key
 	// in the db.
 	Key []byte `json:"key,omitempty" gorm:"-" wrapping:"pt,key_data"`
 	//  CtKey is the ciphertext key data stored in the database
@@ -33,7 +33,7 @@ type dataKeyVersion struct {
 // newDataKeyVersion creates a new in memory data key version. No options
 // are currently supported.
 func newDataKeyVersion(dataKeyId string, key []byte, rootKeyVersionId string, _ ...Option) (*dataKeyVersion, error) {
-	const op = "kms.NewDataKeyVersion"
+	const op = "kms.newDataKeyVersion"
 	if dataKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
 	}

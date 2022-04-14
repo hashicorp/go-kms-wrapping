@@ -24,7 +24,7 @@ type dataKey struct {
 // newDataKey creates a new in memory data key.  This key is used for wrapper
 // operations.  No options are currently supported.
 func newDataKey(rootKeyId string, purpose KeyPurpose, _ ...Option) (*dataKey, error) {
-	const op = "kms.NewDataKey"
+	const op = "kms.newDataKey"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
@@ -53,7 +53,7 @@ func (k *dataKey) Clone() *dataKey {
 
 // VetForWrite validates the key before it's written.
 func (k *dataKey) vetForWrite(ctx context.Context, opType dbw.OpType) error {
-	const op = "kms.(DataKey).vetForWrite"
+	const op = "kms.(dataKey).vetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
