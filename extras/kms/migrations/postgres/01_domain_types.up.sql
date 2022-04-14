@@ -3,19 +3,13 @@ begin;
 create domain kms_private_id as text
 not null
 check(
-  length(trim(value)) > 10
+  length(trim(value)) > 0
 );
-comment on domain kms_private_id is
-'Random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
-
 
 create domain kms_scope_id as text
 check(
-  length(trim(value)) > 10 or value = 'global'
+  length(trim(value)) > 0
 );
-comment on domain kms_scope_id is
-'"global" or random ID generated with github.com/hashicorp/go-secure-stdlib/base62';
-
 
 create domain kms_timestamp as
   timestamp with time zone

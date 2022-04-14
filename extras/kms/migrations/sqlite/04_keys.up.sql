@@ -1,8 +1,11 @@
 create table kms_root_key (
-    private_id text not null primary key,
+    private_id text not null primary key
+    check(
+        length(trim(private_id) > 0)
+    ),
     scope_id text not null unique
     check(
-        scope_id > 10 or scope_id = 'global'
+        length(trim(scope_id)) > 0
     ),
     create_time timestamp not null default current_timestamp
 );
@@ -26,13 +29,20 @@ begin
 end;
 
 create table kms_root_key_version (
-  private_id text not null primary key,
+  private_id text not null primary key
+   check(
+        length(trim(private_id) > 0)
+    ),
   root_key_id  text not null
     references kms_root_key(private_id) 
     on delete cascade 
     on update cascade,
   version int,
-  key bytea not null,
+  key bytea not null
+    constraint not_empty_key
+    check (
+      length(key) > 0
+    ),
   create_time timestamp not null default current_timestamp,
   unique(root_key_id, version)
 );
@@ -73,7 +83,10 @@ begin
 end;
 
 create table kms_data_key (
-  private_id text not null primary key,
+  private_id text not null primary key
+   check(
+        length(trim(private_id) > 0)
+    ),
   root_key_id  text not null
     references kms_root_key(private_id) 
     on delete cascade 
@@ -104,7 +117,10 @@ begin
 end;
 
 create table kms_data_key_version (
-  private_id text not null primary key,
+  private_id text not null primary key
+   check(
+        length(trim(private_id) > 0)
+    ),
   data_key_id text not null
     references kms_data_key(private_id) 
     on delete cascade 
@@ -114,7 +130,11 @@ create table kms_data_key_version (
     on delete cascade 
     on update cascade,
   version int,
-  key bytea not null,
+  key bytea not null
+    constraint not_empty_key
+    check (
+      length(key) > 0
+    ),
   create_time timestamp not null default current_timestamp,
   unique(data_key_id, version)
 );

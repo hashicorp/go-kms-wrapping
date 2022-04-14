@@ -26,7 +26,11 @@ create table kms_root_key_version (
     on delete cascade 
     on update cascade,
   version kms_version,
-  key bytea not null,
+  key bytea not null
+    constraint not_empty_key
+    check (
+      length(key) > 0
+    ),
   create_time kms_timestamp,
   unique(root_key_id, version)
 );
@@ -89,7 +93,11 @@ create table kms_data_key_version (
     on delete cascade 
     on update cascade,
   version kms_version,
-  key bytea not null,
+  key bytea not null
+    constraint not_empty_key
+    check (
+      length(key) > 0
+    ),
   create_time kms_timestamp,
   unique(data_key_id, version)
 );
