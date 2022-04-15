@@ -462,3 +462,85 @@ func TestKms_KeyId(t *testing.T) {
 	require.NoError(err)
 	require.Equal(keyId2, tKeyId)
 }
+
+func TestKms_ClearCache(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	extWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+
+	const (
+		globalScope = "global"
+		orgScope    = "o_1234567890"
+	)
+	databaseKeyPurpose := KeyPurpose("database")
+
+	// init kms with a cache
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"}, WithCache(true))
+	require.NoError(err)
+	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
+	// Make the global scope base keys
+	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
+	require.NoError(err)
+
+	// First test: just getting the wrapper
+	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+	assertCacheEqual(t, 1, kmsCache)
+
+	// delete all the keys
+	testDeleteWhere(t, db, &rootKey{}, "1=1")
+
+	// can we still get the wrapper from the cache
+	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+
+	require.NoError(kmsCache.ClearCache(ctx))
+	assertCacheEqual(t, 0, kmsCache)
+
+	// should now fail to get the wrapper.
+	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.Error(err)
+
+	// Make the global scope base keys again
+	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
+	require.NoError(err)
+	// add in an org scope
+	err = kmsCache.CreateKeys(ctx, orgScope, []KeyPurpose{databaseKeyPurpose})
+	require.NoError(err)
+
+	// can we get them...
+	globalWrapper, err := kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+	assertCacheEqual(t, 1, kmsCache)
+
+	orgWrapper, err := kmsCache.GetWrapper(ctx, orgScope, databaseKeyPurpose)
+	require.NoError(err)
+	assertCacheEqual(t, 2, kmsCache)
+
+	assert.NotEqual(t, globalWrapper, orgWrapper)
+
+	kmsCache.ClearCache(ctx, WithScopeIds(orgScope))
+	assertCacheEqual(t, 1, kmsCache)
+
+	// re-init kms without a cache
+	kmsCache, err = New(rw, rw, []KeyPurpose{"database"})
+	require.NoError(err)
+	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
+	_, err = kmsCache.GetWrapper(ctx, orgScope, databaseKeyPurpose)
+	require.NoError(err)
+	assertCacheEqual(t, 0, kmsCache)
+	require.NoError(kmsCache.ClearCache(ctx))
+}
+
+func assertCacheEqual(t *testing.T, want int, k *Kms) {
+	assert := assert.New(t)
+	current := 0
+	k.scopedWrapperCache.Range(func(k, v interface{}) bool {
+		current++
+		return true
+	})
+	assert.Equal(want, current)
+}
