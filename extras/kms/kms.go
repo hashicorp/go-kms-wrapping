@@ -190,7 +190,7 @@ func (k *Kms) GetExternalRootWrapper() (wrapping.Wrapper, error) {
 // Note: getting a wrapper for KeyPurposeRootKey is supported, but a root
 // wrapper is a KEK and should never be used for data encryption.
 func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose, opt ...Option) (wrapping.Wrapper, error) {
-	const op = "kms.GetWrapper"
+	const op = "kms.(Kms).GetWrapper"
 	if scopeId == "" {
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
@@ -268,7 +268,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 // random reader is provided, then the reader from crypto/rand will be used as
 // a default.
 func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurpose, opt ...Option) error {
-	const op = "kms.(Kms).CreateKeysTx"
+	const op = "kms.(Kms).CreateKeys"
 	if scopeId == "" {
 		return fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
@@ -343,7 +343,7 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 // ValidateSchema will validate the database schema against the module's
 // required migrations.Version
 func (k *Kms) ValidateSchema(ctx context.Context) (string, error) {
-	const op = "kms.(Repository).ValidateVersion"
+	const op = "kms.(Kms).ValidateVersion"
 	return k.repo.ValidateSchema(ctx)
 }
 
@@ -355,7 +355,7 @@ func (k *Kms) ValidateSchema(ctx context.Context) (string, error) {
 // random reader is not provided (is nill), then the reader from crypto/rand
 // will be used as a default.
 func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) error {
-	const op = "kms.ReconcileKeys"
+	const op = "kms.(Kms).ReconcileKeys"
 	if len(scopeIds) == 0 {
 		return fmt.Errorf("%s: missing scope ids: %w", op, ErrInvalidParameter)
 	}
@@ -400,7 +400,7 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 }
 
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
-	const op = "kms.loadRoot"
+	const op = "kms.(Kms).loadRoot"
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
@@ -466,7 +466,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 }
 
 func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multi.PooledWrapper, error) {
-	const op = "kms.loadDek"
+	const op = "kms.(Kms).loadDek"
 	if scopeId == "" {
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}

@@ -12,7 +12,7 @@ import (
 // LookupRootKeyVersion will look up a root key version in the repository. If
 // the key version is not found then an ErrRecordNotFound will be returned.
 func (r *repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, privateId string, _ ...Option) (*rootKeyVersion, error) {
-	const op = "kms.(Repository).LookupRootKeyVersion"
+	const op = "kms.(repository).LookupRootKeyVersion"
 	if privateId == "" {
 		return nil, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
@@ -37,7 +37,7 @@ func (r *repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrappi
 // version with its PrivateId. Supported options: WithRetryCnt,
 // WithRetryErrorsMatching
 func (r *repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, key []byte, opt ...Option) (*rootKeyVersion, error) {
-	const op = "kms.(Repository).CreateRootKeyVersion"
+	const op = "kms.(repository).CreateRootKeyVersion"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
@@ -89,7 +89,7 @@ func (r *repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 // repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
 func (r *repository) DeleteRootKeyVersion(ctx context.Context, privateId string, opt ...Option) (int, error) {
-	const op = "kms.(Repository).DeleteRootKeyVersion"
+	const op = "kms.(repository).DeleteRootKeyVersion"
 	if privateId == "" {
 		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
@@ -133,7 +133,7 @@ func (r *repository) DeleteRootKeyVersion(ctx context.Context, privateId string,
 // version number. When no results are found, it returns nil with an
 // ErrRecordNotFound error.
 func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) (*rootKeyVersion, error) {
-	const op = "kms.(Repository).LatestRootKeyVersion"
+	const op = "kms.(repository).LatestRootKeyVersion"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
@@ -155,7 +155,7 @@ func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 
 // ListRootKeyVersions in versions of a root key. Supported options: WithLimit, WithOrderByVersion
 func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) ([]*rootKeyVersion, error) {
-	const op = "kms.(Repository).ListRootKeyVersions"
+	const op = "kms.(repository).ListRootKeyVersions"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}

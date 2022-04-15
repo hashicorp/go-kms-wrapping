@@ -12,7 +12,7 @@ import (
 // CreateRootKey inserts into the repository and returns the new root key and
 // root key version. Supported options: WithRetryCnt, WithRetryErrorsMatching
 func (r *repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrapper, scopeId string, key []byte, opt ...Option) (*rootKey, *rootKeyVersion, error) {
-	const op = "kms.(Repository).CreateRootKey"
+	const op = "kms.(repository).CreateRootKey"
 	opts := getOpts(opt...)
 	var returnedRk *rootKey
 	var returnedKv *rootKeyVersion
@@ -104,7 +104,7 @@ func (r *repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 // repository returning a count of the number of records deleted. Supported
 // options: WithRetryCnt, WithRetryErrorsMatching
 func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ...Option) (int, error) {
-	const op = "kms.(Repository).DeleteRootKey"
+	const op = "kms.(repository).DeleteRootKey"
 	if privateId == "" {
 		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
@@ -147,7 +147,7 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 // ListRootKeys will list the root keys. Supported options: WithLimit,
 // WithOrderByVersion
 func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKey, error) {
-	const op = "kms.(Repository).ListRootKeys"
+	const op = "kms.(repository).ListRootKeys"
 	var keys []*rootKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
