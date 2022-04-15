@@ -17,8 +17,8 @@ const (
 	// defaultLimit is the default for results
 	defaultLimit = 10000
 
-	// defaultWrapperSecret defines a default secret for testing
-	defaultWrapperSecret = "secret1234567890"
+	// testDefaultWrapperSecret defines a default secret for testing
+	testDefaultWrapperSecret = "secret1234567890"
 
 	// stdRetryCnt defines a standard retry count for transactions.
 	stdRetryCnt = 20
@@ -53,7 +53,7 @@ type repository struct {
 // newRepository creates a new kms Repository. Supports the options: WithLimit
 // which sets a default limit on results returned by repo operations.
 func newRepository(r dbw.Reader, w dbw.Writer, opt ...Option) (*repository, error) {
-	const op = "kms.NewRepository"
+	const op = "kms.newRepository"
 	if r == nil {
 		return nil, fmt.Errorf("%s: nil reader: %w", op, ErrInvalidParameter)
 	}
@@ -78,7 +78,7 @@ func newRepository(r dbw.Reader, w dbw.Writer, opt ...Option) (*repository, erro
 // ValidateSchema will validate the database schema against the module's
 // required migrations.Version
 func (r *repository) ValidateSchema(ctx context.Context) (string, error) {
-	const op = "kms.(Repository).validateVersion"
+	const op = "kms.(repository).validateVersion"
 	return validateSchema(ctx, r.reader)
 }
 
@@ -128,7 +128,7 @@ type vetForWriter interface {
 }
 
 func create(ctx context.Context, writer dbw.Writer, i interface{}, opt ...dbw.Option) error {
-	const op = "kms.(Repository).create"
+	const op = "kms.create"
 	before := func(interface{}) error { return nil }
 	if vetter, ok := i.(vetForWriter); ok {
 		before = func(i interface{}) error {
@@ -171,7 +171,7 @@ type keys map[KeyPurpose]keyWithVersion
 // its own transaction and is intended to be used within a transaction provide
 // by the caller.
 func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
-	const op = "kms.CreateKeysTx"
+	const op = "kms.createKeysTx"
 	if rootWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
 	}

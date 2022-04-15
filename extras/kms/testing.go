@@ -43,7 +43,7 @@ func testRootKeyVersion(t *testing.T, conn *dbw.DB, wrapper wrapping.Wrapper, ro
 	require := require.New(t)
 	testCtx := context.Background()
 	rw := dbw.New(conn)
-	rootKeyVersionWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	rootKeyVersionWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	key, err := rootKeyVersionWrapper.KeyBytes(testCtx)
 	require.NoError(err)
 	k, err := newRootKeyVersion(rootId, key)

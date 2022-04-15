@@ -24,7 +24,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	rk := testRootKey(t, db, testScopeId)
@@ -45,7 +45,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 		{
 			name:            "nil-wrapper",
 			repo:            testRepo,
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			keyWrapper:      nil,
 			dataKeyId:       dk.PrivateId,
 			wantErr:         true,
@@ -55,7 +55,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 		{
 			name:            "missing-data-key-id",
 			repo:            testRepo,
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			keyWrapper:      rkvWrapper,
 			wantErr:         true,
 			wantErrIs:       ErrInvalidParameter,
@@ -85,7 +85,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			repo:            testRepo,
 			keyWrapper:      &mockTestWrapper{err: errors.New("KeyId error")},
 			dataKeyId:       dk.PrivateId,
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			wantErr:         true,
 			wantErrContains: "KeyId error",
 		},
@@ -94,7 +94,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			repo:            testRepo,
 			keyWrapper:      aead.NewWrapper(),
 			dataKeyId:       dk.PrivateId,
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			wantErr:         true,
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "missing root key version id",
@@ -107,7 +107,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 				w.SetConfig(testCtx, wrapping.WithKeyId("invalid-root-key-version-id"))
 				return w
 			}(), dataKeyId: dk.PrivateId,
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			wantErr:         true,
 			wantErrIs:       ErrInvalidParameter,
 			wantErrContains: "doesn't start with prefix",
@@ -120,7 +120,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 				w.SetConfig(testCtx, wrapping.WithKeyId(rkv.PrivateId))
 				return w
 			}(), dataKeyId: dk.PrivateId,
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			wantErr:         true,
 			wantErrContains: "error wrapping value",
 		},
@@ -137,7 +137,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 				mock.ExpectRollback()
 				return testRepo
 			}(),
-			key:             []byte(defaultWrapperSecret),
+			key:             []byte(testDefaultWrapperSecret),
 			keyWrapper:      rkvWrapper,
 			dataKeyId:       dk.PrivateId,
 			wantErr:         true,
@@ -146,7 +146,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 		{
 			name:       "valid",
 			repo:       testRepo,
-			key:        []byte(defaultWrapperSecret),
+			key:        []byte(testDefaultWrapperSecret),
 			keyWrapper: rkvWrapper,
 			dataKeyId:  dk.PrivateId,
 		},
@@ -182,7 +182,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	rk := testRootKey(t, db, testScopeId)
@@ -228,7 +228,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		},
 		{
 			name: "lookup-by-error",
-			key:  testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(defaultWrapperSecret)),
+			key:  testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(testDefaultWrapperSecret)),
 			repo: func() *repository {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
@@ -299,7 +299,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		{
 			name:            "success",
 			repo:            testRepo,
-			key:             testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(defaultWrapperSecret)),
+			key:             testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte(testDefaultWrapperSecret)),
 			wantRowsDeleted: 1,
 			wantErr:         false,
 		},
@@ -336,7 +336,7 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	rk := testRootKey(t, db, testScopeId)
@@ -463,7 +463,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw, withLimit(testLimit))
 	require.NoError(t, err)
 	rk := testRootKey(t, db, testScopeId)
@@ -625,7 +625,7 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	rk := testRootKey(t, db, testScopeId)

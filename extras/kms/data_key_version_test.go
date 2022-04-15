@@ -174,7 +174,7 @@ func TestDataKeyVersion_Encrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	tests := []struct {
 		name            string
 		key             *dataKeyVersion
@@ -240,7 +240,7 @@ func TestDataKeyVersion_Decrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testDataKey := &dataKeyVersion{
 		Key: []byte(testKey),
 	}

@@ -30,10 +30,10 @@ type rootKeyVersion struct {
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
 }
 
-// NewRootKey creates a new in memory root key. No options are currently
+// newRootKeyVersion creates a new in memory root key. No options are currently
 // supported.
 func newRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*rootKeyVersion, error) {
-	const op = "kms.NewRootKeyVersion"
+	const op = "kms.newRootKeyVersion"
 	if rootKeyId == "" {
 		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
@@ -66,9 +66,9 @@ func (k *rootKeyVersion) Clone() *rootKeyVersion {
 	return clone
 }
 
-// VetForWrite validates the root key version before it's written.
+// vetForWrite validates the root key version before it's written.
 func (k *rootKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
-	const op = "kms.(RootKeyVersion).VetForWrite"
+	const op = "kms.(rootKeyVersion).vetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
@@ -88,7 +88,7 @@ func (k *rootKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) err
 
 // Encrypt will encrypt the root key version's key
 func (k *rootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "kms.(RootKeyVersion).Encrypt"
+	const op = "kms.(rootKeyVersion).Encrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
 	}
@@ -100,7 +100,7 @@ func (k *rootKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 
 // Decrypt will decrypt the root key version's key
 func (k *rootKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "kms.(RootKeyVersion).Decrypt"
+	const op = "kms.(rootKeyVersion).Decrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
 	}

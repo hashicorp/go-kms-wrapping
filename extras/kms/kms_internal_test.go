@@ -22,7 +22,7 @@ func TestKms_loadDek(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	rk := testRootKey(t, db, "global")
 	_, rkw := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
 	dk := testDataKey(t, db, rk.PrivateId, "database")
@@ -214,7 +214,7 @@ func TestKms_loadRoot(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	db.Debug(true)
 	rk := testRootKey(t, db, "global")
 
@@ -340,7 +340,7 @@ func TestKms_loadRoot(t *testing.T) {
 					require.NoError(t, err)
 					_, err = w.SetConfig(testCtx, wrapping.WithKeyId(keyId))
 					require.NoError(t, err)
-					err = w.SetAesGcmKeyBytes([]byte(defaultWrapperSecret))
+					err = w.SetAesGcmKeyBytes([]byte(testDefaultWrapperSecret))
 					require.NoError(t, err)
 					switch pool {
 					case nil:
@@ -389,7 +389,7 @@ func TestKms_KeyId(t *testing.T) {
 	ctx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	extWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	extWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	repo, err := newRepository(rw, rw)
 	require.NoError(err)
 

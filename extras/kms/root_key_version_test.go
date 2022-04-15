@@ -146,7 +146,7 @@ func TestRootKeyVersion_Encrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	tests := []struct {
 		name            string
 		key             *rootKeyVersion
@@ -212,7 +212,7 @@ func TestRootKeyVersion_Decrypt(t *testing.T) {
 		testKey = "test-key"
 	)
 	testCtx := context.Background()
-	testWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	testWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testDataKey := &rootKeyVersion{
 		Key: []byte(testKey),
 	}

@@ -88,7 +88,7 @@ func TestKms_AddExternalWrapper(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	tests := []struct {
 		name            string
@@ -200,7 +200,7 @@ func TestKms_GetExternalWrapper(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	tests := []struct {
 		name            string
@@ -289,7 +289,7 @@ func TestKms_GetExternalRootWrapper(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	tests := []struct {
 		name            string
@@ -346,7 +346,7 @@ func TestKms_GetWrapper(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	tests := []struct {
 		name            string
@@ -488,7 +488,7 @@ func TestKms_CreateKeys(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	tests := []struct {
 		name            string
 		kms             *kms.Kms
@@ -814,7 +814,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := kms.TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	const (
 		org  = "o_1234567890"
 		org2 = "o_2234567890"
@@ -1058,7 +1058,7 @@ func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause stri
 	require.NoError(err)
 }
 
-const defaultWrapperSecret = "secret1234567890"
+const testDefaultWrapperSecret = "secret1234567890"
 
 type rootKey struct{}
 
