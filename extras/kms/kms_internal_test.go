@@ -469,7 +469,7 @@ func TestKms_ClearCache(t *testing.T) {
 	ctx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	extWrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	extWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	const (
 		globalScope = "global"
