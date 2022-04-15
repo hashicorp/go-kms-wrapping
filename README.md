@@ -1,10 +1,9 @@
 # Go-KMS-Wrapping - Go library for encrypting values through various KMS providers
 
-[![Godoc](https://godoc.org/github.com/hashicorp/go-kms-wrapping?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping)
+[![Go Reference](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2?status.svg)](https://godoc.org/github.com/hashicorp/go-kms-wrapping/v2)
 
-*NOTE*: Currently no compatibility guarantees are provided for this library; we
-expect tags to remain in the `0.x.y` range. Function signatures, interfaces,
-etc. may change at any time.
+*NOTE*: This is version 2 of the library. The `v0` branch contains version 0,
+which may be needed for legacy applications or while transitioning to version 2.
 
 Go-KMS-Wrapping is a library that can be used to encrypt things through various
 KMS providers -- public clouds, Vault's Transit plugin, etc. It is similar in
@@ -46,18 +45,17 @@ as they may have been used for past encryption operations.
   * * OCI KMS (uses envelopes)
   * * Tencent Cloud KMS (uses envelopes)
   * * Vault Transit mount
-  * * Yandex.Cloud KMS (uses envelopes)
   * Transparently supports multiple decryption targets, allowing for key rotation
   * Supports Additional Authenticated Data (AAD) for all KMSes except Vault Transit.
 
 A
-[`multiwrapper`](https://github.com/hashicorp/go-kms-wrapping/tree/master/wrappers/multiwrapper)
+[`pooled`](https://github.com/hashicorp/go-kms-wrapping/tree/main/multi)
 KMS is also included, capable of encrypting to a specified wrapper and
 decrypting using one of several wrappers switched on key ID. This can allow
 easy key rotation for KMSes that do not natively support it.
 
 The
-[`structwrapping`](https://github.com/hashicorp/go-kms-wrapping/tree/master/structwrapping)
+[`structwrapping`](https://github.com/hashicorp/go-kms-wrapping/tree/main/structwrapping)
 package allows for structs to have members encrypted and decrypted in a single
 pass via a single wrapper. This can be used for workflows such as database
 library callback functions to easily encrypt/decrypt data as it goes to/from
@@ -65,19 +63,26 @@ storage.
 
 ## Installation
 
-Import like any other library; supports go modules. It has not been tested with
-non-`go mod` vendoring tools.
+`go get github.com/hashicorp/go-kms-wrapping/v2`
 
 ## Overview
 
 The library exports a `Wrapper` interface that is implemented by multiple
-providers. Each of these providers may have some functions specific to them,
-usually to pass configuration information. A normal workflow is to create the
-provider directly, pass it any needed configuration via the provider-specific
-methods, and then have the rest of your code use the `Wrapper` interface.
+providers. For each provider, the standard flow is as follows:
 
-Some of the functions make use of option structs that are currently empty. This
-is to allow options to be added later without breaking backwards compatibility.
+1. Create a wrapper using the New method
+1. Call `SetConfig` to pass either wrapper-specific options or use the
+`wrapping.WithConfigMap` option to pass a configuration map
+1. Use the wrapper as needed
+
+It is possible, in `v2` of this library, to instantiate a wrapper as a
+[`plugin`](https://github.com/hashicorp/go-kms-wrapping/tree/main/plugin). This
+allows avoiding pulling dependencies of the wrapper directly into another
+system's process space. See the [`test
+plugins`](https://github.com/hashicorp/go-kms-wrapping/tree/main/plugin/testplugins)
+for guidance on how to do this; in this case, you'll definitely want to use
+`wrapping.WithConfigMap` to pass configuration to avoid pulling in
+package-specific options.
 
 The best place to find the currently available set of configuration options
 supported by each provider is its code, but it can also be found in [Vault's
@@ -97,14 +102,14 @@ Following is an example usage of the AWS KMS provider.
 // libraries; how it's used is dependent on the provider libraries
 ctx := context.Background()
 
-wrapper := awskms.NewWrapper(nil)
-_, err := wrapper.SetConfig(map[string]string{
-    "kms_key_id": "1234abcd-12ab-34cd-56ef-1234567890ab",
-})
+wrapper := awskms.NewWrapper()
+_, err := wrapper.SetConfig(ctx, wrapping.WithConfigMap(map[string]string{
+    "kms_key_id": "1234abcd-12ab-34cd-56ef-1234567890ab"
+}))
 if err != nil {
     return err
 }
-blobInfo, err := wrapper.Encrypt(ctx, []byte("foo"), nil)
+blobInfo, err := wrapper.Encrypt(ctx, []byte{"foo"})
 if err != nil {
     return err
 }
