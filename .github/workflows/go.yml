@@ -1,0 +1,85 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Label of the container job
+  sqlite:
+    strategy:
+      matrix:
+        go: ["1.18", "1.17", "1.16"]
+        platform: [ubuntu-latest] # can not run in windows OS
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: go mod package cache
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
+
+      - name: Tests
+        working-directory: ./extras/kms
+        run: make test-sqlite
+
+  postgres:
+    strategy:
+      matrix:
+        dbversion:
+          [
+            "postgres:14",
+            "postgres:13",
+            "postgres:12",
+            "postgres:11",
+            "postgres:10",
+          ]
+        go: ["1.18", "1.17", "1.16"]
+        platform: [ubuntu-latest] # can not run in macOS and Windows
+    runs-on: ${{ matrix.platform }}
+
+    services:
+      postgres:
+        image: ${{ matrix.dbversion }}
+        env:
+          POSTGRES_PASSWORD: go_db
+          POSTGRES_USER: go_db
+          POSTGRES_DB: go_db
+        ports:
+          - 9920:5432
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: go mod package cache
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
+
+      - name: Tests
+        working-directory: ./extras/kms
+        run: make test-postgres
