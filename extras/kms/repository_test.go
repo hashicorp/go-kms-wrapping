@@ -192,7 +192,7 @@ func TestRepository_createKeysTx(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	tests := []struct {
 		name            string

@@ -71,7 +71,7 @@ func (k *dataKeyVersion) Clone() *dataKeyVersion {
 
 // vetForWrite validates the data key version before it's written.
 func (k *dataKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) error {
-	const op = "kms.(DataKeyVersion).vetForWrite"
+	const op = "kms.(dataKeyVersion).vetForWrite"
 	if k.PrivateId == "" {
 		return fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
@@ -97,7 +97,7 @@ func (k *dataKeyVersion) TableName() string { return "kms_data_key_version" }
 
 // Encrypt will encrypt the data key version's key
 func (k *dataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "kms.(DataKeyVersion).Encrypt"
+	const op = "kms.(dataKeyVersion).Encrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
 	}
@@ -109,7 +109,7 @@ func (k *dataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) e
 
 // Decrypt will decrypt the data key version's key
 func (k *dataKeyVersion) Decrypt(ctx context.Context, cipher wrapping.Wrapper) error {
-	const op = "kms.(DataKeyVersion).Decrypt"
+	const op = "kms.(dataKeyVersion).Decrypt"
 	if cipher == nil {
 		return fmt.Errorf("%s: missing cipher: %w", op, ErrInvalidParameter)
 	}

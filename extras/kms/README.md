@@ -21,16 +21,29 @@ it:
   
   **IMPORTANT**: You should define a FK from `kms_root_key.scope_id` with
   cascading deletes and updates to the PK of the table within your domain that
-  tracks scopes.  This FK will prevent orphaned kms keys.
+  contains scopes.  This FK will prevent orphaned kms keys.
   
   For example, you could assign organizations and projects
   scope IDs and then associate a set of keys with each org and project within
   your domain. 
 
-- `root key`:  the KEKs (keys to encrypt keys) of the system.  
+- `root key`:  the KEKs (key-encryption-key) of the system.  
 
-- `data key`:  the DEKs (keys to encrypt data) of the system and must have a
+- `data key`:  the DEKs (data-encryption-key) of the system and must have a
   parent root key and a purpose.  
+
+- `data key version`: versions of DEKs (data-encryption-key) which are used to
+  encrypt/decrypt data.  
+
+  **IMPORTANT**: You should define a FK with a restricted delete from any
+  application table that stores encrypted data to 
+  `kms_data_key_version(private_id)`.  This FK will prevent kms keys from being
+  deleted that are currently being used to encrypt/decrypt data.
+  
+  For example, you have a table named `oidc` which contains the app's encrypted
+  oidc client_secret. The `oidc` table should have a `key_id` column with a
+  restricted FK to `kms_data_key_version(private_id)` which prevents in use DEKs
+  from being deleted. 
 
 - `purpose`:  Each data key (DEK) must have a one purpose.  For
   example, you could define a purpose of `client-secrets` for a DEK that will be

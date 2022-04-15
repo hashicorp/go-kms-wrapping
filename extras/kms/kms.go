@@ -308,7 +308,7 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 // ValidateSchema will validate the database schema against the module's
 // required migrations.Version
 func (k *Kms) ValidateSchema(ctx context.Context) (string, error) {
-	const op = "kms.(Repository).validateVersion"
+	const op = "kms.(Repository).ValidateVersion"
 	return k.repo.ValidateSchema(ctx)
 }
 

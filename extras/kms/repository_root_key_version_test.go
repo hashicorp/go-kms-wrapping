@@ -19,7 +19,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
@@ -127,7 +127,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
@@ -282,7 +282,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
@@ -404,7 +404,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw, withLimit(testLimit))
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"

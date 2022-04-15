@@ -34,7 +34,7 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	testScopeId := "o_1234567890"
 	rk := testRootKey(t, db, testScopeId)
@@ -245,7 +245,7 @@ func TestDataKeyVersion_ImmutableFields(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	testScopeId := "o_1234567890"
 	rk := testRootKey(t, db, testScopeId)
@@ -341,7 +341,7 @@ func TestRootKey_Version(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	testScopeId := "o_1234567890"
 	rk := testRootKey(t, db, testScopeId)
@@ -365,7 +365,7 @@ func TestDataKey_Version(t *testing.T) {
 		testCtx := context.Background()
 		db, _ := TestDb(t)
 		rw := dbw.New(db)
-		wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+		wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 		testScopeId := "o_1234567890"
 		rk := testRootKey(t, db, testScopeId)

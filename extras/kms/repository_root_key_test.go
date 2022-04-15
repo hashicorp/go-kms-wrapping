@@ -19,7 +19,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
@@ -152,7 +152,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 	t.Parallel()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
@@ -307,7 +307,7 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw, withLimit(testLimit))
 	require.NoError(t, err)
 
@@ -372,7 +372,7 @@ func TestRepository_ListRootKeys(t *testing.T) {
 			for i := 0; i < tc.createCnt; i++ {
 				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(err)
-				_, _, err = testRepo.CreateRootKey(testCtx, wrapper, id, []byte(defaultWrapperSecret))
+				_, _, err = testRepo.CreateRootKey(testCtx, wrapper, id, []byte(testDefaultWrapperSecret))
 				require.NoError(err)
 			}
 			got, err := tc.repo.ListRootKeys(context.Background(), tc.opt...)
@@ -397,7 +397,7 @@ func TestRepository_LookupRootKey(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	tests := []struct {
@@ -488,7 +488,7 @@ func TestRepository_LookupRootKeyVersion(t *testing.T) {
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
-	wrapper := wrapping.NewTestWrapper([]byte(defaultWrapperSecret))
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
 	testScopeId := "o_1234567890"
