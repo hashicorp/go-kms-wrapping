@@ -399,17 +399,12 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	return nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
+func (k *Kms) loadRoot(ctx context.Context, scopeId string, _ ...Option) (*multi.PooledWrapper, string, error) {
 	const op = "kms.(Kms).loadRoot"
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	opts := getOpts(opt...)
-	repo := opts.withRepository
-	if repo == nil {
-		repo = k.repo
-	}
-	rootKeys, err := repo.ListRootKeys(ctx)
+	rootKeys, err := k.repo.ListRootKeys(ctx)
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -431,7 +426,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 		return nil, "", fmt.Errorf("%s: missing root key wrapper for scope %q: %w", op, scopeId, ErrKeyNotFound)
 	}
 
-	rootKeyVersions, err := repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy))
+	rootKeyVersions, err := k.repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy))
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: error looking up root key versions for scope %q: %w", op, scopeId, err)
 	}
@@ -465,7 +460,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	return pooled, rootKeyId, nil
 }
 
-func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*multi.PooledWrapper, error) {
+func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) (*multi.PooledWrapper, error) {
 	const op = "kms.(Kms).loadDek"
 	if scopeId == "" {
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
@@ -480,12 +475,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, fmt.Errorf("%s: not a supported key purpose %q: %w", op, purpose, ErrInvalidParameter)
 	}
 
-	opts := getOpts(opt...)
-	repo := opts.withRepository
-	if repo == nil {
-		repo = k.repo
-	}
-	keys, err := repo.ListDataKeys(ctx, withPurpose(purpose))
+	keys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error listing keys for purpose %q: %w", op, purpose, err)
 	}
@@ -499,7 +489,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	if keyId == "" {
 		return nil, fmt.Errorf("%s: error finding %q key for scope %q: %w", op, purpose, scopeId, ErrKeyNotFound)
 	}
-	keyVersions, err := repo.ListDataKeyVersions(ctx, rootWrapper, keyId, withOrderByVersion(descendingOrderBy))
+	keyVersions, err := k.repo.ListDataKeyVersions(ctx, rootWrapper, keyId, withOrderByVersion(descendingOrderBy))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error looking up %q key versions for scope %q: %w", op, purpose, scopeId, err)
 	}

@@ -35,18 +35,6 @@ func Test_GetOpts(t *testing.T) {
 		opts.withErrorsMatching = nil
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithRepository", func(t *testing.T) {
-		assert := assert.New(t)
-		db, _ := TestDb(t)
-		testRepo := testRepo(t, db)
-
-		opts := getOpts(withRepository(testRepo))
-		testOpts := getDefaultOptions()
-		testOpts.withRepository = testRepo
-		testOpts.withErrorsMatching = nil
-		opts.withErrorsMatching = nil
-		assert.Equal(opts, testOpts)
-	})
 	t.Run("WithKeyId", func(t *testing.T) {
 		assert := assert.New(t)
 		opts := getOpts(WithKeyId("id"))
