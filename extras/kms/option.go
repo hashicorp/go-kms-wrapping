@@ -21,7 +21,6 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit          int
-	withRepository     *repository
 	withKeyId          string
 	withOrderByVersion orderBy
 	withRetryCnt       uint
@@ -50,14 +49,6 @@ func getDefaultOptions() options {
 func withLimit(limit int) Option {
 	return func(o *options) {
 		o.withLimit = limit
-	}
-}
-
-// withRepository sets a repository for a given wrapper lookup, useful if in the
-// middle of a transaction where the reader/writer need to be specified
-func withRepository(repo *repository) Option {
-	return func(o *options) {
-		o.withRepository = repo
 	}
 }
 
