@@ -116,8 +116,8 @@ func TestDb(t *testing.T) (*dbw.DB, string) {
 	return dbw.TestSetup(t, dbw.WithTestMigrationUsingDB(testMigrationFn(t)))
 }
 
-// TestDeleteKeyPurpose allows you to delete a KeyPurpose for testing.
-func TestDeleteKeyPurpose(t *testing.T, conn *dbw.DB, purpose KeyPurpose) {
+// TestDeleteKeysForPurpose allows you to delete all the keys for a KeyPurpose for testing.
+func TestDeleteKeysForPurpose(t *testing.T, conn *dbw.DB, purpose KeyPurpose) {
 	testDeleteWhere(t, conn, func() interface{} { i := dataKey{}; return &i }(), fmt.Sprintf("purpose='%s'", purpose))
 }
 

@@ -19,7 +19,8 @@ func Test_stub(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_TestDeleteKeyPurpose_TestDeleteAllKeys(t *testing.T) {
+func Test_TestDeleteKeysForPurpose_TestDeleteAllKeys(t *testing.T) {
+	// common setup for both tests.
 	const (
 		globalScope = "global"
 		orgScope    = "o_1234567890"
@@ -32,23 +33,31 @@ func Test_TestDeleteKeyPurpose_TestDeleteAllKeys(t *testing.T) {
 	extWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 
 	databaseKeyPurpose := KeyPurpose("database")
+	authKeyPurpose := KeyPurpose("auth")
+	dekPurposes := []KeyPurpose{databaseKeyPurpose, authKeyPurpose}
 
 	// init kms with a cache
-	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
+	kmsCache, err := New(rw, rw, dekPurposes)
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
-	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
+	err = kmsCache.CreateKeys(ctx, globalScope, dekPurposes)
 	require.NoError(err)
 
-	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
-	require.NoError(err)
+	for _, p := range dekPurposes {
+		_, err = kmsCache.GetWrapper(ctx, globalScope, p)
+		require.NoError(err)
+	}
 
-	TestDeleteKeyPurpose(t, db, databaseKeyPurpose)
+	// first we'll test TestDeleteKeysForPurpose.
+	TestDeleteKeysForPurpose(t, db, databaseKeyPurpose)
 
 	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
 	require.Error(err)
 	assert.ErrorIs(err, ErrKeyNotFound)
+
+	_, err = kmsCache.GetWrapper(ctx, globalScope, authKeyPurpose)
+	require.NoError(err)
 
 	err = kmsCache.ReconcileKeys(ctx, []string{globalScope}, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
@@ -59,16 +68,12 @@ func Test_TestDeleteKeyPurpose_TestDeleteAllKeys(t *testing.T) {
 	err = kmsCache.CreateKeys(ctx, orgScope, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
 
+	// Now we'll test TestDeleteAllKeys
 	TestKmsDeleteAllKeys(t, db)
-
-	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
-	require.Error(err)
-	assert.ErrorIs(err, ErrKeyNotFound)
-
-	_, err = kmsCache.GetWrapper(ctx, orgScope, databaseKeyPurpose)
-	require.Error(err)
-	assert.ErrorIs(err, ErrKeyNotFound)
-
+	for _, p := range dekPurposes {
+		_, err = kmsCache.GetWrapper(ctx, globalScope, p)
+		require.Error(err)
+	}
 	_, err = kmsCache.GetWrapper(ctx, globalScope, KeyPurposeRootKey)
 	require.Error(err)
 	assert.ErrorIs(err, ErrKeyNotFound)
