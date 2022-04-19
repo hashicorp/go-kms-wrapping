@@ -223,7 +223,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// root for the scope as we'll need it to decrypt the value coming from the
 	// DB. We don't cache the roots as we expect that after a few calls the
 	// scope-purpose cache will catch everything in steady-state.
-	rootWrapper, rootKeyId, err := k.loadRoot(ctx, scopeId, opt...)
+	rootWrapper, rootKeyId, err := k.loadRoot(ctx, scopeId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error loading root key for scope %q: %w", op, scopeId, err)
 	}
@@ -235,7 +235,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return rootWrapper, nil
 	}
 
-	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId, opt...)
+	wrapper, err := k.loadDek(ctx, scopeId, purpose, rootWrapper, rootKeyId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: error loading %q for scope %q: %w", op, purpose, scopeId, err)
 	}
@@ -399,7 +399,7 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	return nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string, _ ...Option) (*multi.PooledWrapper, string, error) {
+func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multi.PooledWrapper, string, error) {
 	const op = "kms.(Kms).loadRoot"
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
@@ -460,7 +460,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, _ ...Option) (*multi
 	return pooled, rootKeyId, nil
 }
 
-func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) (*multi.PooledWrapper, error) {
+func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, rootWrapper wrapping.Wrapper, rootKeyId string) (*multi.PooledWrapper, error) {
 	const op = "kms.(Kms).loadDek"
 	if scopeId == "" {
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)

@@ -40,7 +40,6 @@ func TestKms_loadDek(t *testing.T) {
 		purpose         KeyPurpose
 		rootWrapper     wrapping.Wrapper
 		rootKeyId       string
-		opt             []Option
 		want            []byte
 		wantErr         bool
 		wantErrIs       error
@@ -191,7 +190,7 @@ func TestKms_loadDek(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			got, err := tc.kms.loadDek(testCtx, tc.scopeId, tc.purpose, tc.rootWrapper, tc.rootKeyId, tc.opt...)
+			got, err := tc.kms.loadDek(testCtx, tc.scopeId, tc.purpose, tc.rootWrapper, tc.rootKeyId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -359,7 +358,7 @@ func TestKms_loadRoot(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			gotWrapper, gotKeyId, err := tc.kms.loadRoot(testCtx, tc.scopeId, tc.opt...)
+			gotWrapper, gotKeyId, err := tc.kms.loadRoot(testCtx, tc.scopeId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
