@@ -104,12 +104,12 @@ ctx := context.Background()
 
 wrapper := awskms.NewWrapper()
 _, err := wrapper.SetConfig(ctx, wrapping.WithConfigMap(map[string]string{
-    "kms_key_id": "1234abcd-12ab-34cd-56ef-1234567890ab"
+    "kms_key_id": "1234abcd-12ab-34cd-56ef-1234567890ab",
 }))
 if err != nil {
     return err
 }
-blobInfo, err := wrapper.Encrypt(ctx, []byte{"foo"})
+blobInfo, err := wrapper.Encrypt(ctx, []byte("foo"))
 if err != nil {
     return err
 }
