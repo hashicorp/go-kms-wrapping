@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// defaultLimit is the default for results
-	defaultLimit = 10000
+	// defaultLimit is the default for results: -1 signals no limit
+	defaultLimit = -1
 
 	// testDefaultWrapperSecret defines a default secret for testing
 	testDefaultWrapperSecret = "secret1234567890"
