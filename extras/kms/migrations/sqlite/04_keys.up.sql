@@ -92,7 +92,7 @@ create table kms_data_key (
     on delete cascade 
     on update cascade,
   purpose text not null
-    check(length(trim(purpose)) > 0),
+    check(length(trim(purpose)) = length(purpose)),
   create_time timestamp not null default current_timestamp,
   unique (root_key_id, purpose) -- there can only be one dek per purpose per root key
 );

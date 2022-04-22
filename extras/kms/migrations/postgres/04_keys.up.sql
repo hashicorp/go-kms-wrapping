@@ -61,15 +61,13 @@ create table kms_data_key (
     on delete cascade
     on update cascade,
   purpose text not null
-    constraint not_empty_purpose
-    check (
-      length(trim(purpose)) > 0
-    ),
+    constraint not_start_end_whitespace_purpose
+    check (length(trim(purpose)) = length(purpose)),
   create_time kms_timestamp,
   unique (root_key_id, purpose) -- there can only be one dek for a specific purpose per root key
 );
 comment on table kms_data_key is
-  'kms_data_key contains deks (data keys) for specific purposes derived from a kms_root_key';
+  'kms_data_key contains deks (data keys) for specific purposes';
 
  -- define the immutable fields for kms_data_key (all of them)
 create trigger kms_immutable_columns
