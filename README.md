@@ -78,9 +78,10 @@ providers. For each provider, the standard flow is as follows:
 It is possible, in `v2` of this library, to instantiate a wrapper as a
 [`plugin`](https://github.com/hashicorp/go-kms-wrapping/tree/main/plugin). This
 allows avoiding pulling dependencies of the wrapper directly into another
-system's process space. See the [`test
+system's process space. See the [`example plugin-cli`](examples/plugin-cli/) for
+a complete example on how to do build wrapper plugins and use them in an application or the [`test
 plugins`](https://github.com/hashicorp/go-kms-wrapping/tree/main/plugin/testplugins)
-for guidance on how to do this; in this case, you'll definitely want to use
+for guidance in how to build a plugin; in this case, you'll definitely want to use
 `wrapping.WithConfigMap` to pass configuration to avoid pulling in
 package-specific options.
 

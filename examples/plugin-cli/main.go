@@ -10,7 +10,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/aead"
+	"github.com/hashicorp/go-kms-wrapping/v2/aead" // a built-in go-kms-wrapping wrapper (no additional dependencies)
 	configutil "github.com/hashicorp/go-secure-stdlib/configutil/v2"
 	"github.com/hashicorp/go-secure-stdlib/pluginutil/v2"
 )
