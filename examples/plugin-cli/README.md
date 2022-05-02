@@ -1,10 +1,10 @@
 # plugin-cli
 An example CLI that demonstrates how to incorporate a
 [go-plugin](https://github.com/hashicorp/go-plugin) wrapper into an application.
-In this example, we'll use a vault transit go-plugin.
+In this example, we'll use a Vault `transit` go-plugin.
 
-Why would you want to use a vault transit via a
-[go-plugin](https://github.com/hashicorp/go-plugin) vs just including the
+Why would you want to use a Vault `transit` via a
+[go-plugin](https://github.com/hashicorp/go-plugin) vs. just including the
 wrapper dependency directly into your application?  Well, let's say you wanted
 to allow users to chose from a variety of KMS wrappers within your application,
 via configuration but you didn't want to include every possible KMS wrapper
@@ -15,9 +15,9 @@ the KMS's you wish to support.
 
 
 Running the cli will:
-- Initialize a go-plugin vault transit.
-- Encrypt a plaintext secret using the plugin vault transit wrapper.
-- Decrypt the cipher text secret using the plugin vault transit wrapper.
+- Initialize a Vault `transit` plugin.
+- Encrypt a plaintext secret using the plugin Vault `transit` wrapper.
+- Decrypt the cipher text secret using the plugin Vault `transit` wrapper.
 - Validate that the decrypted plaintext matches the original plaintext.
 
 Expected output from a successful execution:
@@ -38,10 +38,7 @@ Build the example:
 ```
 make 
 ```
-Run the required [Vault's Transit Secrets
-Engine](https://www.vaultproject.io/docs/secrets/transit) you must first start
-vault with docker-compose which is located in the parent 
-directory. 
+Before running the example, you must first start Vault with docker-compose. 
 ```
 cd ..
 docker-compose up
