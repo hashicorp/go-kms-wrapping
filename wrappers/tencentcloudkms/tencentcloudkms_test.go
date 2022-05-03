@@ -15,6 +15,10 @@ import (
 const tencentCloudTestKeyID = "tencentcloud-test-key-id"
 
 func TestTencentCloudKmsWrapper(t *testing.T) {
+	// Skip tests if we are not running acceptance tests
+	if os.Getenv("VAULT_ACC") == "" {
+		t.SkipNow()
+	}
 	s := NewWrapper()
 	s.client = &mockTencentCloudKmsWrapperClient{
 		keyID: common.StringPtr(tencentCloudTestKeyID),
@@ -42,6 +46,11 @@ func TestTencentCloudKmsWrapper(t *testing.T) {
 }
 
 func TestTencentCloudKmsWrapper_Lifecycle(t *testing.T) {
+	// Skip tests if we are not running acceptance tests
+	if os.Getenv("VAULT_ACC") == "" {
+		t.SkipNow()
+	}
+
 	s := NewWrapper()
 	s.client = &mockTencentCloudKmsWrapperClient{
 		keyID: common.StringPtr(tencentCloudTestKeyID),
