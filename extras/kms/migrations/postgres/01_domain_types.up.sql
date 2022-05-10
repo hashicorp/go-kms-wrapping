@@ -5,11 +5,15 @@ not null
 check(
   length(trim(value)) > 0
 );
+comment on domain kms_private_id is
+'standard column for private id';
 
 create domain kms_scope_id as text
 check(
   length(trim(value)) > 0
 );
+comment on domain kms_scope_id is
+'standard column for scope id';
 
 create domain kms_timestamp as
   timestamp with time zone
