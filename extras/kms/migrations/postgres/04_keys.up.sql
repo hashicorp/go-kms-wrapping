@@ -22,7 +22,7 @@ insert on kms_root_key
 create table kms_root_key_version (
   private_id kms_private_id primary key,
   root_key_id kms_private_id not null
-    constraint kms_root_key_version_kms_root_key_fkey
+    constraint kms_root_key_fkey
       references kms_root_key(private_id) 
       on delete cascade 
       on update cascade,
@@ -59,7 +59,7 @@ before insert on kms_root_key_version
 create table kms_data_key (
   private_id kms_private_id primary key,
   root_key_id kms_private_id not null
-    constraint kms_data_key_kms_root_key_fkey
+    constraint kms_root_key_fkey
       references kms_root_key(private_id)
       on delete cascade
       on update cascade,
@@ -87,12 +87,12 @@ insert on kms_data_key
 create table kms_data_key_version (
   private_id kms_private_id primary key,
   data_key_id kms_private_id not null
-    constraint kms_data_key_version_kms_data_key_fkey
+    constraint kms_data_key_fkey
       references kms_data_key(private_id) 
       on delete cascade 
       on update cascade, 
   root_key_version_id kms_private_id not null
-    constraint kms_data_key_version_kms_root_key_version_fkey
+    constraint kms_root_key_version_fkey
       references kms_root_key_version(private_id) 
       on delete cascade 
       on update cascade,
