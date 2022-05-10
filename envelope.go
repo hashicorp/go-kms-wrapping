@@ -10,7 +10,9 @@ import (
 )
 
 // EnvelopeEncrypt takes in plaintext and envelope encrypts it, generating an
-// EnvelopeInfo value.
+// EnvelopeInfo value.  An empty plaintext is a valid parameter and will not cause
+// an error.  Also note: if you provide a plaintext of []byte(""),
+// EnvelopeDecrypt will return []byte(nil).
 //
 // Supported options:
 //
@@ -44,7 +46,8 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 }
 
 // EnvelopeDecrypt takes in EnvelopeInfo and potentially additional options and
-// decrypts.
+// decrypts.  Also note: if you provided a plaintext of []byte("") to
+// EnvelopeEncrypt, then this function will return []byte(nil).
 //
 // Supported options:
 //
@@ -52,6 +55,10 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 // a separate location, and must match what was provided during envelope
 // encryption.
 func EnvelopeDecrypt(data *EnvelopeInfo, opt ...Option) ([]byte, error) {
+	// need to check data or we could panic when trying to access data.Key
+	if data == nil {
+		return nil, fmt.Errorf("missing envelope info: %w", ErrInvalidParameter)
+	}
 	opts, err := GetOpts(opt...)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package wrapping
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,4 +56,13 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts)
 		assert.Equal(strOpts, opts.WithConfigMap)
 	})
+}
+
+func testOptionWithError(t *testing.T) Option {
+	t.Helper()
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			return errors.New("option error")
+		})
+	}
 }
