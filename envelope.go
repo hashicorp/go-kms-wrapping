@@ -46,7 +46,8 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 }
 
 // EnvelopeDecrypt takes in EnvelopeInfo and potentially additional options and
-// decrypts.
+// decrypts.  Also note: if you provided a plaintext of []byte("") to
+// EnvelopeEncrypt, then this function will return []byte(nil).
 //
 // Supported options:
 //
