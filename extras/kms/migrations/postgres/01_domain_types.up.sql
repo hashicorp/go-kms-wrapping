@@ -5,11 +5,15 @@ not null
 check(
   length(trim(value)) > 0
 );
+comment on domain kms_private_id is
+'standard column for private id';
 
 create domain kms_scope_id as text
 check(
   length(trim(value)) > 0
 );
+comment on domain kms_scope_id is
+'standard column for scope id';
 
 create domain kms_timestamp as
   timestamp with time zone
@@ -74,7 +78,7 @@ is
   'function used to properly set create_time columns';
 
 create or replace function
-  update_time_column()
+  kms_update_time_column()
   returns trigger
 as $$
 begin
@@ -87,7 +91,7 @@ begin
 end;
 $$ language plpgsql;
 comment on function
-  update_time_column()
+  kms_update_time_column()
 is
   'function used in before update triggers to properly set update_time columns';
 

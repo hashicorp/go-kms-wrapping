@@ -21,10 +21,10 @@ before
 insert on kms_schema_version
   for each row execute procedure kms_default_create_time();
 
-create trigger update_time_column 
+create trigger kms_update_time_column 
 before 
 update on kms_schema_version 
-	for each row execute procedure update_time_column();
+	for each row execute procedure kms_update_time_column();
 
 insert into kms_schema_version(version) values('v0.0.1');
 

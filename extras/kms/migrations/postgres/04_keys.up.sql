@@ -22,9 +22,10 @@ insert on kms_root_key
 create table kms_root_key_version (
   private_id kms_private_id primary key,
   root_key_id kms_private_id not null
-    references kms_root_key(private_id) 
-    on delete cascade 
-    on update cascade,
+    constraint kms_root_key_fkey
+      references kms_root_key(private_id) 
+      on delete cascade 
+      on update cascade,
   version kms_version,
   key bytea not null
     constraint not_empty_key
@@ -32,7 +33,8 @@ create table kms_root_key_version (
       length(key) > 0
     ),
   create_time kms_timestamp,
-  unique(root_key_id, version)
+  constraint kms_root_key_version_root_key_id_version_uq
+    unique(root_key_id, version)
 );
 comment on table kms_root_key_version is
   'kms_root_key_version contains versions of a kms_root_key';
@@ -57,14 +59,16 @@ before insert on kms_root_key_version
 create table kms_data_key (
   private_id kms_private_id primary key,
   root_key_id kms_private_id not null
-    references kms_root_key(private_id)
-    on delete cascade
-    on update cascade,
+    constraint kms_root_key_fkey
+      references kms_root_key(private_id)
+      on delete cascade
+      on update cascade,
   purpose text not null
     constraint not_start_end_whitespace_purpose
     check (length(trim(purpose)) = length(purpose)),
   create_time kms_timestamp,
-  unique (root_key_id, purpose) -- there can only be one dek for a specific purpose per root key
+  constraint kms_data_key_root_key_id_purpose_uq
+    unique (root_key_id, purpose) -- there can only be one dek for a specific purpose per root key
 );
 comment on table kms_data_key is
   'kms_data_key contains deks (data keys) for specific purposes';
@@ -83,13 +87,15 @@ insert on kms_data_key
 create table kms_data_key_version (
   private_id kms_private_id primary key,
   data_key_id kms_private_id not null
-    references kms_data_key(private_id) 
-    on delete cascade 
-    on update cascade, 
+    constraint kms_data_key_fkey
+      references kms_data_key(private_id) 
+      on delete cascade 
+      on update cascade, 
   root_key_version_id kms_private_id not null
-    references kms_root_key_version(private_id) 
-    on delete cascade 
-    on update cascade,
+    constraint kms_root_key_version_fkey
+      references kms_root_key_version(private_id) 
+      on delete cascade 
+      on update cascade,
   version kms_version,
   key bytea not null
     constraint not_empty_key
@@ -97,7 +103,8 @@ create table kms_data_key_version (
       length(key) > 0
     ),
   create_time kms_timestamp,
-  unique(data_key_id, version)
+  constraint kms_data_key_version_data_key_id_version_uq
+    unique(data_key_id, version)
 );
 comment on table kms_data_key is
   'kms_data_key_version contains versions of a kms_data_key (dek aka data keys)';
