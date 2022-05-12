@@ -5,6 +5,8 @@ create table kms_schema_version(
     create_time kms_timestamp,
     update_time kms_timestamp
 );
+comment on table kms_schema_version is
+  'kms_schema_version contains the kms schema version';
 
 -- ensure that it's only ever one row
 create unique index kms_schema_version_one_row
