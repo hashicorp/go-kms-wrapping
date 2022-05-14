@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"os"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/golang-migrate/migrate/v4/database/sqlite"
 	source "github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/hashicorp/go-dbw"
@@ -142,11 +142,19 @@ func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
 			source, err = httpfs.New(http.FS(migrations.PostgresFS), dialect)
 			require.NoError(err)
 		default:
+			// we're intentionally choosing to NOT use go-migrate for these
+			// sqlite migrations since we don't want to introduce a CGO
+			// dependency outside of the test packages and this code is NOT in a
+			// test package.
 			dialect = "sqlite"
-			driver, err = sqlite.WithInstance(db, &sqlite.Config{})
-			require.NoError(err)
-			source, err = httpfs.New(http.FS(migrations.SqliteFS), dialect)
-			require.NoError(err)
+			cliMigrations, _ := fs.ReadDir(migrations.SqliteFS, dialect)
+			for _, m := range cliMigrations {
+				sql, err := fs.ReadFile(migrations.SqliteFS, fmt.Sprintf("%s/%s", dialect, m.Name()))
+				require.NoError(err)
+				_, err = db.Exec(string(sql))
+				require.NoError(err)
+			}
+			return nil
 		}
 		m, err := migrate.NewWithInstance(
 			dialect,
