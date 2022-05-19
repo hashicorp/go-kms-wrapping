@@ -289,38 +289,9 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 		opts.withRandomReader = rand.Reader
 	}
 
-	var localTx *dbw.RW
-	var r dbw.Reader
-	var w dbw.Writer
-	switch {
-	case opts.withTx != nil:
-		if opts.withReader != nil || opts.withWriter != nil {
-			return fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
-		}
-		if ok := opts.withTx.IsTx(); !ok {
-			return fmt.Errorf("%s: provided transaction has no inflight transaction: %w", op, ErrInvalidParameter)
-		}
-		r = opts.withTx
-		w = opts.withTx
-	case opts.withReader != nil, opts.withWriter != nil:
-		if opts.withTx != nil {
-			return fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
-		}
-		if opts.withReader == nil {
-			return fmt.Errorf("%s: WithReaderWriter(...) option is missing the reader: %w", op, ErrInvalidParameter)
-		}
-		if opts.withWriter == nil {
-			return fmt.Errorf("%s: WithReaderWriter(...) option is missing the writer: %w", op, ErrInvalidParameter)
-		}
-		r = opts.withReader
-		w = opts.withWriter
-	default:
-		localTx, err = k.repo.writer.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("%s: unable to begin transaction: %w", op, err)
-		}
-		r = localTx
-		w = localTx
+	r, w, localTx, err := k.txFromOpts(ctx, opt...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	if _, err := createKeysTx(ctx, r, w, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
@@ -338,6 +309,185 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	}
 
 	return nil
+}
+
+// RotateKeys will rotate the root key versions and all DEKs for the current
+// KeyPurpose(s) of the KMS.
+//
+// If an optional WithRewrap(...) is request, then all keys will be re-encrypted
+// with the current root key wrapper.
+//
+// WithTx(...) and WithReaderWriter(...) options are supported which allow the
+// caller to pass an inflight transaction to be used for all database
+// operations.  If WithTx(...) or WithReaderWriter(...) are used, then the
+// caller is responsible for managing the transaction.  If neither WithTx or
+// WithReaderWriter are specified, then RotateKeys will rotated the scope's keys
+// within it's own transaction, which will be managed by RotateKeys.
+//
+// The WithRandomReader(...) option is supported.  If no optional random reader
+// is provided, then the reader from crypto/rand will be used as a default.
+//
+// Options supported: WithRandomReader, WithTx, WithRewrap
+func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) error {
+	const op = "kms.(Kms).RotateKeys"
+	if scopeId == "" {
+		return fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	rootWrapper, err := k.GetExternalRootWrapper()
+	if err != nil {
+		return fmt.Errorf("%s: unable to get an external root wrapper: %w", op, err)
+	}
+
+	reader, writer, localTx, err := k.txFromOpts(ctx, opt...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	rk, err := k.repo.ScopeRootKey(ctx, scopeId, withReader(reader))
+	if err != nil {
+		return fmt.Errorf("%s: unable to load the scope's root key: %w", op, err)
+	}
+
+	opts := getOpts(opt...)
+	if isNil(opts.withRandomReader) {
+		opts.withRandomReader = rand.Reader
+	}
+
+	if opts.withRewrap {
+		const keyFieldName = "CtKey"
+		// rewrap the rootKey versions using the scope's root key to find them
+		rkvs, err := k.repo.ListRootKeyVersions(ctx, rootWrapper, rk.PrivateId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to list root key versions: %w", op, err)
+		}
+		for _, kv := range rkvs {
+			if err := kv.Encrypt(ctx, rootWrapper); err != nil {
+				return fmt.Errorf("%s: failed to rewrap root key version: %w", op, err)
+			}
+			rowsAffected, err := writer.Update(ctx, kv, []string{keyFieldName}, nil, dbw.WithVersion(&kv.Version))
+			if err != nil {
+				return fmt.Errorf("%s: failed to update root key version: %w", op, err)
+			}
+			if rowsAffected != 1 {
+				return fmt.Errorf("%s: expected to update 1 row and updated %d", op, rowsAffected)
+			}
+		}
+		// TODO (jimlambrt): rewrap deks
+		fmt.Println("WARNING: STILL NEED TO REWRAP DEKS")
+	}
+
+	// okay, now that the optional rewrapping is done, let's rotate the scope's
+	// keys, starting with the KEKs
+	rootKeyBytes, err := generateKey(ctx, opts.withRandomReader)
+	if err != nil {
+		return fmt.Errorf("%s: unable to generate key: %w", op, err)
+	}
+	rkv := rootKeyVersion{}
+	id, err := newRootKeyVersionId()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	rkv.PrivateId = id
+	rkv.RootKeyId = rk.PrivateId
+	rkv.Key = rootKeyBytes
+	if err := rkv.Encrypt(ctx, rootWrapper); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if err := create(ctx, writer, &rkv); err != nil {
+		return fmt.Errorf("%s: key versions: %w", op, err)
+	}
+
+	// we need the new root key version wrapper to encrypt the upcoming rotated DEKs
+	rkvWrapper := aead.NewWrapper()
+	if _, err := rkvWrapper.SetConfig(ctx, wrapping.WithKeyId(rkv.PrivateId)); err != nil {
+		return fmt.Errorf("%s: error setting config on aead root wrapper in scope %q: %w", op, scopeId, err)
+	}
+	if err := rkvWrapper.SetAesGcmKeyBytes(rkv.Key); err != nil {
+		return fmt.Errorf("%s: error setting key bytes on aead root wrapper in scope %q: %w", op, scopeId, err)
+	}
+
+	// now, let's rotate the scope's DEKs
+	for _, purpose := range k.purposes {
+		if purpose == KeyPurposeRootKey {
+			continue
+		}
+		dataKeys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rk.PrivateId), withReader(reader))
+		switch {
+		case err != nil:
+			return fmt.Errorf("%s: unable to lookup data key for %q: %w", op, purpose, err)
+		case len(dataKeys) == 0:
+			return fmt.Errorf("%s: data key for %q not found: %w", op, purpose, ErrKeyNotFound)
+		case len(dataKeys) > 1:
+			return fmt.Errorf("%s: too many data key (%d) for %q found: %w", op, len(dataKeys), purpose, ErrInternal)
+		}
+		dekKeyBytes, err := generateKey(ctx, opts.withRandomReader)
+		if err != nil {
+			return fmt.Errorf("%s: unable to generate %s DEK: %w", op, purpose, err)
+		}
+		dv := dataKeyVersion{}
+		id, err := newDataKeyVersionId()
+		if err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		dv.PrivateId = id
+		dv.DataKeyId = dataKeys[0].PrivateId
+		dv.RootKeyVersionId = rkv.PrivateId
+		dv.Key = dekKeyBytes
+		if err := dv.Encrypt(ctx, rkvWrapper); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		if err := create(ctx, writer, &dv); err != nil {
+			return fmt.Errorf("%s: dek key versions create: %w", op, err)
+		}
+	}
+
+	if localTx != nil {
+		if err := localTx.Commit(ctx); err != nil {
+			return fmt.Errorf("%s: unable to commit transaction: %w", op, err)
+		}
+	}
+	return nil
+}
+
+// txFromOpts will determine the correct transaction strategy given the provided
+// options. Options supported: WithReaderWriter, WithTx
+func (k *Kms) txFromOpts(ctx context.Context, opt ...Option) (dbw.Reader, dbw.Writer, *dbw.RW, error) {
+	const op = "kms.(Kms).getTxFromOpt"
+	var localTx *dbw.RW
+	var r dbw.Reader
+	var w dbw.Writer
+	opts := getOpts(opt...)
+	switch {
+	case opts.withTx != nil:
+		if opts.withReader != nil || opts.withWriter != nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
+		if ok := opts.withTx.IsTx(); !ok {
+			return nil, nil, nil, fmt.Errorf("%s: provided transaction has no inflight transaction: %w", op, ErrInvalidParameter)
+		}
+		r = opts.withTx
+		w = opts.withTx
+	case opts.withReader != nil, opts.withWriter != nil:
+		if opts.withTx != nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
+		if opts.withReader == nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithReaderWriter(...) option is missing the reader: %w", op, ErrInvalidParameter)
+		}
+		if opts.withWriter == nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithReaderWriter(...) option is missing the writer: %w", op, ErrInvalidParameter)
+		}
+		r = opts.withReader
+		w = opts.withWriter
+	default:
+		var err error
+		localTx, err = k.repo.writer.Begin(ctx)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("%s: unable to begin transaction: %w", op, err)
+		}
+		r = localTx
+		w = localTx
+	}
+	return r, w, localTx, nil
 }
 
 // ValidateSchema will validate the database schema against the module's
