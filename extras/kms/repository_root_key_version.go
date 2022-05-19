@@ -2,6 +2,7 @@ package kms
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 
@@ -174,4 +175,88 @@ func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 		}
 	}
 	return versions, nil
+}
+
+// RewrapRootKeyVersions will rewrap (re-encrypt) the root key versions for a
+// given rootKeyId with the latest wrapper. Supported options: WithReaderWriter
+func (r *repository) RewrapRootKeyVersions(ctx context.Context, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) error {
+	const (
+		op           = "kms.(repository).RewrapRootKeyVersions"
+		keyFieldName = "CtKey"
+	)
+	if isNil(rootWrapper) {
+		return fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
+	}
+	if rootKeyId == "" {
+		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	if opts.withWriter == nil {
+		opts.withWriter = r.writer
+	}
+	if opts.withReader == nil {
+		opts.withReader = r.reader
+	}
+	// rewrap the rootKey versions using the scope's root key to find them
+	rkvs, err := r.ListRootKeyVersions(ctx, rootWrapper, rootKeyId, withReader(opts.withReader))
+	if err != nil {
+		return fmt.Errorf("%s: unable to list root key versions: %w", op, err)
+	}
+	for _, kv := range rkvs {
+		if err := kv.Encrypt(ctx, rootWrapper); err != nil {
+			return fmt.Errorf("%s: failed to rewrap root key version: %w", op, err)
+		}
+		rowsAffected, err := opts.withWriter.Update(ctx, kv, []string{keyFieldName}, nil, dbw.WithVersion(&kv.Version))
+		if err != nil {
+			return fmt.Errorf("%s: failed to update root key version: %w", op, err)
+		}
+		if rowsAffected != 1 {
+			return fmt.Errorf("%s: expected to update 1 root key version and updated %d", op, rowsAffected)
+		}
+	}
+	return nil
+}
+
+// RotateRootKeyVersion will rotate the key version for the given rootKeyId.
+// Supported options: WithReaderWriter, withRandomReader
+func (r *repository) RotateRootKeyVersion(ctx context.Context, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*rootKeyVersion, error) {
+	const op = "kms.(repository).RotateRootKeyVersion"
+	if isNil(rootWrapper) {
+		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
+	}
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	if opts.withWriter == nil {
+		opts.withWriter = r.writer
+	}
+	if opts.withReader == nil {
+		opts.withReader = r.reader
+	}
+	if isNil(opts.withRandomReader) {
+		opts.withRandomReader = rand.Reader
+	}
+
+	rootKeyBytes, err := generateKey(ctx, opts.withRandomReader)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to generate key: %w", op, err)
+	}
+	rkv := rootKeyVersion{}
+	id, err := newRootKeyVersionId()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	rkv.PrivateId = id
+	rkv.RootKeyId = rootKeyId
+	rkv.Key = rootKeyBytes
+	if err := rkv.Encrypt(ctx, rootWrapper); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	if err := create(ctx, opts.withWriter, &rkv); err != nil {
+		return nil, fmt.Errorf("%s: key versions: %w", op, err)
+	}
+	return &rkv, nil
 }

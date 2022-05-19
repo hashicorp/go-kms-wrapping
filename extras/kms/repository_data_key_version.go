@@ -2,6 +2,7 @@ package kms
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -185,4 +186,115 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 		}
 	}
 	return versions, nil
+}
+
+// RewrapDataKeyVersions will rewrap (re-encrypt) the data key versions for a
+// given rootKeyId with the latest root key version wrapper. Supported options:
+// WithReaderWriter
+func (r *repository) RewrapDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) error {
+	const (
+		op           = "kms.(repository).RewrapDataKeyVersions"
+		keyFieldName = "CtKey"
+	)
+	if isNil(rkvWrapper) {
+		return fmt.Errorf("%s: missing root key wrapper: %w", op, ErrInvalidParameter)
+	}
+	if rootKeyId == "" {
+		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	if opts.withWriter == nil {
+		opts.withWriter = r.writer
+	}
+	if opts.withReader == nil {
+		opts.withReader = r.reader
+	}
+
+	dks, err := r.ListDataKeys(ctx, withRootKeyId(rootKeyId), withReader(opts.withReader))
+	if err != nil {
+		return fmt.Errorf("%s: unable to list the current data keys: %w", op, err)
+	}
+	for _, dk := range dks {
+		var versions []*dataKeyVersion
+		if err := r.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withReader(opts.withReader)); err != nil {
+			return fmt.Errorf("%s: unable to list the current data key versions: %w", op, err)
+		}
+		for _, v := range versions {
+			if err := v.Decrypt(ctx, rkvWrapper); err != nil {
+				return fmt.Errorf("%s: failed to decrypt data key version: %w", op, err)
+			}
+			if err := v.Encrypt(ctx, rkvWrapper); err != nil {
+				return fmt.Errorf("%s: failed to rewrap data key version: %w", op, err)
+			}
+			rowsAffected, err := opts.withWriter.Update(ctx, v, []string{keyFieldName}, nil, dbw.WithVersion(&v.Version))
+			if err != nil {
+				return fmt.Errorf("%s: failed to update data key version: %w", op, err)
+			}
+			if rowsAffected != 1 {
+				return fmt.Errorf("%s: expected to update 1 data key version and updated %d", op, rowsAffected)
+			}
+		}
+	}
+	return nil
+}
+
+// RotateDataKeyVersion will rotate the key version for the given rootKeyId.
+// Supported options: WithReaderWriter, withRandomReader
+func (r *repository) RotateDataKeyVersion(ctx context.Context, rootKeyVersionId string, rkvWrapper wrapping.Wrapper, rootKeyId string, purpose KeyPurpose, opt ...Option) error {
+	const op = "kms.(repository).RotateDataKeyVersion"
+	if rootKeyVersionId == "" {
+		return fmt.Errorf("%s: missing root key version: %w", op, ErrInvalidParameter)
+	}
+	if isNil(rkvWrapper) {
+		return fmt.Errorf("%s: missing root key version wrapper: %w", op, ErrInvalidParameter)
+	}
+	if rootKeyId == "" {
+		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+	}
+	if purpose == KeyPurposeUnknown {
+		return fmt.Errorf("%s: missing key purpose: %w", op, ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	if opts.withWriter == nil {
+		opts.withWriter = r.writer
+	}
+	if opts.withReader == nil {
+		opts.withReader = r.reader
+	}
+	if isNil(opts.withRandomReader) {
+		opts.withRandomReader = rand.Reader
+	}
+
+	dataKeys, err := r.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId), withReader(opts.withReader))
+	switch {
+	case err != nil:
+		return fmt.Errorf("%s: unable to lookup data key for %q: %w", op, purpose, err)
+	case len(dataKeys) == 0:
+		// this is NOT an error, there's just not data key to rotate for this purpose.
+		return nil
+	case len(dataKeys) > 1:
+		return fmt.Errorf("%s: too many data key (%d) for %q found: %w", op, len(dataKeys), purpose, ErrInternal)
+	}
+	dekKeyBytes, err := generateKey(ctx, opts.withRandomReader)
+	if err != nil {
+		return fmt.Errorf("%s: unable to generate %s DEK: %w", op, purpose, err)
+	}
+	dv := dataKeyVersion{}
+	id, err := newDataKeyVersionId()
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	dv.PrivateId = id
+	dv.DataKeyId = dataKeys[0].PrivateId
+	dv.RootKeyVersionId = rootKeyVersionId
+	dv.Key = dekKeyBytes
+	if err := dv.Encrypt(ctx, rkvWrapper); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if err := create(ctx, opts.withWriter, &dv); err != nil {
+		return fmt.Errorf("%s: dek key versions create: %w", op, err)
+	}
+	return nil
 }

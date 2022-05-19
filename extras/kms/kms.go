@@ -329,7 +329,11 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 //
 // Options supported: WithRandomReader, WithTx, WithRewrap
 func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) error {
-	const op = "kms.(Kms).RotateKeys"
+	const (
+		op = "kms.(Kms).RotateKeys"
+
+		keyFieldName = "CtKey"
+	)
 	if scopeId == "" {
 		return fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
@@ -353,91 +357,33 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	}
 
 	if opts.withRewrap {
-		const keyFieldName = "CtKey"
-		// rewrap the rootKey versions using the scope's root key to find them
-		rkvs, err := k.repo.ListRootKeyVersions(ctx, rootWrapper, rk.PrivateId, withReader(reader))
-		if err != nil {
-			return fmt.Errorf("%s: unable to list root key versions: %w", op, err)
-		}
-		for _, kv := range rkvs {
-			if err := kv.Encrypt(ctx, rootWrapper); err != nil {
-				return fmt.Errorf("%s: failed to rewrap root key version: %w", op, err)
-			}
-			rowsAffected, err := writer.Update(ctx, kv, []string{keyFieldName}, nil, dbw.WithVersion(&kv.Version))
-			if err != nil {
-				return fmt.Errorf("%s: failed to update root key version: %w", op, err)
-			}
-			if rowsAffected != 1 {
-				return fmt.Errorf("%s: expected to update 1 row and updated %d", op, rowsAffected)
-			}
-		}
-		// TODO (jimlambrt): rewrap deks
-		fmt.Println("WARNING: STILL NEED TO REWRAP DEKS")
+		// rewrap the root key versions with the provided rootWrapper (assuming
+		// it has a new wrapper)
+		k.repo.RewrapRootKeyVersions(ctx, rootWrapper, rk.PrivateId, WithReaderWriter(reader, writer))
 	}
 
-	// okay, now that the optional rewrapping is done, let's rotate the scope's
-	// keys, starting with the KEKs
-	rootKeyBytes, err := generateKey(ctx, opts.withRandomReader)
-	if err != nil {
-		return fmt.Errorf("%s: unable to generate key: %w", op, err)
-	}
-	rkv := rootKeyVersion{}
-	id, err := newRootKeyVersionId()
+	// rotate the root key version (adding a new version)
+	rkv, err := k.repo.RotateRootKeyVersion(ctx, rootWrapper, rk.PrivateId, WithReaderWriter(reader, writer), WithRandomReader(opts.withRandomReader))
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	rkv.PrivateId = id
-	rkv.RootKeyId = rk.PrivateId
-	rkv.Key = rootKeyBytes
-	if err := rkv.Encrypt(ctx, rootWrapper); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-	if err := create(ctx, writer, &rkv); err != nil {
-		return fmt.Errorf("%s: key versions: %w", op, err)
+
+	rkvWrapper, _, err := k.loadRoot(ctx, scopeId, withReader(reader))
+	if err != nil {
+		return err
 	}
 
-	// we need the new root key version wrapper to encrypt the upcoming rotated DEKs
-	rkvWrapper := aead.NewWrapper()
-	if _, err := rkvWrapper.SetConfig(ctx, wrapping.WithKeyId(rkv.PrivateId)); err != nil {
-		return fmt.Errorf("%s: error setting config on aead root wrapper in scope %q: %w", op, scopeId, err)
-	}
-	if err := rkvWrapper.SetAesGcmKeyBytes(rkv.Key); err != nil {
-		return fmt.Errorf("%s: error setting key bytes on aead root wrapper in scope %q: %w", op, scopeId, err)
+	// we've got a new rootKeyVersion wrapper, so let's rewrap the existing DEKs.
+	if opts.withRewrap {
+		k.repo.RewrapDataKeyVersions(ctx, rkvWrapper, rk.PrivateId, WithReaderWriter(reader, writer))
 	}
 
-	// now, let's rotate the scope's DEKs
+	// finally, let's rotate the scope's DEKs
 	for _, purpose := range k.purposes {
 		if purpose == KeyPurposeRootKey {
 			continue
 		}
-		dataKeys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rk.PrivateId), withReader(reader))
-		switch {
-		case err != nil:
-			return fmt.Errorf("%s: unable to lookup data key for %q: %w", op, purpose, err)
-		case len(dataKeys) == 0:
-			return fmt.Errorf("%s: data key for %q not found: %w", op, purpose, ErrKeyNotFound)
-		case len(dataKeys) > 1:
-			return fmt.Errorf("%s: too many data key (%d) for %q found: %w", op, len(dataKeys), purpose, ErrInternal)
-		}
-		dekKeyBytes, err := generateKey(ctx, opts.withRandomReader)
-		if err != nil {
-			return fmt.Errorf("%s: unable to generate %s DEK: %w", op, purpose, err)
-		}
-		dv := dataKeyVersion{}
-		id, err := newDataKeyVersionId()
-		if err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		dv.PrivateId = id
-		dv.DataKeyId = dataKeys[0].PrivateId
-		dv.RootKeyVersionId = rkv.PrivateId
-		dv.Key = dekKeyBytes
-		if err := dv.Encrypt(ctx, rkvWrapper); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-		if err := create(ctx, writer, &dv); err != nil {
-			return fmt.Errorf("%s: dek key versions create: %w", op, err)
-		}
+		k.repo.RotateDataKeyVersion(ctx, rkv.PrivateId, rkvWrapper, rk.PrivateId, purpose, WithReaderWriter(reader, writer), WithRandomReader(opts.withRandomReader))
 	}
 
 	if localTx != nil {
@@ -549,12 +495,12 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	return nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multi.PooledWrapper, string, error) {
+func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
 	const op = "kms.(Kms).loadRoot"
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	rk, err := k.repo.ScopeRootKey(ctx, scopeId)
+	rk, err := k.repo.ScopeRootKey(ctx, scopeId, opt...)
 	if err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return nil, "", fmt.Errorf("%s: missing root key for scope %q: %w", op, scopeId, ErrKeyNotFound)
@@ -568,8 +514,8 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multi.PooledWrappe
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: missing root key wrapper for scope %q: %w", op, scopeId, ErrKeyNotFound)
 	}
-
-	rootKeyVersions, err := k.repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy))
+	opts := getOpts(opt...)
+	rootKeyVersions, err := k.repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy), withReader(opts.withReader))
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: error looking up root key versions for scope %q: %w", op, scopeId, err)
 	}

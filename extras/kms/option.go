@@ -32,6 +32,7 @@ type options struct {
 	withWriter         dbw.Writer
 	withCache          bool
 	withScopeIds       []string
+	withRewrap         bool
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -141,5 +142,13 @@ func WithScopeIds(id ...string) Option {
 func withReader(r dbw.Reader) Option {
 	return func(o *options) {
 		o.withReader = r
+	}
+}
+
+// WithRewrap allows for optionally specifying that the keys should be
+// rewrapped.
+func WithRewrap(enableRewrap bool) Option {
+	return func(o *options) {
+		o.withRewrap = enableRewrap
 	}
 }
