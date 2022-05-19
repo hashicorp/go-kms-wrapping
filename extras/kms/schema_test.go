@@ -68,24 +68,6 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			}(),
 			fieldMask: []string{"RootKeyId"},
 		},
-		{
-			name: "version",
-			update: func() *rootKeyVersion {
-				k := new.Clone()
-				k.Version = uint32(22)
-				return k
-			}(),
-			fieldMask: []string{"Version"},
-		},
-		{
-			name: "key",
-			update: func() *rootKeyVersion {
-				k := new.Clone()
-				k.Key = []byte("updated key")
-				return k
-			}(),
-			fieldMask: []string{"CtKey"},
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -294,24 +276,6 @@ func TestDataKeyVersion_ImmutableFields(t *testing.T) {
 				return k
 			}(),
 			fieldMask: []string{"RootKeyId"},
-		},
-		{
-			name: "version",
-			update: func() *dataKeyVersion {
-				k := new.Clone()
-				k.Version = uint32(22)
-				return k
-			}(),
-			fieldMask: []string{"Version"},
-		},
-		{
-			name: "key",
-			update: func() *dataKeyVersion {
-				k := new.Clone()
-				k.Key = []byte("updated key")
-				return k
-			}(),
-			fieldMask: []string{"CtKey"},
 		},
 	}
 	for _, tc := range tests {
