@@ -33,6 +33,7 @@ type options struct {
 	withCache          bool
 	withScopeIds       []string
 	withRewrap         bool
+	withRootKeyId      string
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -150,5 +151,12 @@ func withReader(r dbw.Reader) Option {
 func WithRewrap(enableRewrap bool) Option {
 	return func(o *options) {
 		o.withRewrap = enableRewrap
+	}
+}
+
+// withRootKeyId allows specifying an optional root key ID
+func withRootKeyId(keyId string) Option {
+	return func(o *options) {
+		o.withRootKeyId = keyId
 	}
 }
