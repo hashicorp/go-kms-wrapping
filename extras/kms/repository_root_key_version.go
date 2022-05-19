@@ -153,7 +153,8 @@ func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	return &foundKeys[0], nil
 }
 
-// ListRootKeyVersions in versions of a root key. Supported options: WithLimit, WithOrderByVersion
+// ListRootKeyVersions in versions of a root key. Supported options: WithLimit,
+// WithOrderByVersion, WithReader
 func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) ([]*rootKeyVersion, error) {
 	const op = "kms.(repository).ListRootKeyVersions"
 	if rootKeyId == "" {

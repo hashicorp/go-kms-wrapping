@@ -163,7 +163,8 @@ func (r *repository) DeleteDataKey(ctx context.Context, privateId string, opt ..
 	return rowsDeleted, nil
 }
 
-// ListDataKeys will list the keys.  Supports options: WithPurpose, WithLimit, WithOrderByVersion
+// ListDataKeys will list the keys.  Supports options: WithPurpose, WithLimit,
+// WithOrderByVersion, WithReader
 func (r *repository) ListDataKeys(ctx context.Context, opt ...Option) ([]*dataKey, error) {
 	const op = "kms.(Repository).ListDataKeys"
 	var keys []*dataKey

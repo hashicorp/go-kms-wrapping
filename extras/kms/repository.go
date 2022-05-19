@@ -101,7 +101,7 @@ func (r *repository) DefaultLimit() int {
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  WithOrderByVersion is supported for types that have a
-// version column
+// version column.  WithReader option is supported
 func (r *repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
@@ -120,7 +120,10 @@ func (r *repository) list(ctx context.Context, resources interface{}, where stri
 			dbOpts = append(dbOpts, dbw.WithOrder("version desc"))
 		}
 	}
-	return r.reader.SearchWhere(ctx, resources, where, args, dbOpts...)
+	if opts.withReader == nil {
+		opts.withReader = r.reader
+	}
+	return opts.withReader.SearchWhere(ctx, resources, where, args, dbOpts...)
 }
 
 type vetForWriter interface {

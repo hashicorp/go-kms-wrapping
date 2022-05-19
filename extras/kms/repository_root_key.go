@@ -145,7 +145,7 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 }
 
 // ListRootKeys will list the root keys. Supported options: WithLimit,
-// WithOrderByVersion
+// WithOrderByVersion, WithReader
 func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKey, error) {
 	const op = "kms.(repository).ListRootKeys"
 	var keys []*rootKey
