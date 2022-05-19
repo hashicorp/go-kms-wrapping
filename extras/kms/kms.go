@@ -554,21 +554,14 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multi.PooledWrappe
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	rootKeys, err := k.repo.ListRootKeys(ctx)
+	rk, err := k.repo.ScopeRootKey(ctx, scopeId)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
-	}
-	var rootKeyId string
-	for _, k := range rootKeys {
-		if k.ScopeId == scopeId {
-			rootKeyId = k.PrivateId
-			break
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nil, "", fmt.Errorf("%s: missing root key for scope %q: %w", op, scopeId, ErrKeyNotFound)
 		}
+		return nil, "", fmt.Errorf("%s: unable to find root key for scope %q: %w", op, scopeId, err)
 	}
-	if rootKeyId == "" {
-		return nil, "", fmt.Errorf("%s: missing root key for scope %q: %w", op, scopeId, ErrKeyNotFound)
-	}
-
+	rootKeyId := rk.PrivateId
 	// Now: find the external KMS that can be used to decrypt the root values
 	// from the DB.
 	externalRootWrapper, err := k.GetExternalRootWrapper()
