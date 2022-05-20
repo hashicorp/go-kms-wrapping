@@ -346,46 +346,64 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
-	rk, err := k.repo.ScopeRootKey(ctx, scopeId, withReader(reader))
-	if err != nil {
-		return fmt.Errorf("%s: unable to load the scope's root key: %w", op, err)
-	}
 
-	opts := getOpts(opt...)
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
+	// since we could have started a local txn, we'll use an anon function for
+	// all the stmts which should be managed within that possible local txn.
+	if err := func() error {
+		rk, err := k.repo.ScopeRootKey(ctx, scopeId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to load the scope's root key: %w", op, err)
+		}
 
-	if opts.withRewrap {
-		// rewrap the root key versions with the provided rootWrapper (assuming
-		// it has a new wrapper)
-		k.repo.RewrapRootKeyVersions(ctx, rootWrapper, rk.PrivateId, WithReaderWriter(reader, writer))
-	}
+		opts := getOpts(opt...)
+		if isNil(opts.withRandomReader) {
+			opts.withRandomReader = rand.Reader
+		}
 
-	// rotate the root key version (adding a new version)
-	rkv, err := k.repo.RotateRootKeyVersion(ctx, rootWrapper, rk.PrivateId, WithReaderWriter(reader, writer), WithRandomReader(opts.withRandomReader))
-	if err != nil {
+		if opts.withRewrap {
+			// rewrap the root key versions with the provided rootWrapper (assuming
+			// it has a new wrapper)
+			if err := rewrapRootKeyVersionsTx(ctx, reader, writer, rootWrapper, rk.PrivateId); err != nil {
+				return fmt.Errorf("%s: unable to rewrap root key versions: %w", op, err)
+			}
+		}
+
+		// rotate the root key version (adding a new version)
+		rkv, err := rotateRootKeyVersionTx(ctx, writer, rootWrapper, rk.PrivateId, WithRandomReader(opts.withRandomReader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to rotate root key version: %w", op, err)
+		}
+
+		rkvWrapper, _, err := k.loadRoot(ctx, scopeId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to load the root key version wrapper: %w", op, err)
+		}
+
+		// we've got a new rootKeyVersion wrapper, so let's rewrap the existing DEKs.
+		if opts.withRewrap {
+			if err := rewrapDataKeyVersionsTx(ctx, reader, writer, rkvWrapper, rk.PrivateId); err != nil {
+				return fmt.Errorf("%s: unable to rewrap data key versions: %w", op, err)
+			}
+		}
+
+		// finally, let's rotate the scope's DEKs
+		for _, purpose := range k.purposes {
+			if purpose == KeyPurposeRootKey {
+				continue
+			}
+			if err := rotateDataKeyVersionTx(ctx, reader, writer, rkv.PrivateId, rkvWrapper, rk.PrivateId, purpose, WithRandomReader(opts.withRandomReader)); err != nil {
+				return fmt.Errorf("%s: unable to rotate data key version: %w", op, err)
+			}
+		}
+		return nil
+	}(); err != nil {
+		if localTx != nil {
+			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
+				err = multierror.Append(err, rollBackErr)
+			}
+		}
 		return fmt.Errorf("%s: %w", op, err)
 	}
-
-	rkvWrapper, _, err := k.loadRoot(ctx, scopeId, withReader(reader))
-	if err != nil {
-		return err
-	}
-
-	// we've got a new rootKeyVersion wrapper, so let's rewrap the existing DEKs.
-	if opts.withRewrap {
-		k.repo.RewrapDataKeyVersions(ctx, rkvWrapper, rk.PrivateId, WithReaderWriter(reader, writer))
-	}
-
-	// finally, let's rotate the scope's DEKs
-	for _, purpose := range k.purposes {
-		if purpose == KeyPurposeRootKey {
-			continue
-		}
-		k.repo.RotateDataKeyVersion(ctx, rkv.PrivateId, rkvWrapper, rk.PrivateId, purpose, WithReaderWriter(reader, writer), WithRandomReader(opts.withRandomReader))
-	}
-
 	if localTx != nil {
 		if err := localTx.Commit(ctx); err != nil {
 			return fmt.Errorf("%s: unable to commit transaction: %w", op, err)

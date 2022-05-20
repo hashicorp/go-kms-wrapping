@@ -188,36 +188,42 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 	return versions, nil
 }
 
-// RewrapDataKeyVersions will rewrap (re-encrypt) the data key versions for a
-// given rootKeyId with the latest root key version wrapper. Supported options:
-// WithReaderWriter
-func (r *repository) RewrapDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) error {
+// rewrapDataKeyVersionsTx will rewrap (re-encrypt) the data key versions for a
+// given rootKeyId with the latest root key version wrapper.
+// This function encapsulates all the work required within a dbw.TxHandler and
+// allows this capability to be shared with other repositories or just called
+// within a transaction.  To be clear, this repository function doesn't include
+// its own transaction and is intended to be used within a transaction provide
+// by the caller.
+func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rkvWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) error {
 	const (
-		op           = "kms.(repository).RewrapDataKeyVersions"
+		op           = "kms.rewrapDataKeyVersionsTx"
 		keyFieldName = "CtKey"
 	)
+	if isNil(reader) {
+		return fmt.Errorf("%s: missing reader: %w", op, ErrInvalidParameter)
+	}
+	if isNil(writer) {
+		return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
+	}
 	if isNil(rkvWrapper) {
-		return fmt.Errorf("%s: missing root key wrapper: %w", op, ErrInvalidParameter)
+		return fmt.Errorf("%s: missing root key version wrapper: %w", op, ErrInvalidParameter)
 	}
 	if rootKeyId == "" {
 		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
 
-	opts := getOpts(opt...)
-	if opts.withWriter == nil {
-		opts.withWriter = r.writer
+	r, err := newRepository(reader, writer)
+	if err != nil {
+		return fmt.Errorf("%s: unable to create repo: %w", op, err)
 	}
-	if opts.withReader == nil {
-		opts.withReader = r.reader
-	}
-
-	dks, err := r.ListDataKeys(ctx, withRootKeyId(rootKeyId), withReader(opts.withReader))
+	dks, err := r.ListDataKeys(ctx, withRootKeyId(rootKeyId), withReader(reader))
 	if err != nil {
 		return fmt.Errorf("%s: unable to list the current data keys: %w", op, err)
 	}
 	for _, dk := range dks {
 		var versions []*dataKeyVersion
-		if err := r.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withReader(opts.withReader)); err != nil {
+		if err := r.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withReader(reader)); err != nil {
 			return fmt.Errorf("%s: unable to list the current data key versions: %w", op, err)
 		}
 		for _, v := range versions {
@@ -227,7 +233,7 @@ func (r *repository) RewrapDataKeyVersions(ctx context.Context, rkvWrapper wrapp
 			if err := v.Encrypt(ctx, rkvWrapper); err != nil {
 				return fmt.Errorf("%s: failed to rewrap data key version: %w", op, err)
 			}
-			rowsAffected, err := opts.withWriter.Update(ctx, v, []string{keyFieldName}, nil, dbw.WithVersion(&v.Version))
+			rowsAffected, err := writer.Update(ctx, v, []string{keyFieldName}, nil, dbw.WithVersion(&v.Version))
 			if err != nil {
 				return fmt.Errorf("%s: failed to update data key version: %w", op, err)
 			}
@@ -239,12 +245,23 @@ func (r *repository) RewrapDataKeyVersions(ctx context.Context, rkvWrapper wrapp
 	return nil
 }
 
-// RotateDataKeyVersion will rotate the key version for the given rootKeyId.
-// Supported options: WithReaderWriter, withRandomReader
-func (r *repository) RotateDataKeyVersion(ctx context.Context, rootKeyVersionId string, rkvWrapper wrapping.Wrapper, rootKeyId string, purpose KeyPurpose, opt ...Option) error {
-	const op = "kms.(repository).RotateDataKeyVersion"
+// rotateDataKeyVersionTx will rotate the key version for the given rootKeyId.
+// This function encapsulates all the work required within a dbw.TxHandler and
+// allows this capability to be shared with other repositories or just called
+// within a transaction.  To be clear, this repository function doesn't include
+// its own transaction and is intended to be used within a transaction provide
+// by the caller.
+// Supported options: withRandomReader
+func rotateDataKeyVersionTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rootKeyVersionId string, rkvWrapper wrapping.Wrapper, rootKeyId string, purpose KeyPurpose, opt ...Option) error {
+	const op = "kms.rotateDataKeyVersionTx"
+	if isNil(reader) {
+		return fmt.Errorf("%s: missing reader: %w", op, ErrInvalidParameter)
+	}
+	if isNil(writer) {
+		return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
+	}
 	if rootKeyVersionId == "" {
-		return fmt.Errorf("%s: missing root key version: %w", op, ErrInvalidParameter)
+		return fmt.Errorf("%s: missing root key version id: %w", op, ErrInvalidParameter)
 	}
 	if isNil(rkvWrapper) {
 		return fmt.Errorf("%s: missing root key version wrapper: %w", op, ErrInvalidParameter)
@@ -257,17 +274,15 @@ func (r *repository) RotateDataKeyVersion(ctx context.Context, rootKeyVersionId 
 	}
 
 	opts := getOpts(opt...)
-	if opts.withWriter == nil {
-		opts.withWriter = r.writer
-	}
-	if opts.withReader == nil {
-		opts.withReader = r.reader
-	}
 	if isNil(opts.withRandomReader) {
 		opts.withRandomReader = rand.Reader
 	}
 
-	dataKeys, err := r.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId), withReader(opts.withReader))
+	r, err := newRepository(reader, writer)
+	if err != nil {
+		return fmt.Errorf("%s: unable to create repo: %w", op, err)
+	}
+	dataKeys, err := r.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId), withReader(reader))
 	switch {
 	case err != nil:
 		return fmt.Errorf("%s: unable to lookup data key for %q: %w", op, purpose, err)
@@ -279,7 +294,7 @@ func (r *repository) RotateDataKeyVersion(ctx context.Context, rootKeyVersionId 
 	}
 	dekKeyBytes, err := generateKey(ctx, opts.withRandomReader)
 	if err != nil {
-		return fmt.Errorf("%s: unable to generate %s DEK: %w", op, purpose, err)
+		return fmt.Errorf("%s: unable to generate %s data key version: %w", op, purpose, err)
 	}
 	dv := dataKeyVersion{}
 	id, err := newDataKeyVersionId()
@@ -291,10 +306,10 @@ func (r *repository) RotateDataKeyVersion(ctx context.Context, rootKeyVersionId 
 	dv.RootKeyVersionId = rootKeyVersionId
 	dv.Key = dekKeyBytes
 	if err := dv.Encrypt(ctx, rkvWrapper); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
+		return fmt.Errorf("%s: unable to encrypt new data key version: %w", op, err)
 	}
-	if err := create(ctx, opts.withWriter, &dv); err != nil {
-		return fmt.Errorf("%s: dek key versions create: %w", op, err)
+	if err := create(ctx, writer, &dv); err != nil {
+		return fmt.Errorf("%s: unable to create data key version: %w", op, err)
 	}
 	return nil
 }

@@ -592,6 +592,63 @@ func TestKms_RotateKeys(t *testing.T) {
 			wantErrContains: "missing external root wrapper",
 		},
 		{
+			name: "scope-root-key-error",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rotate-key-version-error"))
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrContains: "unable to load the scope's root key",
+		},
+		{
+			name: "rewrap-root-key-version-error",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rewrap-root-key-version-error"))
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			rewrap:          true,
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrContains: "unable to rewrap root key versions",
+		},
+		{
+			name: "rotate-root-key-version-error",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rotate-root-key-version-error"))
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrContains: "unable to rotate root key version",
+		},
+		{
 			name:    "success",
 			scopeId: "success",
 			kms: func() *Kms {

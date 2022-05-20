@@ -18,8 +18,10 @@ import (
 
 type mockTestWrapper struct {
 	wrapping.Wrapper
-	err   error
-	keyId string
+	decryptError bool
+	encryptError bool
+	err          error
+	keyId        string
 }
 
 func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
@@ -27,6 +29,19 @@ func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
 		return "", m.err
 	}
 	return m.keyId, nil
+}
+func (m *mockTestWrapper) Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) (*wrapping.BlobInfo, error) {
+	if m.err != nil && m.encryptError {
+		return nil, m.err
+	}
+	panic("todo")
+}
+
+func (m *mockTestWrapper) Decrypt(ctx context.Context, ciphertext *wrapping.BlobInfo, options ...wrapping.Option) ([]byte, error) {
+	if m.err != nil && m.decryptError {
+		return nil, m.err
+	}
+	return []byte("decrypted"), nil
 }
 
 func TestRepository_CreateDataKey(t *testing.T) {
