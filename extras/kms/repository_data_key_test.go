@@ -30,6 +30,7 @@ func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
 	}
 	return m.keyId, nil
 }
+
 func (m *mockTestWrapper) Encrypt(ctx context.Context, plaintext []byte, options ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if m.err != nil && m.encryptError {
 		return nil, m.err

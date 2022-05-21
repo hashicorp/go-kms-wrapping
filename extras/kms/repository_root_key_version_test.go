@@ -2,7 +2,9 @@ package kms
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
+	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -520,6 +523,329 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tc.wantCnt, len(got))
+		})
+	}
+}
+
+func Test_rewrapRootKeyVersionsTx(t *testing.T) {
+	t.Parallel()
+	const (
+		globalScope   = "global"
+		testPlainText = "simple plain-text"
+	)
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+
+	newWrapper := func(id string) wrapping.Wrapper {
+		tmpWrapper := aead.NewWrapper()
+		_, err := tmpWrapper.SetConfig(testCtx, wrapping.WithKeyId(id))
+		require.NoError(t, err)
+		key, err := generateKey(testCtx, rand.Reader)
+		require.NoError(t, err)
+		err = tmpWrapper.SetAesGcmKeyBytes(key)
+		require.NoError(t, err)
+		return tmpWrapper
+	}
+	rootWrapper, err := multi.NewPooledWrapper(testCtx, newWrapper("1"))
+	require.NoError(t, err)
+
+	testKms, err := New(rw, rw, []KeyPurpose{"database"})
+	require.NoError(t, err)
+	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)
+	require.NoError(t, testKms.CreateKeys(testCtx, globalScope, []KeyPurpose{"database"}))
+
+	_, rootKeyId, err := testKms.loadRoot(testCtx, globalScope)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		reader          dbw.Reader
+		writer          dbw.Writer
+		rootWrapper     wrapping.Wrapper
+		rootKeyId       string
+		setup           func()
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-reader",
+			writer:          rw,
+			rootWrapper:     rootWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing reader",
+		},
+		{
+			name:            "missing-writer",
+			reader:          rw,
+			rootWrapper:     rootWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing writer",
+		},
+		{
+			name:            "missing-root-wrapper",
+			reader:          rw,
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root wrapper",
+		},
+		{
+			name:            "missing-root-key-id",
+			reader:          rw,
+			writer:          rw,
+			rootWrapper:     rootWrapper,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root key id",
+		},
+		{
+			name: "ListRootKeyVersions-error",
+			reader: func() dbw.Reader {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("ListRootKeyVersions-error"))
+				return rw
+			}(),
+			writer:          rw,
+			rootWrapper:     rootWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrContains: "unable to list root key versions",
+		},
+		{
+			name:            "Encrypt-error",
+			reader:          rw,
+			writer:          rw,
+			rootWrapper:     &mockTestWrapper{err: errors.New("Encrypt-error"), encryptError: true},
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrContains: "failed to rewrap root key version",
+		},
+		{
+			name:            "update-error",
+			reader:          rw,
+			writer:          &dbw.RW{},
+			rootKeyId:       rootKeyId,
+			rootWrapper:     rootWrapper,
+			wantErr:         true,
+			wantErrContains: "failed to update root key version",
+		},
+		{
+			name:        "success",
+			reader:      rw,
+			writer:      rw,
+			rootWrapper: rootWrapper,
+			rootKeyId:   rootKeyId,
+			setup: func() {
+				_, err := rootWrapper.SetEncryptingWrapper(testCtx, newWrapper("2"))
+				require.NoError(t, err)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tc.setup != nil {
+				tc.setup()
+			}
+
+			var currentRootKeyVersions []*rootKeyVersion
+			var encryptedBlob *wrapping.BlobInfo
+			if !tc.wantErr {
+				currentRootKeyVersions, err = testKms.repo.ListRootKeyVersions(testCtx, rootWrapper, globalScope, withOrderByVersion(ascendingOrderBy))
+				require.NoError(err)
+
+				currentWrapper, _, err := testKms.loadRoot(testCtx, globalScope)
+				require.NoError(err)
+				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
+				require.NoError(err)
+			}
+
+			err := rewrapRootKeyVersionsTx(testCtx, tc.reader, tc.writer, tc.rootWrapper, tc.rootKeyId)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			// ensure we can decrypt something using the rotated wrapper (does
+			// the previous key still work)
+			rotatedWrapper, _, err := testKms.loadRoot(testCtx, globalScope)
+			require.NoError(err)
+			pt, err := rotatedWrapper.Decrypt(testCtx, encryptedBlob)
+			require.NoError(err)
+			assert.Equal(testPlainText, string(pt))
+
+			newRootKeyVersions, err := testKms.repo.ListRootKeyVersions(testCtx, rootWrapper, globalScope, withOrderByVersion(ascendingOrderBy))
+			require.NoError(err)
+			for i := range currentRootKeyVersions {
+				assert.NotEqual(currentRootKeyVersions[i].CtKey, newRootKeyVersions[i].CtKey)
+			}
+		})
+	}
+}
+
+func Test_rotateRootKeyVersionTx(t *testing.T) {
+	t.Parallel()
+	const (
+		testScopeId   = "global"
+		testPlainText = "simple plain-text"
+	)
+
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	rootWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
+	require.NoError(t, err)
+	// important: don't enable caching for these tests.
+	testKms, err := New(rw, rw, []KeyPurpose{"database"})
+	require.NoError(t, err)
+	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)
+	require.NoError(t, testKms.CreateKeys(testCtx, testScopeId, []KeyPurpose{"database"}))
+
+	_, rootKeyId, err := testKms.loadRoot(testCtx, testScopeId)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		writer          dbw.Writer
+		repo            *repository
+		rootWrapper     wrapping.Wrapper
+		rootKeyId       string
+		opt             []Option
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-root-wrapper",
+			writer:          rw,
+			repo:            testRepo,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root wrapper",
+		},
+		{
+			name:            "missing-root-key-id",
+			writer:          rw,
+			repo:            testRepo,
+			rootWrapper:     rootWrapper,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root key id",
+		},
+		{
+			name:            "success-missing-writer",
+			repo:            testRepo,
+			rootWrapper:     rootWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing writer",
+		},
+		{
+			name:            "randReader-error",
+			writer:          rw,
+			repo:            testRepo,
+			rootWrapper:     rootWrapper,
+			rootKeyId:       rootKeyId,
+			opt:             []Option{WithRandomReader(newMockRandReader(1, "bad-reader"))},
+			wantErr:         true,
+			wantErrContains: "bad-reader",
+		},
+		{
+			name:            "Encrypt-error",
+			writer:          rw,
+			repo:            testRepo,
+			rootWrapper:     &mockTestWrapper{err: errors.New("Encrypt-error"), encryptError: true},
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrContains: "unable to encrypt new root key version",
+		},
+		{
+			name:            "create-error",
+			writer:          &dbw.RW{},
+			repo:            testRepo,
+			rootWrapper:     rootWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrContains: "unable to create root key version",
+		},
+		{
+			name:        "success",
+			writer:      rw,
+			repo:        testRepo,
+			rootWrapper: rootWrapper,
+			rootKeyId:   rootKeyId,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			var currentRootKeyVersions []*rootKeyVersion
+			var encryptedBlob *wrapping.BlobInfo
+			if !tc.wantErr {
+				currentRootKeyVersions, err = tc.repo.ListRootKeyVersions(testCtx, tc.rootWrapper, tc.rootKeyId)
+				require.NoError(err)
+				sort.Slice(currentRootKeyVersions, func(i, j int) bool {
+					return currentRootKeyVersions[i].PrivateId < currentRootKeyVersions[j].PrivateId
+				})
+				currentWrapper, _, err := testKms.loadRoot(testCtx, testScopeId)
+				require.NoError(err)
+				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
+				require.NoError(err)
+			}
+
+			got, err := rotateRootKeyVersionTx(testCtx, tc.writer, tc.rootWrapper, tc.rootKeyId, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.NotNil(got)
+
+			// ensure we can decrypt something using the rotated wrapper (does
+			// the previous key still work)
+			rotatedWrapper, _, err := testKms.loadRoot(testCtx, testScopeId)
+			require.NoError(err)
+			pt, err := rotatedWrapper.Decrypt(testCtx, encryptedBlob)
+			require.NoError(err)
+			assert.Equal(testPlainText, string(pt))
+
+			// make sure the rotated rkv wasn't in the orig set
+			for _, currRkv := range currentRootKeyVersions {
+				assert.NotEqual(got, currRkv)
+			}
+
+			newRootKeyVersions, err := tc.repo.ListRootKeyVersions(testCtx, tc.rootWrapper, tc.rootKeyId)
+			require.NoError(err)
+			sort.Slice(newRootKeyVersions, func(i, j int) bool {
+				return newRootKeyVersions[i].PrivateId < newRootKeyVersions[j].PrivateId
+			})
+			assert.Equal(len(newRootKeyVersions), len(currentRootKeyVersions)*2)
 		})
 	}
 }

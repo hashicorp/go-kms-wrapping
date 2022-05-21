@@ -238,7 +238,7 @@ func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper 
 		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
 	}
 	if rootKeyId == "" {
-		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
 
 	if isNil(writer) {
@@ -262,10 +262,10 @@ func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper 
 	rkv.RootKeyId = rootKeyId
 	rkv.Key = rootKeyBytes
 	if err := rkv.Encrypt(ctx, rootWrapper); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: unable to encrypt new root key version: %w", op, err)
 	}
 	if err := create(ctx, writer, &rkv); err != nil {
-		return nil, fmt.Errorf("%s: key versions: %w", op, err)
+		return nil, fmt.Errorf("%s: unable to create root key version: %w", op, err)
 	}
 	return &rkv, nil
 }

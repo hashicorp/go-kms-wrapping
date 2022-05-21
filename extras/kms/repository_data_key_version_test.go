@@ -726,18 +726,24 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 
 func Test_rotateDataKeyVersionTx(t *testing.T) {
 	t.Parallel()
+	const (
+		testScopeId   = "global"
+		testPlainText = "simple plain-text"
+	)
+
 	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
 	rootWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
+	// important: don't enable caching for these tests.
 	testKms, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(t, err)
 	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)
-	require.NoError(t, testKms.CreateKeys(testCtx, "global", []KeyPurpose{"database"}))
+	require.NoError(t, testKms.CreateKeys(testCtx, testScopeId, []KeyPurpose{"database"}))
 
-	rkvWrapper, rootKeyId, err := testKms.loadRoot(testCtx, "global")
+	rkvWrapper, rootKeyId, err := testKms.loadRoot(testCtx, testScopeId)
 	require.NoError(t, err)
 	rkvId, err := rkvWrapper.KeyId(testCtx)
 	require.NoError(t, err)
@@ -946,6 +952,7 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			var currentDataKeyVersions []*dataKeyVersion
+			var encryptedBlob *wrapping.BlobInfo
 			if !tc.wantErr {
 				currDataKeys, err := tc.repo.ListDataKeys(testCtx, withRootKeyId(tc.rootKeyId))
 				require.NoError(err)
@@ -958,6 +965,11 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 				sort.Slice(currentDataKeyVersions, func(i, j int) bool {
 					return currentDataKeyVersions[i].PrivateId < currentDataKeyVersions[j].PrivateId
 				})
+
+				currentWrapper, err := testKms.GetWrapper(testCtx, testScopeId, tc.purpose)
+				require.NoError(err)
+				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
+				require.NoError(err)
 			}
 
 			err := rotateDataKeyVersionTx(testCtx, tc.reader, tc.writer, tc.rootKeyVersionId, tc.rkvWrapper, tc.rootKeyId, tc.purpose, tc.opt...)
@@ -972,6 +984,14 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+
+			// ensure we can decrypt something using the rotated wrapper (does
+			// the previous key still work)
+			rotatedWrapper, err := testKms.GetWrapper(testCtx, testScopeId, tc.purpose)
+			require.NoError(err)
+			pt, err := rotatedWrapper.Decrypt(testCtx, encryptedBlob)
+			require.NoError(err)
+			assert.Equal(testPlainText, string(pt))
 
 			newDataKeys, err := tc.repo.ListDataKeys(testCtx, withRootKeyId(tc.rootKeyId))
 			require.NoError(err)

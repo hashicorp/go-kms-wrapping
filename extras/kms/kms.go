@@ -311,10 +311,10 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	return nil
 }
 
-// RotateKeys will rotate the root key versions and all DEKs for the current
-// KeyPurpose(s) of the KMS.
+// RotateKeys will rotate the scope's root key version and all DEKs for the
+// current KeyPurpose(s) of the KMS.
 //
-// If an optional WithRewrap(...) is request, then all keys will be re-encrypted
+// If an optional WithRewrap(...) is requested, then all keys will be re-encrypted
 // with the current root key wrapper.
 //
 // WithTx(...) and WithReaderWriter(...) options are supported which allow the
@@ -322,12 +322,12 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 // operations.  If WithTx(...) or WithReaderWriter(...) are used, then the
 // caller is responsible for managing the transaction.  If neither WithTx or
 // WithReaderWriter are specified, then RotateKeys will rotated the scope's keys
-// within it's own transaction, which will be managed by RotateKeys.
+// within its own transaction, which will be managed by RotateKeys.
 //
 // The WithRandomReader(...) option is supported.  If no optional random reader
 // is provided, then the reader from crypto/rand will be used as a default.
 //
-// Options supported: WithRandomReader, WithTx, WithRewrap
+// Options supported: WithRandomReader, WithTx, WithRewrap, WithReaderWriter
 func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) error {
 	const (
 		op = "kms.(Kms).RotateKeys"
