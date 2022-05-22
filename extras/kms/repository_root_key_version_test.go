@@ -800,6 +800,7 @@ func Test_rotateRootKeyVersionTx(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
 			var currentRootKeyVersions []*rootKeyVersion
+			var currentWrapper *multi.PooledWrapper
 			var encryptedBlob *wrapping.BlobInfo
 			if !tc.wantErr {
 				currentRootKeyVersions, err = tc.repo.ListRootKeyVersions(testCtx, tc.rootWrapper, tc.rootKeyId)
@@ -807,7 +808,7 @@ func Test_rotateRootKeyVersionTx(t *testing.T) {
 				sort.Slice(currentRootKeyVersions, func(i, j int) bool {
 					return currentRootKeyVersions[i].PrivateId < currentRootKeyVersions[j].PrivateId
 				})
-				currentWrapper, _, err := testKms.loadRoot(testCtx, testScopeId)
+				currentWrapper, _, err = testKms.loadRoot(testCtx, testScopeId)
 				require.NoError(err)
 				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
 				require.NoError(err)
@@ -846,6 +847,13 @@ func Test_rotateRootKeyVersionTx(t *testing.T) {
 				return newRootKeyVersions[i].PrivateId < newRootKeyVersions[j].PrivateId
 			})
 			assert.Equal(len(newRootKeyVersions), len(currentRootKeyVersions)*2)
+
+			// encrypt pt with new version and make sure none of the old
+			// versions can decrypt it
+			encryptedBlob, err = rotatedWrapper.Encrypt(testCtx, []byte(testPlainText))
+			require.NoError(err)
+			_, err = currentWrapper.Decrypt(testCtx, encryptedBlob)
+			assert.Error(err)
 		})
 	}
 }

@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 
@@ -182,7 +181,7 @@ func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
-// its own transaction and is intended to be used within a transaction provide
+// its own transaction and is intended to be used within a transaction provided
 // by the caller.
 func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rootWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) error {
 	const (
@@ -229,7 +228,7 @@ func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
-// its own transaction and is intended to be used within a transaction provide
+// its own transaction and is intended to be used within a transaction provided
 // by the caller.
 // Supported options: withRandomReader
 func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*rootKeyVersion, error) {
@@ -245,10 +244,6 @@ func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper 
 		return nil, fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
-
 	rootKeyBytes, err := generateKey(ctx, opts.withRandomReader)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to generate key: %w", op, err)

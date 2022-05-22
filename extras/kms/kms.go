@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"reflect"
@@ -283,17 +282,12 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	opts := getOpts(opt...)
-
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
-
 	r, w, localTx, err := k.txFromOpts(ctx, opt...)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	opts := getOpts(opt...)
 	if _, err := createKeysTx(ctx, r, w, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
 		if localTx != nil {
 			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
@@ -321,7 +315,7 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 // caller to pass an inflight transaction to be used for all database
 // operations.  If WithTx(...) or WithReaderWriter(...) are used, then the
 // caller is responsible for managing the transaction.  If neither WithTx or
-// WithReaderWriter are specified, then RotateKeys will rotated the scope's keys
+// WithReaderWriter are specified, then RotateKeys will rotate the scope's keys
 // within its own transaction, which will be managed by RotateKeys.
 //
 // The WithRandomReader(...) option is supported.  If no optional random reader
@@ -356,10 +350,6 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 		}
 
 		opts := getOpts(opt...)
-		if isNil(opts.withRandomReader) {
-			opts.withRandomReader = rand.Reader
-		}
-
 		if opts.withRewrap {
 			// rewrap the root key versions with the provided rootWrapper (assuming
 			// it has a new wrapper)
@@ -480,10 +470,6 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	}
 
 	opts := getOpts(opt...)
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
-
 	for _, id := range scopeIds {
 		var scopeRootWrapper *multi.PooledWrapper
 

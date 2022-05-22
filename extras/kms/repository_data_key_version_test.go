@@ -953,6 +953,7 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 
 			var currentDataKeyVersions []*dataKeyVersion
 			var encryptedBlob *wrapping.BlobInfo
+			var currentWrapper wrapping.Wrapper
 			if !tc.wantErr {
 				currDataKeys, err := tc.repo.ListDataKeys(testCtx, withRootKeyId(tc.rootKeyId))
 				require.NoError(err)
@@ -966,7 +967,7 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 					return currentDataKeyVersions[i].PrivateId < currentDataKeyVersions[j].PrivateId
 				})
 
-				currentWrapper, err := testKms.GetWrapper(testCtx, testScopeId, tc.purpose)
+				currentWrapper, err = testKms.GetWrapper(testCtx, testScopeId, tc.purpose)
 				require.NoError(err)
 				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
 				require.NoError(err)
@@ -1010,6 +1011,12 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 				assert.Equal(len(newDataKeyVersions), len(currentDataKeyVersions))
 			default:
 				assert.Equal(len(newDataKeyVersions), len(currentDataKeyVersions)*2)
+				// encrypt pt with new version and make sure none of the old
+				// versions can decrypt it
+				encryptedBlob, err = rotatedWrapper.Encrypt(testCtx, []byte(testPlainText))
+				require.NoError(err)
+				_, err = currentWrapper.Decrypt(testCtx, encryptedBlob)
+				assert.Error(err)
 			}
 		})
 	}

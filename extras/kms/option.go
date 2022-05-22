@@ -1,6 +1,7 @@
 package kms
 
 import (
+	"crypto/rand"
 	"io"
 
 	"github.com/hashicorp/go-dbw"
@@ -42,6 +43,7 @@ func getDefaultOptions() options {
 	return options{
 		withErrorsMatching: noOpErrorMatchingFn,
 		withRetryCnt:       stdRetryCnt,
+		withRandomReader:   rand.Reader,
 	}
 }
 
@@ -109,7 +111,9 @@ func WithTx(tx *dbw.RW) Option {
 // provided.  By default the reader from crypto/rand will be used.
 func WithRandomReader(randomReader io.Reader) Option {
 	return func(o *options) {
-		o.withRandomReader = randomReader
+		if !isNil(randomReader) {
+			o.withRandomReader = randomReader
+		}
 	}
 }
 

@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -193,7 +192,7 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
-// its own transaction and is intended to be used within a transaction provide
+// its own transaction and is intended to be used within a transaction provided
 // by the caller.
 func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rkvWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) error {
 	const (
@@ -249,7 +248,7 @@ func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
-// its own transaction and is intended to be used within a transaction provide
+// its own transaction and is intended to be used within a transaction provided
 // by the caller.
 // Supported options: withRandomReader
 func rotateDataKeyVersionTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rootKeyVersionId string, rkvWrapper wrapping.Wrapper, rootKeyId string, purpose KeyPurpose, opt ...Option) error {
@@ -273,11 +272,6 @@ func rotateDataKeyVersionTx(ctx context.Context, reader dbw.Reader, writer dbw.W
 		return fmt.Errorf("%s: missing key purpose: %w", op, ErrInvalidParameter)
 	}
 
-	opts := getOpts(opt...)
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
-
 	r, err := newRepository(reader, writer)
 	if err != nil {
 		return fmt.Errorf("%s: unable to create repo: %w", op, err)
@@ -292,6 +286,7 @@ func rotateDataKeyVersionTx(ctx context.Context, reader dbw.Reader, writer dbw.W
 	case len(dataKeys) > 1:
 		return fmt.Errorf("%s: too many data key (%d) for %q found: %w", op, len(dataKeys), purpose, ErrInternal)
 	}
+	opts := getOpts(opt...)
 	dekKeyBytes, err := generateKey(ctx, opts.withRandomReader)
 	if err != nil {
 		return fmt.Errorf("%s: unable to generate %s data key version: %w", op, purpose, err)
