@@ -2,7 +2,7 @@ begin;
 
 
 -- we need to make the key and version columns mutable in order to support
--- rewrapping them root key versions.
+-- rewrapping the root key versions.
 drop trigger kms_immutable_columns on kms_root_key_version;
 
 create trigger kms_immutable_columns
@@ -13,7 +13,7 @@ update on kms_root_key_version
 
 
 -- we need to make the key and version columns mutable in order to support
--- rewrapping them data key version.
+-- rewrapping the data key version.
 drop trigger kms_immutable_columns on kms_data_key_version;
 
 create trigger kms_immutable_columns
