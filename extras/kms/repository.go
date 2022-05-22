@@ -171,7 +171,7 @@ type keys map[KeyPurpose]keyWithVersion
 // This function encapsulates all the work required within a dbw.TxHandler and
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
-// its own transaction and is intended to be used within a transaction provide
+// its own transaction and is intended to be used within a transaction provided
 // by the caller.
 func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
 	const op = "kms.createKeysTx"
