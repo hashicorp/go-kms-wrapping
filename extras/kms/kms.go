@@ -344,7 +344,7 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	// since we could have started a local txn, we'll use an anon function for
 	// all the stmts which should be managed within that possible local txn.
 	if err := func() error {
-		rk, err := k.repo.ScopeRootKey(ctx, scopeId, withReader(reader))
+		rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId, withReader(reader))
 		if err != nil {
 			return fmt.Errorf("%s: unable to load the scope's root key: %w", op, err)
 		}
@@ -504,7 +504,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*mul
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	rk, err := k.repo.ScopeRootKey(ctx, scopeId, opt...)
+	rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId, opt...)
 	if err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return nil, "", fmt.Errorf("%s: missing root key for scope %q: %w", op, scopeId, ErrKeyNotFound)

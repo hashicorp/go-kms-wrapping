@@ -694,7 +694,7 @@ func TestKms_RotateKeys(t *testing.T) {
 			var currentDataKeyVersions []*dataKeyVersion
 			if !tc.wantErr {
 				var err error
-				scopeRootKey, err = tc.kms.repo.ScopeRootKey(testCtx, tc.scopeId)
+				scopeRootKey, err = tc.kms.repo.LookupRootKeyByScope(testCtx, tc.scopeId)
 				require.NoError(err)
 				currentRootKeyVersions, err = tc.kms.repo.ListRootKeyVersions(testCtx, wrapper, scopeRootKey.PrivateId, withOrderByVersion(ascendingOrderBy))
 				require.NoError(err)

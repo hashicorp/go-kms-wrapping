@@ -156,8 +156,8 @@ func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKe
 	return keys, nil
 }
 
-// ScopeRootKey will lookup the rootKey for a given scope id. Supported options: WithReader
-func (r *repository) ScopeRootKey(ctx context.Context, scopeId string, opt ...Option) (*rootKey, error) {
+// LookupRootKeyByScope will lookup the rootKey for a given scope id. Supported options: WithReader
+func (r *repository) LookupRootKeyByScope(ctx context.Context, scopeId string, opt ...Option) (*rootKey, error) {
 	const op = "kms.(repository).ScopeRootKey"
 	opts := getOpts(opt...)
 	if opts.withReader == nil {

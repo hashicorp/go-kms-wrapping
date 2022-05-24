@@ -167,7 +167,7 @@ func (r *repository) LatestDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 // ListDataKeyVersions will lists versions of a key. Supported options:
 // WithLimit, WithOrderByVersion, WithReader
 func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrapping.Wrapper, databaseKeyId string, opt ...Option) ([]*dataKeyVersion, error) {
-	const op = "kms.(repository).ListDataVersions"
+	const op = "kms.(repository).ListDataKeyVersions"
 	if databaseKeyId == "" {
 		return nil, fmt.Errorf("%s: missing data key id: %w", op, ErrInvalidParameter)
 	}
