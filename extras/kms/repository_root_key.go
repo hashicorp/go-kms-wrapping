@@ -145,7 +145,7 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 }
 
 // ListRootKeys will list the root keys. Supported options: WithLimit,
-// WithOrderByVersion
+// WithOrderByVersion, WithReader
 func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKey, error) {
 	const op = "kms.(repository).ListRootKeys"
 	var keys []*rootKey
@@ -154,4 +154,19 @@ func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKe
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return keys, nil
+}
+
+// LookupRootKeyByScope will lookup the rootKey for a given scope id. Supported options: WithReader
+func (r *repository) LookupRootKeyByScope(ctx context.Context, scopeId string, opt ...Option) (*rootKey, error) {
+	const op = "kms.(repository).ScopeRootKey"
+	opts := getOpts(opt...)
+	if opts.withReader == nil {
+		opts.withReader = r.reader
+	}
+	var k rootKey
+	err := opts.withReader.LookupWhere(ctx, &k, "scope_id=?", []interface{}{scopeId})
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return &k, nil
 }

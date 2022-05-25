@@ -3,6 +3,7 @@ package kms
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -719,6 +720,451 @@ func TestRepository_LookupDataKeyVersion(t *testing.T) {
 			}
 			require.NoError(err)
 			assert.Equal(tc.privateKeyId, got.PrivateId)
+		})
+	}
+}
+
+func Test_rotateDataKeyVersionTx(t *testing.T) {
+	t.Parallel()
+	const (
+		testScopeId   = "global"
+		testPlainText = "simple plain-text"
+	)
+
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	rootWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
+	require.NoError(t, err)
+	// important: don't enable caching for these tests.
+	testKms, err := New(rw, rw, []KeyPurpose{"database"})
+	require.NoError(t, err)
+	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)
+	require.NoError(t, testKms.CreateKeys(testCtx, testScopeId, []KeyPurpose{"database"}))
+
+	rkvWrapper, rootKeyId, err := testKms.loadRoot(testCtx, testScopeId)
+	require.NoError(t, err)
+	rkvId, err := rkvWrapper.KeyId(testCtx)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name             string
+		reader           dbw.Reader
+		writer           dbw.Writer
+		repo             *repository
+		rootKeyVersionId string
+		rkvWrapper       wrapping.Wrapper
+		rootKeyId        string
+		purpose          KeyPurpose
+		opt              []Option
+		expectNoRotation bool
+		wantErr          bool
+		wantErrIs        error
+		wantErrContains  string
+	}{
+		{
+			name:             "missing-reader",
+			repo:             testRepo,
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rkvWrapper:       rkvWrapper,
+			rootKeyVersionId: rkvId,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrIs:        ErrInvalidParameter,
+			wantErrContains:  "missing reader",
+		},
+		{
+			name:             "missing-writer",
+			repo:             testRepo,
+			reader:           rw,
+			rootKeyId:        rootKeyId,
+			rkvWrapper:       rkvWrapper,
+			rootKeyVersionId: rkvId,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrIs:        ErrInvalidParameter,
+			wantErrContains:  "missing writer",
+		},
+		{
+			name:            "missing-root-key-version-id",
+			repo:            testRepo,
+			reader:          rw,
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			rkvWrapper:      rkvWrapper,
+			purpose:         "database",
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root key version id",
+		},
+		{
+			name:             "missing-root-key-version-wrapper",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrIs:        ErrInvalidParameter,
+			wantErrContains:  "missing root key version wrapper",
+		},
+		{
+			name:             "missing-root-key-id",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           rw,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrIs:        ErrInvalidParameter,
+			wantErrContains:  "missing root key id",
+		},
+		{
+			name:             "missing-purpose",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			wantErr:          true,
+			wantErrIs:        ErrInvalidParameter,
+			wantErrContains:  "missing key purpose",
+		},
+		{
+			name:             "newRepository-error",
+			repo:             testRepo,
+			reader:           &dbw.RW{},
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrContains:  "unable to create repo",
+		},
+		{
+			name: "ListDataKeys-error",
+			repo: testRepo,
+			reader: func() dbw.Reader {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("ListDataKeys-error"))
+				return rw
+			}(),
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrContains:  "unable to lookup data key",
+		},
+		{
+			name: "success-ListDataKeys-no-rows",
+			repo: testRepo,
+			reader: func() dbw.Reader {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}))
+				return rw
+			}(),
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			expectNoRotation: true,
+		},
+		{
+			name: "ListDataKeys-too-many-rows",
+			repo: testRepo,
+			reader: func() dbw.Reader {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "purpose", "create_time"}).AddRow("1", "1", "database", time.Now()).AddRow("2", "2", "database", time.Now()))
+				return rw
+			}(),
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			wantErr:          true,
+		},
+		{
+			name:             "randReader-error",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			opt:              []Option{WithRandomReader(newMockRandReader(1, "bad-reader"))},
+			wantErr:          true,
+			wantErrContains:  "bad-reader",
+		},
+		{
+			name:             "Encrypt-error",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       &mockTestWrapper{err: errors.New("Encrypt-error"), encryptError: true},
+			purpose:          "database",
+			wantErr:          true,
+			wantErrContains:  "unable to encrypt new data key version",
+		},
+		{
+			name:             "create-error",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           &dbw.RW{},
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+			wantErr:          true,
+			wantErrContains:  "unable to create data key version",
+		},
+		{
+			name:             "success",
+			repo:             testRepo,
+			reader:           rw,
+			writer:           rw,
+			rootKeyId:        rootKeyId,
+			rootKeyVersionId: rkvId,
+			rkvWrapper:       rkvWrapper,
+			purpose:          "database",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			var currentDataKeyVersions []*dataKeyVersion
+			var encryptedBlob *wrapping.BlobInfo
+			var currentWrapper wrapping.Wrapper
+			if !tc.wantErr {
+				currDataKeys, err := tc.repo.ListDataKeys(testCtx, withRootKeyId(tc.rootKeyId))
+				require.NoError(err)
+				for _, dk := range currDataKeys {
+					var versions []*dataKeyVersion
+					tc.repo.list(testCtx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withOrderByVersion(ascendingOrderBy))
+					require.NoError(err)
+					currentDataKeyVersions = append(currentDataKeyVersions, versions...)
+				}
+				sort.Slice(currentDataKeyVersions, func(i, j int) bool {
+					return currentDataKeyVersions[i].PrivateId < currentDataKeyVersions[j].PrivateId
+				})
+
+				currentWrapper, err = testKms.GetWrapper(testCtx, testScopeId, tc.purpose)
+				require.NoError(err)
+				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
+				require.NoError(err)
+			}
+
+			err := rotateDataKeyVersionTx(testCtx, tc.reader, tc.writer, tc.rootKeyVersionId, tc.rkvWrapper, tc.rootKeyId, tc.purpose, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			// ensure we can decrypt something using the rotated wrapper (does
+			// the previous key still work)
+			rotatedWrapper, err := testKms.GetWrapper(testCtx, testScopeId, tc.purpose)
+			require.NoError(err)
+			pt, err := rotatedWrapper.Decrypt(testCtx, encryptedBlob)
+			require.NoError(err)
+			assert.Equal(testPlainText, string(pt))
+
+			newDataKeys, err := tc.repo.ListDataKeys(testCtx, withRootKeyId(tc.rootKeyId))
+			require.NoError(err)
+			var newDataKeyVersions []*dataKeyVersion
+			for _, dk := range newDataKeys {
+				var versions []*dataKeyVersion
+				tc.repo.list(testCtx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withOrderByVersion(ascendingOrderBy))
+				require.NoError(err)
+				newDataKeyVersions = append(newDataKeyVersions, versions...)
+			}
+			sort.Slice(newDataKeyVersions, func(i, j int) bool {
+				return newDataKeyVersions[i].PrivateId < newDataKeyVersions[j].PrivateId
+			})
+			switch {
+			case tc.expectNoRotation:
+				assert.Equal(len(newDataKeyVersions), len(currentDataKeyVersions))
+			default:
+				assert.Equal(len(newDataKeyVersions), len(currentDataKeyVersions)*2)
+				// encrypt pt with new version and make sure none of the old
+				// versions can decrypt it
+				encryptedBlob, err = rotatedWrapper.Encrypt(testCtx, []byte(testPlainText))
+				require.NoError(err)
+				_, err = currentWrapper.Decrypt(testCtx, encryptedBlob)
+				assert.Error(err)
+			}
+		})
+	}
+}
+
+func Test_rewrapDataKeyVersionsTx(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	rootWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+	testKms, err := New(rw, rw, []KeyPurpose{"database"})
+	require.NoError(t, err)
+	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)
+	require.NoError(t, testKms.CreateKeys(testCtx, "global", []KeyPurpose{"database"}))
+
+	rkvWrapper, rootKeyId, err := testKms.loadRoot(testCtx, "global")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		reader          dbw.Reader
+		writer          dbw.Writer
+		rkvWrapper      wrapping.Wrapper
+		rootKeyId       string
+		opt             []Option
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-reader",
+			writer:          rw,
+			rkvWrapper:      rkvWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing reader",
+		},
+		{
+			name:            "missing-writer",
+			reader:          rw,
+			rkvWrapper:      rkvWrapper,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing writer",
+		},
+		{
+			name:            "missing-rkvWrapper",
+			reader:          rw,
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root key version wrapper",
+		},
+		{
+			name:            "missing-rootKeyId",
+			reader:          rw,
+			writer:          rw,
+			rkvWrapper:      rkvWrapper,
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing root key id",
+		},
+		{
+			name:            "newRepository-error",
+			reader:          &dbw.RW{},
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			rkvWrapper:      rkvWrapper,
+			wantErr:         true,
+			wantErrContains: "unable to create repo",
+		},
+		{
+			name: "ListDataKeys-error",
+			reader: func() dbw.Reader {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("ListDataKeys-error"))
+				return rw
+			}(),
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			rkvWrapper:      rkvWrapper,
+			wantErr:         true,
+			wantErrContains: "unable to list the current data keys",
+		},
+		{
+			name: "list-error",
+			reader: func() dbw.Reader {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id", "purpose", "create_time"}).AddRow("1", "1", "database", time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("list-error"))
+				return rw
+			}(),
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			rkvWrapper:      rkvWrapper,
+			wantErr:         true,
+			wantErrContains: "unable to list the current data key versions",
+		},
+		{
+			name:            "Decrypt-error",
+			reader:          rw,
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			rkvWrapper:      &mockTestWrapper{err: errors.New("Decrypt-error"), decryptError: true},
+			wantErr:         true,
+			wantErrContains: "failed to decrypt data key version",
+		},
+		{
+			name:            "Encrypt-error",
+			reader:          rw,
+			writer:          rw,
+			rootKeyId:       rootKeyId,
+			rkvWrapper:      &mockTestWrapper{err: errors.New("Encrypt-error"), encryptError: true},
+			wantErr:         true,
+			wantErrContains: "failed to rewrap data key version",
+		},
+		{
+			name:       "success",
+			reader:     rw,
+			writer:     rw,
+			rkvWrapper: rkvWrapper,
+			rootKeyId:  rootKeyId,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			err := rewrapDataKeyVersionsTx(testCtx, tc.reader, tc.writer, tc.rkvWrapper, tc.rootKeyId, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
 		})
 	}
 }

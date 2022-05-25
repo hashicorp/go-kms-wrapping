@@ -2,7 +2,6 @@ package kms
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"reflect"
@@ -283,46 +282,12 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	r, w, localTx, err := k.txFromOpts(ctx, opt...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	opts := getOpts(opt...)
-
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
-
-	var localTx *dbw.RW
-	var r dbw.Reader
-	var w dbw.Writer
-	switch {
-	case opts.withTx != nil:
-		if opts.withReader != nil || opts.withWriter != nil {
-			return fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
-		}
-		if ok := opts.withTx.IsTx(); !ok {
-			return fmt.Errorf("%s: provided transaction has no inflight transaction: %w", op, ErrInvalidParameter)
-		}
-		r = opts.withTx
-		w = opts.withTx
-	case opts.withReader != nil, opts.withWriter != nil:
-		if opts.withTx != nil {
-			return fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
-		}
-		if opts.withReader == nil {
-			return fmt.Errorf("%s: WithReaderWriter(...) option is missing the reader: %w", op, ErrInvalidParameter)
-		}
-		if opts.withWriter == nil {
-			return fmt.Errorf("%s: WithReaderWriter(...) option is missing the writer: %w", op, ErrInvalidParameter)
-		}
-		r = opts.withReader
-		w = opts.withWriter
-	default:
-		localTx, err = k.repo.writer.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("%s: unable to begin transaction: %w", op, err)
-		}
-		r = localTx
-		w = localTx
-	}
-
 	if _, err := createKeysTx(ctx, r, w, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
 		if localTx != nil {
 			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
@@ -338,6 +303,145 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	}
 
 	return nil
+}
+
+// RotateKeys will rotate the scope's root key version and all DEKs for the
+// current KeyPurpose(s) of the KMS.
+//
+// If an optional WithRewrap(...) is requested, then all keys will be re-encrypted
+// with the current root key wrapper.
+//
+// WithTx(...) and WithReaderWriter(...) options are supported which allow the
+// caller to pass an inflight transaction to be used for all database
+// operations.  If WithTx(...) or WithReaderWriter(...) are used, then the
+// caller is responsible for managing the transaction.  If neither WithTx or
+// WithReaderWriter are specified, then RotateKeys will rotate the scope's keys
+// within its own transaction, which will be managed by RotateKeys.
+//
+// The WithRandomReader(...) option is supported.  If no optional random reader
+// is provided, then the reader from crypto/rand will be used as a default.
+//
+// Options supported: WithRandomReader, WithTx, WithRewrap, WithReaderWriter
+func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) error {
+	const (
+		op = "kms.(Kms).RotateKeys"
+
+		keyFieldName = "CtKey"
+	)
+	if scopeId == "" {
+		return fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	rootWrapper, err := k.GetExternalRootWrapper()
+	if err != nil {
+		return fmt.Errorf("%s: unable to get an external root wrapper: %w", op, err)
+	}
+
+	reader, writer, localTx, err := k.txFromOpts(ctx, opt...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	// since we could have started a local txn, we'll use an anon function for
+	// all the stmts which should be managed within that possible local txn.
+	if err := func() error {
+		rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to load the scope's root key: %w", op, err)
+		}
+
+		opts := getOpts(opt...)
+		if opts.withRewrap {
+			// rewrap the root key versions with the provided rootWrapper (assuming
+			// it has a new wrapper)
+			if err := rewrapRootKeyVersionsTx(ctx, reader, writer, rootWrapper, rk.PrivateId); err != nil {
+				return fmt.Errorf("%s: unable to rewrap root key versions: %w", op, err)
+			}
+		}
+
+		// rotate the root key version (adding a new version)
+		rkv, err := rotateRootKeyVersionTx(ctx, writer, rootWrapper, rk.PrivateId, WithRandomReader(opts.withRandomReader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to rotate root key version: %w", op, err)
+		}
+
+		rkvWrapper, _, err := k.loadRoot(ctx, scopeId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to load the root key version wrapper: %w", op, err)
+		}
+
+		// we've got a new rootKeyVersion wrapper, so let's rewrap the existing DEKs.
+		if opts.withRewrap {
+			if err := rewrapDataKeyVersionsTx(ctx, reader, writer, rkvWrapper, rk.PrivateId); err != nil {
+				return fmt.Errorf("%s: unable to rewrap data key versions: %w", op, err)
+			}
+		}
+
+		// finally, let's rotate the scope's DEKs
+		for _, purpose := range k.purposes {
+			if purpose == KeyPurposeRootKey {
+				continue
+			}
+			if err := rotateDataKeyVersionTx(ctx, reader, writer, rkv.PrivateId, rkvWrapper, rk.PrivateId, purpose, WithRandomReader(opts.withRandomReader)); err != nil {
+				return fmt.Errorf("%s: unable to rotate data key version: %w", op, err)
+			}
+		}
+		return nil
+	}(); err != nil {
+		if localTx != nil {
+			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
+				err = multierror.Append(err, rollBackErr)
+			}
+		}
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if localTx != nil {
+		if err := localTx.Commit(ctx); err != nil {
+			return fmt.Errorf("%s: unable to commit transaction: %w", op, err)
+		}
+	}
+	return nil
+}
+
+// txFromOpts will determine the correct transaction strategy given the provided
+// options. Options supported: WithReaderWriter, WithTx
+func (k *Kms) txFromOpts(ctx context.Context, opt ...Option) (dbw.Reader, dbw.Writer, *dbw.RW, error) {
+	const op = "kms.(Kms).getTxFromOpt"
+	var localTx *dbw.RW
+	var r dbw.Reader
+	var w dbw.Writer
+	opts := getOpts(opt...)
+	switch {
+	case opts.withTx != nil:
+		if opts.withReader != nil || opts.withWriter != nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
+		if ok := opts.withTx.IsTx(); !ok {
+			return nil, nil, nil, fmt.Errorf("%s: provided transaction has no inflight transaction: %w", op, ErrInvalidParameter)
+		}
+		r = opts.withTx
+		w = opts.withTx
+	case opts.withReader != nil, opts.withWriter != nil:
+		if opts.withTx != nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
+		if opts.withReader == nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithReaderWriter(...) option is missing the reader: %w", op, ErrInvalidParameter)
+		}
+		if opts.withWriter == nil {
+			return nil, nil, nil, fmt.Errorf("%s: WithReaderWriter(...) option is missing the writer: %w", op, ErrInvalidParameter)
+		}
+		r = opts.withReader
+		w = opts.withWriter
+	default:
+		var err error
+		localTx, err = k.repo.writer.Begin(ctx)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("%s: unable to begin transaction: %w", op, err)
+		}
+		r = localTx
+		w = localTx
+	}
+	return r, w, localTx, nil
 }
 
 // ValidateSchema will validate the database schema against the module's
@@ -366,10 +470,6 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	}
 
 	opts := getOpts(opt...)
-	if isNil(opts.withRandomReader) {
-		opts.withRandomReader = rand.Reader
-	}
-
 	for _, id := range scopeIds {
 		var scopeRootWrapper *multi.PooledWrapper
 
@@ -399,34 +499,27 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	return nil
 }
 
-func (k *Kms) loadRoot(ctx context.Context, scopeId string) (*multi.PooledWrapper, string, error) {
+func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (*multi.PooledWrapper, string, error) {
 	const op = "kms.(Kms).loadRoot"
 	if scopeId == "" {
 		return nil, "", fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	rootKeys, err := k.repo.ListRootKeys(ctx)
+	rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId, opt...)
 	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", op, err)
-	}
-	var rootKeyId string
-	for _, k := range rootKeys {
-		if k.ScopeId == scopeId {
-			rootKeyId = k.PrivateId
-			break
+		if errors.Is(err, dbw.ErrRecordNotFound) {
+			return nil, "", fmt.Errorf("%s: missing root key for scope %q: %w", op, scopeId, ErrKeyNotFound)
 		}
+		return nil, "", fmt.Errorf("%s: unable to find root key for scope %q: %w", op, scopeId, err)
 	}
-	if rootKeyId == "" {
-		return nil, "", fmt.Errorf("%s: missing root key for scope %q: %w", op, scopeId, ErrKeyNotFound)
-	}
-
+	rootKeyId := rk.PrivateId
 	// Now: find the external KMS that can be used to decrypt the root values
 	// from the DB.
 	externalRootWrapper, err := k.GetExternalRootWrapper()
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: missing root key wrapper for scope %q: %w", op, scopeId, ErrKeyNotFound)
 	}
-
-	rootKeyVersions, err := k.repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy))
+	opts := getOpts(opt...)
+	rootKeyVersions, err := k.repo.ListRootKeyVersions(ctx, externalRootWrapper, rootKeyId, withOrderByVersion(descendingOrderBy), withReader(opts.withReader))
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: error looking up root key versions for scope %q: %w", op, scopeId, err)
 	}

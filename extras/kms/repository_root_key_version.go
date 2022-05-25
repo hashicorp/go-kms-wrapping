@@ -153,7 +153,8 @@ func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	return &foundKeys[0], nil
 }
 
-// ListRootKeyVersions in versions of a root key. Supported options: WithLimit, WithOrderByVersion
+// ListRootKeyVersions in versions of a root key. Supported options: WithLimit,
+// WithOrderByVersion, WithReader
 func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) ([]*rootKeyVersion, error) {
 	const op = "kms.(repository).ListRootKeyVersions"
 	if rootKeyId == "" {
@@ -173,4 +174,93 @@ func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 		}
 	}
 	return versions, nil
+}
+
+// rewrapRootKeyVersionsTx will rewrap (re-encrypt) the root key versions for a
+// given rootKeyId with the latest wrapper.
+// This function encapsulates all the work required within a dbw.TxHandler and
+// allows this capability to be shared with other repositories or just called
+// within a transaction.  To be clear, this repository function doesn't include
+// its own transaction and is intended to be used within a transaction provided
+// by the caller.
+func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rootWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) error {
+	const (
+		op           = "kms.rewrapRootKeyVersionsTx"
+		keyFieldName = "CtKey"
+	)
+	if isNil(reader) {
+		return fmt.Errorf("%s: missing reader: %w", op, ErrInvalidParameter)
+	}
+	if isNil(writer) {
+		return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
+	}
+	if isNil(rootWrapper) {
+		return fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
+	}
+	if rootKeyId == "" {
+		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+	}
+	r, err := newRepository(reader, writer)
+	if err != nil {
+		return fmt.Errorf("%s: unable to create repo: %w", op, err)
+	}
+	// rewrap the rootKey versions using the scope's root key to find them
+	rkvs, err := r.ListRootKeyVersions(ctx, rootWrapper, rootKeyId, withReader(reader))
+	if err != nil {
+		return fmt.Errorf("%s: unable to list root key versions: %w", op, err)
+	}
+	for _, kv := range rkvs {
+		if err := kv.Encrypt(ctx, rootWrapper); err != nil {
+			return fmt.Errorf("%s: failed to rewrap root key version: %w", op, err)
+		}
+		rowsAffected, err := writer.Update(ctx, kv, []string{keyFieldName}, nil, dbw.WithVersion(&kv.Version))
+		if err != nil {
+			return fmt.Errorf("%s: failed to update root key version: %w", op, err)
+		}
+		if rowsAffected != 1 {
+			return fmt.Errorf("%s: expected to update 1 root key version and updated %d", op, rowsAffected)
+		}
+	}
+	return nil
+}
+
+// rotateRootKeyVersionTx will rotate the key version for the given rootKeyId.
+// This function encapsulates all the work required within a dbw.TxHandler and
+// allows this capability to be shared with other repositories or just called
+// within a transaction.  To be clear, this repository function doesn't include
+// its own transaction and is intended to be used within a transaction provided
+// by the caller.
+// Supported options: withRandomReader
+func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) (*rootKeyVersion, error) {
+	const op = "kms.rotateRootKeyVersionTx"
+	if isNil(rootWrapper) {
+		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
+	}
+	if rootKeyId == "" {
+		return nil, fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
+	}
+
+	if isNil(writer) {
+		return nil, fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	rootKeyBytes, err := generateKey(ctx, opts.withRandomReader)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to generate key: %w", op, err)
+	}
+	rkv := rootKeyVersion{}
+	id, err := newRootKeyVersionId()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	rkv.PrivateId = id
+	rkv.RootKeyId = rootKeyId
+	rkv.Key = rootKeyBytes
+	if err := rkv.Encrypt(ctx, rootWrapper); err != nil {
+		return nil, fmt.Errorf("%s: unable to encrypt new root key version: %w", op, err)
+	}
+	if err := create(ctx, writer, &rkv); err != nil {
+		return nil, fmt.Errorf("%s: unable to create root key version: %w", op, err)
+	}
+	return &rkv, nil
 }

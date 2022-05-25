@@ -2,7 +2,9 @@ package kms
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -214,7 +216,6 @@ func TestKms_loadRoot(t *testing.T) {
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
 	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
-	db.Debug(true)
 	rk := testRootKey(t, db, "global")
 
 	rkv1, rkw1 := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
@@ -532,6 +533,323 @@ func TestKms_ClearCache(t *testing.T) {
 	require.NoError(err)
 	assertCacheEqual(t, 0, kmsCache)
 	require.NoError(kmsCache.ClearCache(ctx))
+}
+
+func TestKms_RotateKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+
+	newWrapper := func(id string) wrapping.Wrapper {
+		tmpWrapper := aead.NewWrapper()
+		_, err := tmpWrapper.SetConfig(testCtx, wrapping.WithKeyId(id))
+		require.NoError(t, err)
+		key, err := generateKey(testCtx, rand.Reader)
+		require.NoError(t, err)
+		err = tmpWrapper.SetAesGcmKeyBytes(key)
+		require.NoError(t, err)
+		return tmpWrapper
+	}
+
+	wrapper, err := multi.NewPooledWrapper(testCtx, newWrapper("1"))
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		kms             *Kms
+		scopeId         string
+		rewrap          bool
+		opt             []Option
+		setup           func(k *Kms, scopeId string)
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-scope-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing scope id",
+		},
+		{
+			name: "missing-external-root-wrapper",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrIs:       ErrKeyNotFound,
+			wantErrContains: "missing external root wrapper",
+		},
+		{
+			name: "scope-root-key-error",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rotate-key-version-error"))
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrContains: "unable to load the scope's root key",
+		},
+		{
+			name: "rewrap-root-key-version-error",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rewrap-root-key-version-error"))
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			rewrap:          true,
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrContains: "unable to rewrap root key versions",
+		},
+		{
+			name: "rotate-root-key-version-error",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
+				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rotate-root-key-version-error"))
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			scopeId:         "global",
+			wantErr:         true,
+			wantErrContains: "unable to rotate root key version",
+		},
+		{
+			name:    "success",
+			scopeId: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *Kms, scopeId string) {
+				require.NoError(t, k.CreateKeys(testCtx, scopeId, []KeyPurpose{"database", "auth"}))
+				_, err := wrapper.SetEncryptingWrapper(testCtx, newWrapper("2"))
+				require.NoError(t, err)
+			},
+		},
+		{
+			name:    "success-with-rewrap",
+			scopeId: "success-with-rewrap",
+			rewrap:  true,
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *Kms, scopeId string) {
+				require.NoError(t, k.CreateKeys(testCtx, scopeId, []KeyPurpose{"database", "auth"}))
+				_, err := wrapper.SetEncryptingWrapper(testCtx, newWrapper("3"))
+				require.NoError(t, err)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tc.setup != nil {
+				tc.setup(tc.kms, tc.scopeId)
+			}
+
+			var scopeRootKey *rootKey
+			var currentRootKeyVersions []*rootKeyVersion
+			var currentDataKeyVersions []*dataKeyVersion
+			if !tc.wantErr {
+				var err error
+				scopeRootKey, err = tc.kms.repo.LookupRootKeyByScope(testCtx, tc.scopeId)
+				require.NoError(err)
+				currentRootKeyVersions, err = tc.kms.repo.ListRootKeyVersions(testCtx, wrapper, scopeRootKey.PrivateId, withOrderByVersion(ascendingOrderBy))
+				require.NoError(err)
+
+				currDataKeys, err := tc.kms.repo.ListDataKeys(testCtx, withRootKeyId(scopeRootKey.PrivateId))
+				require.NoError(err)
+				for _, dk := range currDataKeys {
+					var versions []*dataKeyVersion
+					tc.kms.repo.list(testCtx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withOrderByVersion(ascendingOrderBy))
+					require.NoError(err)
+					currentDataKeyVersions = append(currentDataKeyVersions, versions...)
+				}
+				sort.Slice(currentDataKeyVersions, func(i, j int) bool {
+					return currentDataKeyVersions[i].PrivateId < currentDataKeyVersions[j].PrivateId
+				})
+			}
+
+			tc.opt = append(tc.opt, WithRewrap(tc.rewrap))
+
+			err = tc.kms.RotateKeys(testCtx, tc.scopeId, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			newRootKeyVersions, err := tc.kms.repo.ListRootKeyVersions(testCtx, wrapper, scopeRootKey.PrivateId, withOrderByVersion(ascendingOrderBy))
+			require.NoError(err)
+
+			newDataKeys, err := tc.kms.repo.ListDataKeys(testCtx, withRootKeyId(scopeRootKey.PrivateId))
+			require.NoError(err)
+			var newDataKeyVersions []*dataKeyVersion
+			for _, dk := range newDataKeys {
+				var versions []*dataKeyVersion
+				tc.kms.repo.list(testCtx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withOrderByVersion(ascendingOrderBy))
+				require.NoError(err)
+				newDataKeyVersions = append(newDataKeyVersions, versions...)
+			}
+			sort.Slice(newDataKeyVersions, func(i, j int) bool {
+				return newDataKeyVersions[i].PrivateId < newDataKeyVersions[j].PrivateId
+			})
+
+			assert.Equal(len(newRootKeyVersions), len(currentRootKeyVersions)+1)
+			assert.Equal(len(newDataKeyVersions), len(currentDataKeyVersions)*2)
+
+			if tc.rewrap {
+				// ensure the rootKeyVersion encrypted keys have been
+				// re-encrypted
+				for i := range currentRootKeyVersions {
+					assert.NotEqual(currentRootKeyVersions[i].CtKey, newRootKeyVersions[i].CtKey)
+				}
+			}
+		})
+	}
+	t.Run("WithTx", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := TestDb(t)
+		rw := dbw.New(db)
+		purposes := []KeyPurpose{"database"}
+		k, err := New(rw, rw, purposes)
+		require.NoError(err)
+		err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		err = k.CreateKeys(testCtx, "global", []KeyPurpose{"database"})
+		require.NoError(err)
+
+		tx, err := rw.Begin(testCtx)
+		require.NoError(err)
+
+		err = k.RotateKeys(testCtx, "global", WithTx(tx), WithRewrap(true))
+		require.NoError(err)
+
+		assert.NoError(tx.Commit(testCtx))
+
+		err = k.RotateKeys(testCtx, "global", WithTx(tx), WithReaderWriter(tx, tx), WithRewrap(true))
+		require.Error(err)
+		assert.Contains(err.Error(), "WithTx(...) and WithReaderWriter(...) options cannot be used at the same time")
+	})
+	t.Run("WithTx-missing", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := TestDb(t)
+		rw := dbw.New(db)
+		purposes := []KeyPurpose{"database"}
+		k, err := New(rw, rw, purposes)
+		require.NoError(err)
+		err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		err = k.RotateKeys(testCtx, "global", WithTx(rw), WithRewrap(true))
+		require.Error(err)
+		assert.ErrorIs(err, ErrInvalidParameter)
+	})
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := TestDb(t)
+		rw := dbw.New(db)
+		purposes := []KeyPurpose{"database"}
+		k, err := New(rw, rw, purposes)
+		require.NoError(err)
+		err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		err = k.CreateKeys(testCtx, "global", []KeyPurpose{"database"})
+		require.NoError(err)
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.RotateKeys(testCtx, "global", WithReaderWriter(r, w), WithRewrap(true))
+			},
+		)
+		require.NoError(err)
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.RotateKeys(testCtx, "global", WithReaderWriter(nil, w), WithRewrap(true))
+			},
+		)
+		require.Error(err)
+		assert.Contains(err.Error(), "missing the reader")
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.RotateKeys(testCtx, "global", WithReaderWriter(r, nil), WithRewrap(true))
+			},
+		)
+		require.Error(err)
+		assert.Contains(err.Error(), "missing the writer")
+
+		_, err = rw.DoTx(
+			context.Background(),
+			func(error) bool { return false },
+			3, dbw.ExpBackoff{},
+			func(r dbw.Reader, w dbw.Writer) error {
+				return k.RotateKeys(testCtx, "global", WithReaderWriter(r, w), WithTx(rw), WithRewrap(true))
+			},
+		)
+		require.Error(err)
+		assert.Contains(err.Error(), "WithTx(...) and WithReaderWriter(...) options cannot be used at the same time")
+	})
 }
 
 func assertCacheEqual(t *testing.T, want int, k *Kms) {

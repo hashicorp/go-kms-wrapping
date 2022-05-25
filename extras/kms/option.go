@@ -1,6 +1,7 @@
 package kms
 
 import (
+	"crypto/rand"
 	"io"
 
 	"github.com/hashicorp/go-dbw"
@@ -32,6 +33,8 @@ type options struct {
 	withWriter         dbw.Writer
 	withCache          bool
 	withScopeIds       []string
+	withRewrap         bool
+	withRootKeyId      string
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
@@ -40,6 +43,7 @@ func getDefaultOptions() options {
 	return options{
 		withErrorsMatching: noOpErrorMatchingFn,
 		withRetryCnt:       stdRetryCnt,
+		withRandomReader:   rand.Reader,
 	}
 }
 
@@ -107,7 +111,9 @@ func WithTx(tx *dbw.RW) Option {
 // provided.  By default the reader from crypto/rand will be used.
 func WithRandomReader(randomReader io.Reader) Option {
 	return func(o *options) {
-		o.withRandomReader = randomReader
+		if !isNil(randomReader) {
+			o.withRandomReader = randomReader
+		}
 	}
 }
 
@@ -134,5 +140,27 @@ func WithCache(enable bool) Option {
 func WithScopeIds(id ...string) Option {
 	return func(o *options) {
 		o.withScopeIds = id
+	}
+}
+
+// withReader provides an optional reader
+func withReader(r dbw.Reader) Option {
+	return func(o *options) {
+		o.withReader = r
+	}
+}
+
+// WithRewrap allows for optionally specifying that the keys should be
+// rewrapped.
+func WithRewrap(enableRewrap bool) Option {
+	return func(o *options) {
+		o.withRewrap = enableRewrap
+	}
+}
+
+// withRootKeyId allows specifying an optional root key ID
+func withRootKeyId(keyId string) Option {
+	return func(o *options) {
+		o.withRootKeyId = keyId
 	}
 }

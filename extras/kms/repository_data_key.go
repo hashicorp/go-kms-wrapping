@@ -163,16 +163,25 @@ func (r *repository) DeleteDataKey(ctx context.Context, privateId string, opt ..
 	return rowsDeleted, nil
 }
 
-// ListDataKeys will list the keys.  Supports options: WithPurpose, WithLimit, WithOrderByVersion
+// ListDataKeys will list the keys.  Supports options: WithPurpose, WithLimit,
+// WithOrderByVersion, WithReader, WithRootKeyId
 func (r *repository) ListDataKeys(ctx context.Context, opt ...Option) ([]*dataKey, error) {
 	const op = "kms.(Repository).ListDataKeys"
-	var keys []*dataKey
-	where := "1=1"
-	var whereArgs []interface{}
 	opts := getOpts(opt...)
+
+	var keys []*dataKey
+	var where string
+	var whereArgs []interface{}
+	switch {
+	case opts.withRootKeyId != "":
+		where = "root_key_id = ?"
+		whereArgs = append(whereArgs, opts.withRootKeyId)
+	default:
+		where = "1=1"
+	}
 	if opts.withPurpose != KeyPurposeUnknown {
-		where = "purpose = ?"
-		whereArgs = []interface{}{opts.withPurpose}
+		where += " and purpose = ?"
+		whereArgs = append(whereArgs, opts.withPurpose)
 	}
 	err := r.list(ctx, &keys, where, whereArgs, opt...)
 	if err != nil {
