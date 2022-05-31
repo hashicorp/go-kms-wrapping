@@ -69,8 +69,9 @@ func main() {
 		return
 	}
 	// create a kms that supports both the default kms.KeyPurposeRootKey KEK and
-	// a "database" DEK
-	k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+	// a "database" DEK.  Also, we'll enable in-memory caching of keys for the
+	// new kms.
+	k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"}, kms.WithCache(true))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to init kms: %s\n\n", err)
 		return
@@ -157,8 +158,36 @@ func main() {
 		return
 	}
 
+	// Rotate and rewrap the keys for the scope
+	if err := k.RotateKeys(mainCtx, globalScope, kms.WithRewrap(true)); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to rotate scope's keys: %s\n\n", err)
+		return
+	}
+	if err := k.ClearCache(mainCtx, kms.WithScopeIds(globalScope)); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to clear cache for scope: %q\n\n", globalScope)
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "successfully rotated keys\n")
+
+	// get the rotated db wrapper (DEK)
+	rotateDbWrapper, err := k.GetWrapper(mainCtx, globalScope, "database")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to get rotated wrapper for database: %s\n\n", err)
+		return
+	}
+	rotatedDbWrapperKeyId, err := rotateDbWrapper.KeyId(mainCtx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to get key id for rotated wrapper: %s\n\n", err)
+		return
+	}
+	if rotatedDbWrapperKeyId == dbWrapperKeyId {
+		fmt.Fprintf(os.Stderr, "rotated key id %q should not equal original key id %q\n\n", rotatedDbWrapperKeyId, dbWrapperKeyId)
+		return
+	}
+
 	fmt.Fprintf(os.Stderr, "using the structwrapping pkg to unwrap (decrypt) the oidc record read from the db...\n")
-	if err := structwrapping.UnwrapStruct(mainCtx, dbWrapper, &found); err != nil {
+	if err := structwrapping.UnwrapStruct(mainCtx, rotateDbWrapper, &found); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to unwrap: %s\n\n", err)
 		return
 	}
@@ -168,7 +197,7 @@ func main() {
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "successfully encrypted/decrypted %q using the kms\n", *pt)
+	fmt.Fprintf(os.Stderr, "successfully encrypted/decrypted %q using a rotated kms key\n", *pt)
 
 	fmt.Fprintf(os.Stderr, "attempting to delete scope with its associated DEKs...\n")
 	if _, err := rw.DoTx(mainCtx, func(error) bool { return false }, 10, dbw.ExpBackoff{},
@@ -204,29 +233,15 @@ func main() {
 		return
 	}
 
-	// TODO (jimlambrt 4/2022) we need to provide some method to clear the cache
-	// when the caller knows it's out of sync with the db (source of truth).
-	// Once that's implemented, we can uncomment this code, nerf the cache and
-	// make sure the database key is no longer in the cache.
-	// // get the db wrapper and do some crypto operations with it.
-	// dbWrapper, err = k.GetWrapper(mainCtx, globalScope, "database")
-	// if err != kms.ErrKeyNotFound {
-	// 	fmt.Fprintf(os.Stderr, "failed to delete keys for scope\n\n")
-	// 	return
-	// }
-
-	// re-init the kms (see TODO above)
-	k, err = kms.New(rw, rw, []kms.KeyPurpose{"database"})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to init kms: %s\n\n", err)
+	// Since we've deleted the scope (and it's associated keys), we need to
+	// clear kms in-memory cache for that scope.
+	if err := k.ClearCache(mainCtx, kms.WithScopeIds(globalScope)); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to clear cache for scope: %q\n\n", globalScope)
 		return
 	}
 
-	// re-add the external root key wrapper.
-	if err := k.AddExternalWrapper(mainCtx, kms.KeyPurposeRootKey, rootWrapper); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to add root key: %s\n\n", err)
-		return
-	}
+	// since we've clear the kms cache, getting a wrapper for that scope should
+	// fail.
 	dbWrapper, err = k.GetWrapper(mainCtx, globalScope, "database")
 	if err != nil && !errors.Is(err, kms.ErrKeyNotFound) {
 		fmt.Fprintf(os.Stderr, "failed to delete keys for scope: %s\n\n", err)
@@ -235,5 +250,4 @@ func main() {
 
 	fmt.Fprintf(os.Stderr, "deleted the global scope and its related key wrappers\n")
 	fmt.Fprintf(os.Stderr, "done!\n")
-
 }
