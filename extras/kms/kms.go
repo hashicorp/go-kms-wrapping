@@ -263,7 +263,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 // WithTx(...) and WithReaderWriter(...) options are to allow the caller to
 // create the scope and all of its keys in the same transaction.
 //
-// The WithRandomReadear(...) option is supported as well.  If no optional
+// The WithRandomReader(...) option is supported as well.  If no optional
 // random reader is provided, then the reader from crypto/rand will be used as
 // a default.
 func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurpose, opt ...Option) error {
@@ -308,8 +308,8 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 // RotateKeys will rotate the scope's root key version and all DEKs for the
 // current KeyPurpose(s) of the KMS.
 //
-// If an optional WithRewrap(...) is requested, then all keys will be re-encrypted
-// with the current root key wrapper.
+// If an optional WithRewrap(...) is requested, then all keys will be
+// re-encrypted.
 //
 // WithTx(...) and WithReaderWriter(...) options are supported which allow the
 // caller to pass an inflight transaction to be used for all database
@@ -385,6 +385,76 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 				return fmt.Errorf("%s: unable to rotate data key version: %w", op, err)
 			}
 		}
+		return nil
+	}(); err != nil {
+		if localTx != nil {
+			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
+				err = multierror.Append(err, rollBackErr)
+			}
+		}
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if localTx != nil {
+		if err := localTx.Commit(ctx); err != nil {
+			return fmt.Errorf("%s: unable to commit transaction: %w", op, err)
+		}
+	}
+	return nil
+}
+
+// RewrapKeys will re-encrypt a scope's keys.  If you wish to rewrap and rotate
+// keys, then use the RotateKeys function.
+//
+// WithTx(...) and WithReaderWriter(...) options are supported which allow the
+// caller to pass an inflight transaction to be used for all database
+// operations.  If WithTx(...) or WithReaderWriter(...) are used, then the
+// caller is responsible for managing the transaction.  If neither WithTx or
+// WithReaderWriter are specified, then RotateKeys will rotate the scope's keys
+// within its own transaction, which will be managed by RewrapKeys.
+//
+// The WithRandomReader(...) option is supported.  If no optional random reader
+// is provided, then the reader from crypto/rand will be used as a default.
+//
+// Options supported: WithRandomReader, WithTx, WithReaderWriter
+func (k *Kms) RewrapKeys(ctx context.Context, scopeId string, opt ...Option) error {
+	const op = "kms.(Kms).RewrapKeys"
+	if scopeId == "" {
+		return fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	rootWrapper, err := k.GetExternalRootWrapper()
+	if err != nil {
+		return fmt.Errorf("%s: unable to get an external root wrapper: %w", op, err)
+	}
+
+	reader, writer, localTx, err := k.txFromOpts(ctx, opt...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	// since we could have started a local txn, we'll use an anon function for
+	// all the stmts which should be managed within that possible local txn.
+	if err := func() error {
+		rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to load the scope's root key: %w", op, err)
+		}
+
+		// rewrap the root key versions with the provided rootWrapper (assuming
+		// it has a new wrapper)
+		if err := rewrapRootKeyVersionsTx(ctx, reader, writer, rootWrapper, rk.PrivateId); err != nil {
+			return fmt.Errorf("%s: unable to rewrap root key versions: %w", op, err)
+		}
+
+		rkvWrapper, _, err := k.loadRoot(ctx, scopeId, withReader(reader))
+		if err != nil {
+			return fmt.Errorf("%s: unable to load the root key version wrapper: %w", op, err)
+		}
+
+		// we've got a new rootKeyVersion wrapper, so let's rewrap the existing DEKs.
+		if err := rewrapDataKeyVersionsTx(ctx, reader, writer, rkvWrapper, rk.PrivateId); err != nil {
+			return fmt.Errorf("%s: unable to rewrap data key versions: %w", op, err)
+		}
+
 		return nil
 	}(); err != nil {
 		if localTx != nil {

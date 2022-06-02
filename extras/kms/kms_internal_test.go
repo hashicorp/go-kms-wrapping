@@ -852,6 +852,149 @@ func TestKms_RotateKeys(t *testing.T) {
 	})
 }
 
+func TestKms_RewrapKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	newWrapper := func(id string) wrapping.Wrapper {
+		tmpWrapper := aead.NewWrapper()
+		_, err := tmpWrapper.SetConfig(testCtx, wrapping.WithKeyId(id))
+		require.NoError(t, err)
+		key, err := generateKey(testCtx, rand.Reader)
+		require.NoError(t, err)
+		err = tmpWrapper.SetAesGcmKeyBytes(key)
+		require.NoError(t, err)
+		return tmpWrapper
+	}
+
+	wrapper, err := multi.NewPooledWrapper(testCtx, newWrapper("1"))
+	require.NoError(t, err)
+	tests := []struct {
+		name            string
+		kms             *Kms
+		scopeId         string
+		opt             []Option
+		setup           func(k *Kms, scopeId string)
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-scope-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "audit"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing scope id",
+		},
+		{
+			name:    "missing-root-wrapper",
+			scopeId: "missing-root-wrapper",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "audit"})
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrIs:       ErrKeyNotFound,
+			wantErrContains: "unable to get an external root wrapper",
+		},
+		{
+			name:    "bad-txFromOpts",
+			scopeId: "bad-txFromOpts",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "audit"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			opt:             []Option{WithTx(&dbw.RW{})},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "provided transaction has no inflight transaction",
+		},
+		{
+			name:    "lookupRootKeyByScope-error",
+			scopeId: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "audit"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrIs:       dbw.ErrRecordNotFound,
+			wantErrContains: "unable to load the scope's root key",
+		},
+		{
+			name:    "rewrapRootKeyVersionsTx-error",
+			scopeId: "success",
+			kms: func() *Kms {
+				db, mock := dbw.TestSetupWithMock(t)
+				rw := dbw.New(db)
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectBegin()
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rewrapRootKeyVersionsTx-error"))
+				mock.ExpectRollback()
+
+				k, err := New(rw, rw, []KeyPurpose{"database", "audit"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			wantErr:         true,
+			wantErrContains: "unable to rewrap root key versions",
+		},
+		{
+			name:    "success",
+			scopeId: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "audit"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *Kms, scopeId string) {
+				require.NoError(t, k.CreateKeys(testCtx, scopeId, []KeyPurpose{"database", "audit"}))
+				_, err := wrapper.SetEncryptingWrapper(testCtx, newWrapper("2"))
+				require.NoError(t, err)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			if tc.setup != nil {
+				tc.setup(tc.kms, tc.scopeId)
+			}
+			err := tc.kms.RewrapKeys(testCtx, tc.scopeId, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+		})
+	}
+
+}
 func assertCacheEqual(t *testing.T, want int, k *Kms) {
 	assert := assert.New(t)
 	current := 0
