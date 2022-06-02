@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	sync "sync"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -127,6 +128,22 @@ func (m *PooledWrapper) WrapperForKeyId(keyID string) wrapping.Wrapper {
 	defer m.m.RUnlock()
 
 	return m.wrappers[keyID]
+}
+
+// AllKeyIds returns a sorted copy of all the pooled wrapper's key ids
+func (m *PooledWrapper) AllKeyIds() []string {
+	m.m.RLock()
+	defer m.m.RUnlock()
+
+	keys := make([]string, 0, len(m.wrappers)-1)
+	for k := range m.wrappers {
+		if k == BaseEncryptor {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func (m *PooledWrapper) encryptor() wrapping.Wrapper {
