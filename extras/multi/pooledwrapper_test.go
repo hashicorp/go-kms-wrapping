@@ -77,7 +77,7 @@ func TestPooledWrapper(t *testing.T) {
 		assert.Equal("foobar", string(decVal))
 	}
 
-	// Check retriving the wrappers
+	// Check retrieving the wrappers
 	checkW1 := multiWrapper.WrapperForKeyId("w1")
 	require.NotNil(checkW1)
 	keyId, err := checkW1.KeyId(ctx)
@@ -92,6 +92,10 @@ func TestPooledWrapper(t *testing.T) {
 
 	require.Nil(multiWrapper.WrapperForKeyId("w3"))
 
+	{
+		// check retrieving all the key ids
+		assert.Equal(multiWrapper.AllKeyIds(), []string{"w1", "w2"})
+	}
 	// Check removing a wrapper, and not removing the base wrapper
 	assert.True(multiWrapper.RemoveWrapper(ctx, "w1"))
 	assert.True(multiWrapper.RemoveWrapper(ctx, "w1"))  // returns false after removal
