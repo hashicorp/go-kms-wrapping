@@ -74,7 +74,7 @@ storage.
   and [DEKs](https://en.wikipedia.org/wiki/Glossary_of_cryptographic_keys) which
   are wrapped with an external KMS when stored in sqlite or postgres. 
 
-* The [`crypto`]() package provides additional operations like HMAC-SHA256 and a
+* The [`crypto`](https://github.com/hashicorp/go-kms-wrapping/tree/main/extras/crypto) package provides additional operations like HMAC-SHA256 and a
   derived reader from which keys can be read.
 
 ## Installation
