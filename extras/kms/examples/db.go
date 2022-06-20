@@ -56,7 +56,7 @@ func OpenDB(ctx context.Context, debug bool) (*dbw.RW, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(fmt.Sprintf("%s/%s", dir, m.Name()), sql, 0666); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("%s/%s", dir, m.Name()), sql, 0o666); err != nil {
 			return nil, err
 		}
 	}
@@ -66,7 +66,7 @@ func OpenDB(ctx context.Context, debug bool) (*dbw.RW, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err := os.WriteFile(fmt.Sprintf("%s/%s", dir, m.Name()), sql, 0666); err != nil {
+		if err := os.WriteFile(fmt.Sprintf("%s/%s", dir, m.Name()), sql, 0o666); err != nil {
 			return nil, err
 		}
 	}
