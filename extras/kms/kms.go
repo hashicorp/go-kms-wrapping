@@ -92,6 +92,8 @@ func (k *Kms) ClearCache(ctx context.Context, opt ...Option) error {
 	}
 }
 
+// addKey will add a key to the appropriate cache.  This is a no-op, when the cachePurpose is
+// scopeWrapperCache and k.withCache is false
 func (k *Kms) addKey(ctx context.Context, cPurpose cachePurpose, kPurpose KeyPurpose, wrapper wrapping.Wrapper, opt ...Option) error {
 	const (
 		op        = "kms.addKey"
@@ -238,7 +240,9 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	if err != nil {
 		return nil, fmt.Errorf("%s: error loading %q for scope %q: %w", op, purpose, scopeId, err)
 	}
-	k.addKey(ctx, scopeWrapperCache, purpose, wrapper, WithKeyId(scopeId+string(purpose)))
+	if err := k.addKey(ctx, scopeWrapperCache, purpose, wrapper, WithKeyId(scopeId+string(purpose))); err != nil {
+		return nil, fmt.Errorf("%s: error adding key to cache: %w", op, err)
+	}
 
 	if opts.withKeyId != "" {
 		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
