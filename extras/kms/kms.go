@@ -309,6 +309,45 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	return nil
 }
 
+// RevokeRootKeyVersion will revoke (remove) a root key version. Be sure to
+// rotate and rewrap the keys before revoking a root key version.
+func (k *Kms) RevokeRootKeyVersion(ctx context.Context, keyId string) error {
+	const op = "kms.(Kms).RevokeRootKeyVersion"
+	switch {
+	case keyId == "":
+		return fmt.Errorf("%s: missing key id: %w", op, ErrInvalidParameter)
+	}
+	rowsDeleted, err := k.repo.DeleteRootKeyVersion(ctx, keyId)
+	switch {
+	case err != nil:
+		return fmt.Errorf("%s: unable to revoke root key version: %w", op, err)
+	case rowsDeleted == 0:
+		return fmt.Errorf("%s: unable to revoke root key version: %w", op, ErrKeyNotFound)
+	}
+	return nil
+}
+
+// RevokeDataKeyVersion will revoke (remove) a data key version (DEK).  Be sure
+// to rotate the DEKs and re-encrypt all data that uses a data key version (DEK)
+// before revoking it.  You must have foreign key restrictions between DEK key
+// IDs (kms_data_key_version.private_id) and columns in your tables which store
+// the wrapper key ID used for encrypt/decrypt operations.
+func (k *Kms) RevokeDataKeyVersion(ctx context.Context, keyId string) error {
+	const op = "kms.(Kms).RevokeDataKeyVersion"
+	switch {
+	case keyId == "":
+		return fmt.Errorf("%s: missing key id: %w", op, ErrInvalidParameter)
+	}
+	rowsDeleted, err := k.repo.DeleteDataKeyVersion(ctx, keyId)
+	switch {
+	case err != nil:
+		return fmt.Errorf("%s: unable to revoke data key version: %w", op, err)
+	case rowsDeleted == 0:
+		return fmt.Errorf("%s: unable to revoke data key version: %w", op, ErrKeyNotFound)
+	}
+	return nil
+}
+
 // RotateKeys will rotate the scope's root key version and all DEKs for the
 // current KeyPurpose(s) of the KMS.
 //

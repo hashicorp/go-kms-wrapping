@@ -141,6 +141,7 @@ func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
 			require.NoError(err)
 			source, err = httpfs.New(http.FS(migrations.PostgresFS), dialect)
 			require.NoError(err)
+
 		default:
 			// we're intentionally choosing to NOT use go-migrate for these
 			// sqlite migrations since we don't want to introduce a CGO
@@ -154,6 +155,8 @@ func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
 				_, err = db.Exec(string(sql))
 				require.NoError(err)
 			}
+			_, err = db.Exec(testSqliteSchemaAdditions(t))
+			require.NoError(err)
 			return nil
 		}
 		m, err := migrate.NewWithInstance(
@@ -165,8 +168,37 @@ func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
 
 		err = m.Up()
 		require.NoError(err)
+
+		_, err = db.Exec(testSqliteSchemaAdditions(t))
+		require.NoError(err)
 		return nil
 	}
+}
+
+func testPostgresSchemaAdditions(t *testing.T) string {
+	const sql = `
+	begin;
+	create table kms_test_encrypted_data (
+		private_id text primary key,
+		key_id text not null 
+			references kms_data_key_version(private_id)
+			on delete restrict
+			on update cascade,
+		cipher_text text not null);
+	commit;`
+	return sql
+}
+
+func testSqliteSchemaAdditions(t *testing.T) string {
+	const sql = `
+	create table kms_test_encrypted_data (
+		private_id text primary key,
+		key_id text not null 
+			references kms_data_key_version(private_id)
+			on delete restrict
+			on update cascade,
+		cipher_text text not null);`
+	return sql
 }
 
 // testDeleteWhere allows you to easily delete resources for testing purposes
