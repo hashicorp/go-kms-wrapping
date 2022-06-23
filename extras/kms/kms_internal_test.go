@@ -993,8 +993,8 @@ func TestKms_RewrapKeys(t *testing.T) {
 			require.NoError(err)
 		})
 	}
-
 }
+
 func assertCacheEqual(t *testing.T, want int, k *Kms) {
 	assert := assert.New(t)
 	current := 0
