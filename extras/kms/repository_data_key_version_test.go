@@ -755,7 +755,6 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 	rootWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
-	// important: don't enable caching for these tests.
 	testKms, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(t, err)
 	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)
@@ -989,9 +988,14 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 				require.NoError(err)
 				encryptedBlob, err = currentWrapper.Encrypt(testCtx, []byte(testPlainText))
 				require.NoError(err)
+
+				// rotateDataKeyVersionTx doesn't increment the collection
+				// version, so we have to do it here
+				err = updateKeyCollectionVersion(testCtx, tc.writer)
+				require.NoError(err)
 			}
 
-			err := rotateDataKeyVersionTx(testCtx, tc.reader, tc.writer, tc.rootKeyVersionId, tc.rkvWrapper, tc.rootKeyId, tc.purpose, tc.opt...)
+			err = rotateDataKeyVersionTx(testCtx, tc.reader, tc.writer, tc.rootKeyVersionId, tc.rkvWrapper, tc.rootKeyId, tc.purpose, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {

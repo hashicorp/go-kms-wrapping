@@ -732,7 +732,6 @@ func Test_rotateRootKeyVersionTx(t *testing.T) {
 	rootWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
 	testRepo, err := newRepository(rw, rw)
 	require.NoError(t, err)
-	// important: don't enable caching for these tests.
 	testKms, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(t, err)
 	testKms.AddExternalWrapper(testCtx, KeyPurposeRootKey, rootWrapper)

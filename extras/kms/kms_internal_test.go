@@ -478,27 +478,24 @@ func TestKms_ClearCache(t *testing.T) {
 	databaseKeyPurpose := KeyPurpose("database")
 
 	// init kms with a cache
-	kmsCache, err := New(rw, rw, []KeyPurpose{"database"}, WithCache(true))
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
 	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
+	assertCacheEqual(t, 0, kmsCache)
 
 	// First test: just getting the wrapper
 	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
 	require.NoError(err)
 	assertCacheEqual(t, 1, kmsCache)
 
-	// delete all the keys
-	testDeleteWhere(t, db, &rootKey{}, "1=1")
-
-	// can we still get the wrapper from the cache
-	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
-	require.NoError(err)
-
-	require.NoError(kmsCache.ClearCache(ctx))
+	require.NoError(kmsCache.clearCache(ctx))
 	assertCacheEqual(t, 0, kmsCache)
+
+	// delete all the keys (increment version)
+	testDeleteWhere(t, db, &rootKey{}, "1=1")
 
 	// should now fail to get the wrapper.
 	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
@@ -522,17 +519,17 @@ func TestKms_ClearCache(t *testing.T) {
 
 	assert.NotEqual(t, globalWrapper, orgWrapper)
 
-	kmsCache.ClearCache(ctx, WithScopeIds(orgScope))
+	kmsCache.clearCache(ctx, WithScopeIds(orgScope))
 	assertCacheEqual(t, 1, kmsCache)
 
-	// re-init kms without a cache
+	// re-init kms
 	kmsCache, err = New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	_, err = kmsCache.GetWrapper(ctx, orgScope, databaseKeyPurpose)
 	require.NoError(err)
-	assertCacheEqual(t, 0, kmsCache)
-	require.NoError(kmsCache.ClearCache(ctx))
+	assertCacheEqual(t, 1, kmsCache)
+	require.NoError(kmsCache.clearCache(ctx))
 }
 
 func TestKms_RotateKeys(t *testing.T) {
@@ -1014,7 +1011,7 @@ func TestKms_RewrapKeys(t *testing.T) {
 	}
 }
 
-func TestKms_GetWrapper(t *testing.T) {
+func TestKms_GetWrapperCaching(t *testing.T) {
 	t.Parallel()
 	require := require.New(t)
 	ctx := context.Background()
@@ -1026,23 +1023,14 @@ func TestKms_GetWrapper(t *testing.T) {
 	databaseKeyPurpose := KeyPurpose("database")
 
 	// Get the global scope's root wrapper
-	kmsCache, err := New(rw, rw, []KeyPurpose{"database"}, WithCache(true))
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
 	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
 
-	cacheLenFn := func() int {
-		var l int
-		// should be zero, since the cache is empty
-		kmsCache.scopedWrapperCache.Range(func(key, value interface{}) bool {
-			l = +1
-			return false
-		})
-		return l
-	}
-	require.Equal(0, cacheLenFn())
+	assertCacheEqual(t, 0, kmsCache)
 	require.Equal(0, int(kmsCache.collectionVersion))
 
 	gotWrapper, err := kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
@@ -1051,7 +1039,7 @@ func TestKms_GetWrapper(t *testing.T) {
 	origKeyId, err := gotWrapper.KeyId(ctx)
 	require.NoError(err)
 
-	require.Equal(1, cacheLenFn())
+	assertCacheEqual(t, 1, kmsCache)
 	require.Equal(2, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 2
 
 	err = kmsCache.RotateKeys(ctx, globalScope)
@@ -1061,12 +1049,19 @@ func TestKms_GetWrapper(t *testing.T) {
 	require.NoError(err)
 	require.NotEmpty(gotWrapper)
 
-	require.Equal(1, cacheLenFn())
+	assertCacheEqual(t, 1, kmsCache)
 	require.Equal(3, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 3
 
 	currKeyId, err := gotWrapper.KeyId(ctx)
 	require.NoError(err)
 	require.NotEqual(origKeyId, currKeyId)
+
+	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(origKeyId))
+	require.NoError(err)
+	require.NotEmpty(gotWrapper)
+	currKeyId, err = gotWrapper.KeyId(ctx)
+	require.NoError(err)
+	require.Equal(origKeyId, currKeyId)
 }
 
 func assertCacheEqual(t *testing.T, want int, k *Kms) {

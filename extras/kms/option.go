@@ -31,7 +31,6 @@ type options struct {
 	withRandomReader   io.Reader
 	withReader         dbw.Reader
 	withWriter         dbw.Writer
-	withCache          bool
 	withScopeIds       []string
 	withRewrap         bool
 	withRootKeyId      string
@@ -126,13 +125,6 @@ func WithReaderWriter(r dbw.Reader, w dbw.Writer) Option {
 	return func(o *options) {
 		o.withReader = r
 		o.withWriter = w
-	}
-}
-
-// WithCache will enable the optional kms cache
-func WithCache(enable bool) Option {
-	return func(o *options) {
-		o.withCache = enable
 	}
 }
 

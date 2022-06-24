@@ -397,6 +397,7 @@ func TestKms_GetWrapper(t *testing.T) {
 				db, mock := dbw.TestSetupWithMock(t)
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
+				mock.ExpectQuery(`select version from kms_collection_version`).WillReturnRows(sqlmock.NewRows([]string{"version"}).AddRow(1))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("load-root-error"))
 				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
 				require.NoError(t, err)
@@ -463,9 +464,9 @@ func TestKms_GetWrapper(t *testing.T) {
 			purpose: kms.KeyPurposeRootKey,
 		},
 		{
-			name: "success-database-with-cache",
+			name: "success-database",
 			kms: func() *kms.Kms {
-				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"}, kms.WithCache(true))
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
 				k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
 				return k
@@ -1195,26 +1196,9 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			wantErrContains: "unable to revoke root key version",
 		},
 		{
-			name: "success-no-caching",
+			name: "success",
 			kms: func() *kms.Kms {
 				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
-				require.NoError(t, err)
-				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
-				require.NoError(t, err)
-				return k
-			}(),
-			setup: func(t *testing.T, k *kms.Kms) string {
-				t.Helper()
-				w := setupWithRotationRewrapFn(t, k)
-				currentKeyId, err := w.KeyId(testCtx)
-				require.NoError(t, err)
-				return currentKeyId
-			},
-		},
-		{
-			name: "success-with-caching",
-			kms: func() *kms.Kms {
-				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"}, kms.WithCache(true))
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -1255,7 +1239,6 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			tc.kms.ClearCache(testCtx) // no-op if caching not enabled.
 			w, err := tc.kms.GetWrapper(testCtx, "global", kms.KeyPurposeRootKey)
 			require.NoError(err)
 			for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
@@ -1375,28 +1358,9 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			wantErrContains: "unable to revoke data key version",
 		},
 		{
-			name: "success-no-caching",
+			name: "success",
 			kms: func() *kms.Kms {
 				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
-				require.NoError(t, err)
-				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
-				require.NoError(t, err)
-				return k
-			}(),
-			setup: func(t *testing.T, k *kms.Kms) string {
-				t.Helper()
-				_ = setupWithRotationRewrapFn(t, k)
-				dbWrapper, err := k.GetWrapper(testCtx, "global", kms.KeyPurpose("database"))
-				require.NoError(t, err)
-				dbKeyId, err := dbWrapper.KeyId(testCtx)
-				require.NoError(t, err)
-				return dbKeyId
-			},
-		},
-		{
-			name: "success-with-caching",
-			kms: func() *kms.Kms {
-				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"}, kms.WithCache(true))
 				require.NoError(t, err)
 				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
 				require.NoError(t, err)
@@ -1439,7 +1403,6 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			tc.kms.ClearCache(testCtx) // no-op if caching not enabled.
 			dbWrapper, err := tc.kms.GetWrapper(testCtx, "global", kms.KeyPurpose("database"))
 			require.NoError(err)
 			for _, id := range dbWrapper.(*multi.PooledWrapper).AllKeyIds() {
