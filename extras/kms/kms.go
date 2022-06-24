@@ -200,7 +200,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, fmt.Errorf("%s: unable to determine current version of the kms collection: %w", op, err)
 	}
 	switch {
-	case currVersion > atomic.LoadUint64(&k.collectionVersion):
+	case currVersion != atomic.LoadUint64(&k.collectionVersion):
 		k.clearCache(ctx)
 		atomic.StoreUint64(&k.collectionVersion, currVersion)
 	default:
