@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -38,6 +39,8 @@ type Kms struct {
 	scopedWrapperCache sync.Map
 
 	externalWrapperCache sync.Map
+
+	collectionVersion uint64
 
 	purposes  []KeyPurpose
 	repo      *repository
@@ -205,19 +208,31 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
-	val, ok := k.scopedWrapperCache.Load(scopedPurpose(scopeId, purpose))
-	if ok {
-		wrapper, ok := val.(*multi.PooledWrapper)
-		if !ok {
-			return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
+	if k.withCache {
+		currVersion, err := currentCollectionVersion(ctx, k.repo.reader)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unable to determine current version of the kms collection: %w", op, err)
 		}
-		if opts.withKeyId == "" {
-			return wrapper, nil
+		switch {
+		case currVersion > atomic.LoadUint64(&k.collectionVersion):
+			k.ClearCache(ctx)
+			atomic.StoreUint64(&k.collectionVersion, currVersion)
+		default:
+			val, ok := k.scopedWrapperCache.Load(scopedPurpose(scopeId, purpose))
+			if ok {
+				wrapper, ok := val.(*multi.PooledWrapper)
+				if !ok {
+					return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
+				}
+				if opts.withKeyId == "" {
+					return wrapper, nil
+				}
+				if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
+					return keyIdWrapper, nil
+				}
+				// Fall through to refresh our multiwrapper for this scope/purpose from the DB
+			}
 		}
-		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
-			return keyIdWrapper, nil
-		}
-		// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 	}
 
 	// We don't have it cached, so we'll need to read from the database. Get the

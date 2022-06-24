@@ -1014,6 +1014,61 @@ func TestKms_RewrapKeys(t *testing.T) {
 	}
 }
 
+func TestKms_GetWrapper(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	extWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+
+	const globalScope = "global"
+	databaseKeyPurpose := KeyPurpose("database")
+
+	// Get the global scope's root wrapper
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"}, WithCache(true))
+	require.NoError(err)
+	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
+	// Make the global scope base keys
+	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
+	require.NoError(err)
+
+	cacheLenFn := func() int {
+		var l int
+		// should be zero, since the cache is empty
+		kmsCache.scopedWrapperCache.Range(func(key, value interface{}) bool {
+			l = +1
+			return false
+		})
+		return l
+	}
+	require.Equal(0, cacheLenFn())
+	require.Equal(0, int(kmsCache.collectionVersion))
+
+	gotWrapper, err := kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+	require.NotEmpty(gotWrapper)
+	origKeyId, err := gotWrapper.KeyId(ctx)
+	require.NoError(err)
+
+	require.Equal(1, cacheLenFn())
+	require.Equal(2, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 2
+
+	err = kmsCache.RotateKeys(ctx, globalScope)
+	require.NoError(err)
+
+	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+	require.NotEmpty(gotWrapper)
+
+	require.Equal(1, cacheLenFn())
+	require.Equal(3, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 3
+
+	currKeyId, err := gotWrapper.KeyId(ctx)
+	require.NoError(err)
+	require.NotEqual(origKeyId, currKeyId)
+}
+
 func assertCacheEqual(t *testing.T, want int, k *Kms) {
 	assert := assert.New(t)
 	current := 0
