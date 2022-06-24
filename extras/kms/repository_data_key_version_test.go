@@ -155,6 +155,10 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			k, err := tc.repo.CreateDataKeyVersion(context.Background(), tc.keyWrapper, tc.dataKeyId, tc.key, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -171,6 +175,10 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			foundKey, err := tc.repo.LookupDataKeyVersion(context.Background(), tc.keyWrapper, k.PrivateId)
 			assert.NoError(err)
 			assert.Equal(k, foundKey)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }
@@ -181,6 +189,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		testPurpose = "database"
 	)
 	t.Parallel()
+	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
 	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
@@ -288,6 +297,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectExec(`DELETE`).WillReturnResult(sqlmock.NewResult(0, 2))
 				mock.ExpectRollback()
 				return r
@@ -308,6 +318,10 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			deletedRows, err := tc.repo.DeleteDataKeyVersion(context.Background(), tc.key.PrivateId, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -325,6 +339,10 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.ErrorIs(err, ErrRecordNotFound)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }

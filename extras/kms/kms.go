@@ -291,6 +291,10 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	if err := updateKeyCollectionVersion(ctx, w); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	opts := getOpts(opt...)
 	if _, err := createKeysTx(ctx, r, w, rootWrapper, opts.withRandomReader, scopeId, purposes...); err != nil {
 		if localTx != nil {
@@ -384,6 +388,10 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	if err := updateKeyCollectionVersion(ctx, writer); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	// since we could have started a local txn, we'll use an anon function for
 	// all the stmts which should be managed within that possible local txn.
 	if err := func() error {
@@ -471,6 +479,10 @@ func (k *Kms) RewrapKeys(ctx context.Context, scopeId string, opt ...Option) err
 
 	reader, writer, localTx, err := k.txFromOpts(ctx, opt...)
 	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := updateKeyCollectionVersion(ctx, writer); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

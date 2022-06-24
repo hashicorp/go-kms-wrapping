@@ -397,7 +397,7 @@ func TestKms_KeyId(t *testing.T) {
 	databaseKeyPurpose := KeyPurpose("database")
 
 	// Get the global scope's root wrapper
-	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
+	kmsCache, err := New(rw, rw, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
@@ -598,6 +598,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rotate-key-version-error"))
 				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
@@ -616,6 +617,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rewrap-root-key-version-error"))
 				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
@@ -636,6 +638,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rotate-root-key-version-error"))
 				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
@@ -712,6 +715,9 @@ func TestKms_RotateKeys(t *testing.T) {
 				})
 			}
 
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			tc.opt = append(tc.opt, WithRewrap(tc.rewrap))
 
 			err = tc.kms.RotateKeys(testCtx, tc.scopeId, tc.opt...)
@@ -753,6 +759,10 @@ func TestKms_RotateKeys(t *testing.T) {
 					assert.NotEqual(currentRootKeyVersions[i].CtKey, newRootKeyVersions[i].CtKey)
 				}
 			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 	t.Run("WithTx", func(t *testing.T) {
@@ -942,6 +952,7 @@ func TestKms_RewrapKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rewrapRootKeyVersionsTx-error"))
@@ -979,7 +990,11 @@ func TestKms_RewrapKeys(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(tc.kms, tc.scopeId)
 			}
-			err := tc.kms.RewrapKeys(testCtx, tc.scopeId, tc.opt...)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.RewrapKeys(testCtx, tc.scopeId, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -991,6 +1006,10 @@ func TestKms_RewrapKeys(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }

@@ -447,7 +447,7 @@ func TestKms_GetWrapper(t *testing.T) {
 			purpose: "database",
 		},
 		{
-			name: "success-rootkey",
+			name: "success-root-key",
 			kms: func() *kms.Kms {
 				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
@@ -570,6 +570,7 @@ func TestKms_CreateKeys(t *testing.T) {
 				db, mock := dbw.TestSetupWithMock(t)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("create-error"))
 				mock.ExpectRollback()
 				rw := dbw.New(db)
@@ -592,6 +593,7 @@ func TestKms_CreateKeys(t *testing.T) {
 				db, mock := dbw.TestSetupWithMock(t)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("create-error"))
 				mock.ExpectRollback().WillReturnError(errors.New("rollback-error"))
 				rw := dbw.New(db)
@@ -644,7 +646,10 @@ func TestKms_CreateKeys(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(tc.kms)
 			}
-			err := tc.kms.CreateKeys(testCtx, tc.scopeId, tc.purposes, tc.opt...)
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.CreateKeys(testCtx, tc.scopeId, tc.purposes, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -661,6 +666,10 @@ func TestKms_CreateKeys(t *testing.T) {
 				require.NoError(err)
 				assert.NotNil(w)
 			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 	t.Run("WithTx", func(t *testing.T) {
@@ -671,6 +680,9 @@ func TestKms_CreateKeys(t *testing.T) {
 		k, err := kms.New(rw, rw, purposes)
 		require.NoError(err)
 		err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+		require.NoError(err)
+
+		prevVersion, err := currentCollectionVersion(testCtx, rw)
 		require.NoError(err)
 
 		tx, err := rw.Begin(testCtx)
@@ -686,6 +698,10 @@ func TestKms_CreateKeys(t *testing.T) {
 			require.NoError(err)
 			assert.NotNil(w)
 		}
+
+		currVersion, err := currentCollectionVersion(testCtx, rw)
+		require.NoError(err)
+		assert.Greater(currVersion, prevVersion)
 
 		err = k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database"}, kms.WithTx(tx), kms.WithReaderWriter(tx, tx))
 		require.Error(err)
@@ -1041,7 +1057,11 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup(tt.kms)
 			}
-			err := tt.kms.ReconcileKeys(testCtx, tt.scopeIds, tt.wantPurpose, tt.opt...)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tt.kms.ReconcileKeys(testCtx, tt.scopeIds, tt.wantPurpose, tt.opt...)
 			if tt.wantErr {
 				require.Error(err)
 				if tt.wantErrIs != nil {
@@ -1060,6 +1080,12 @@ func TestKms_ReconcileKeys(t *testing.T) {
 						require.NoError(err)
 					}
 				}
+			}
+
+			if tt.name != "nothing-to-reconcile" {
+				currVersion, err := currentCollectionVersion(testCtx, rw)
+				require.NoError(err)
+				assert.Greater(currVersion, prevVersion)
 			}
 		})
 	}
@@ -1210,7 +1236,11 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			if tc.setup != nil {
 				testKeyId = tc.setup(t, tc.kms)
 			}
-			err := tc.kms.RevokeRootKeyVersion(testCtx, testKeyId)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.RevokeRootKeyVersion(testCtx, testKeyId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -1234,6 +1264,10 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			if tc.want != nil {
 				tc.want(t, testKeyId, tc.kms)
 			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }
@@ -1386,7 +1420,11 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			if tc.setup != nil {
 				testKeyId = tc.setup(t, tc.kms)
 			}
-			err := tc.kms.RevokeDataKeyVersion(testCtx, testKeyId)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.RevokeDataKeyVersion(testCtx, testKeyId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -1410,6 +1448,10 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			if tc.want != nil {
 				tc.want(t, testKeyId, tc.kms)
 			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }
@@ -1509,4 +1551,24 @@ func testInsertEncryptedData(t *testing.T, w wrapping.Wrapper, rw *dbw.RW, pt []
 	err = rw.Create(ctx, d)
 	require.NoError(err)
 	return id
+}
+
+func currentCollectionVersion(ctx context.Context, r dbw.Reader) (uint64, error) {
+	const (
+		op = "kms.currentCollectionVersion"
+
+		sql = "select version from kms_collection_version"
+	)
+	rows, err := r.Query(ctx, sql, nil)
+	if err != nil {
+	}
+	v := struct {
+		Version uint64
+	}{}
+	for rows.Next() {
+		if err := r.ScanRows(rows, &v); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+	return v.Version, nil
 }

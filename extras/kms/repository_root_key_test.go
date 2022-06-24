@@ -17,6 +17,7 @@ import (
 
 func TestRepository_CreateRootKey(t *testing.T) {
 	t.Parallel()
+	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
 	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
@@ -81,6 +82,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 				testRepo, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnError(errors.New("create-rk-error"))
 				mock.ExpectRollback()
 				return testRepo
@@ -100,6 +102,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 				testRepo, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`INSERT INTO "kms_root_key"`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectQuery(`INSERT INTO "kms_root_key_version"`).WillReturnError(errors.New("create-rkv-error"))
@@ -123,6 +126,10 @@ func TestRepository_CreateRootKey(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			rk, kv, err := tc.repo.CreateRootKey(context.Background(), tc.keyWrapper, tc.scopeId, tc.key, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -144,12 +151,17 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			foundKeyVersion, err := tc.repo.LookupRootKeyVersion(context.Background(), tc.keyWrapper, kv.PrivateId)
 			assert.NoError(err)
 			assert.Equal(kv, foundKeyVersion)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }
 
 func TestRepository_DeleteRootKey(t *testing.T) {
 	t.Parallel()
+	testCtx := context.Background()
 	db, _ := TestDb(t)
 	rw := dbw.New(db)
 	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
@@ -235,6 +247,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectExec(`DELETE`).WillReturnError(errors.New("delete-error"))
 				mock.ExpectRollback()
 				return r
@@ -261,6 +274,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectExec(`DELETE`).WillReturnResult(sqlmock.NewResult(0, 2))
 				mock.ExpectRollback()
 				return r
@@ -280,6 +294,10 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			deletedRows, err := tc.repo.DeleteRootKey(context.Background(), tc.key.PrivateId, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -297,6 +315,10 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.ErrorIs(err, ErrRecordNotFound)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }

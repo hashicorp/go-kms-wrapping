@@ -55,6 +55,9 @@ func (r *repository) CreateDataKeyVersion(ctx context.Context, rkvWrapper wrappi
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) error {
+			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+				return err
+			}
 			returnedKey = kv.Clone()
 			// no oplog entries for root key version
 			if err := create(ctx, w, returnedKey); err != nil {
@@ -122,6 +125,9 @@ func (r *repository) DeleteDataKeyVersion(ctx context.Context, privateId string,
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) (err error) {
+			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+				return err
+			}
 			dk := k.Clone()
 			// no oplog entries for the key version
 			rowsDeleted, err = w.Delete(ctx, dk)
