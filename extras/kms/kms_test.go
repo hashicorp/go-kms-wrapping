@@ -857,15 +857,16 @@ func TestKms_ReconcileKeys(t *testing.T) {
 	)
 
 	tests := []struct {
-		name            string
-		kms             *kms.Kms
-		scopeIds        []string
-		opt             []kms.Option
-		setup           func(*kms.Kms)
-		wantPurpose     []kms.KeyPurpose
-		wantErr         bool
-		wantErrIs       error
-		wantErrContains string
+		name               string
+		kms                *kms.Kms
+		scopeIds           []string
+		opt                []kms.Option
+		setup              func(*kms.Kms)
+		wantPurpose        []kms.KeyPurpose
+		wantUpdatedVersion bool
+		wantErr            bool
+		wantErrIs          error
+		wantErrContains    string
 	}{
 		{
 			name: "missing-scope-ids",
@@ -974,8 +975,9 @@ func TestKms_ReconcileKeys(t *testing.T) {
 				_, err = k.GetWrapper(testCtx, org, "database")
 				require.Error(t, err)
 			},
-			scopeIds:    []string{"global"},
-			wantPurpose: []kms.KeyPurpose{"database"},
+			scopeIds:           []string{"global"},
+			wantPurpose:        []kms.KeyPurpose{"database"},
+			wantUpdatedVersion: true,
 		},
 		{
 			name: "success-rand-reader-option",
@@ -999,8 +1001,9 @@ func TestKms_ReconcileKeys(t *testing.T) {
 				_, err = k.GetWrapper(testCtx, org, "database")
 				require.Error(t, err)
 			},
-			scopeIds:    []string{org},
-			wantPurpose: []kms.KeyPurpose{"database"},
+			scopeIds:           []string{org},
+			wantPurpose:        []kms.KeyPurpose{"database"},
+			wantUpdatedVersion: true,
 		},
 		{
 			name: "nothing-to-reconcile",
@@ -1047,9 +1050,10 @@ func TestKms_ReconcileKeys(t *testing.T) {
 				_, err = k.GetWrapper(testCtx, org, "database")
 				require.Error(t, err)
 			},
-			scopeIds:    []string{org},
-			wantPurpose: []kms.KeyPurpose{"database"},
-			wantErr:     false,
+			scopeIds:           []string{org},
+			wantPurpose:        []kms.KeyPurpose{"database"},
+			wantErr:            false,
+			wantUpdatedVersion: true,
 		},
 	}
 	for _, tt := range tests {
@@ -1083,7 +1087,7 @@ func TestKms_ReconcileKeys(t *testing.T) {
 				}
 			}
 
-			if tt.name != "nothing-to-reconcile" {
+			if tt.wantUpdatedVersion {
 				currVersion, err := currentCollectionVersion(testCtx, rw)
 				require.NoError(err)
 				assert.Greater(currVersion, prevVersion)
