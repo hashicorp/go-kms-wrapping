@@ -575,12 +575,12 @@ github.com/hashicorp/go-immutable-radix v1.0.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjh
 github.com/hashicorp/go-immutable-radix v1.3.1 h1:DKHmCUm2hRBK510BaiZlwvpD40f8bJFeZnpfm2KLowc=
 github.com/hashicorp/go-immutable-radix v1.3.1/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-kms-wrapping/entropy v0.1.0/go.mod h1:d1g9WGtAunDNpek8jUIEJnBlbgKS1N2Q61QkHiZyR1g=
-github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220527124451-c7fba1586cc3 h1:R9Eun3xje/qjESgzjfcZyPvNrj/7Opmp7B0ycvmEgIA=
-github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220527124451-c7fba1586cc3/go.mod h1:puo5dXNWmXx4xoKCzbKSevcFQ4w+z72k3ZF3EVo6zI4=
+github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220624222051-8353b68ef7f2 h1:Alat8O3UTw7GZwCPFzLTEbqdRuNlP6R9OUTbBP2tkuE=
+github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220624222051-8353b68ef7f2/go.mod h1:tTUGkZXcXW2y6A2Z8o2CVxHKSPNgDfUHLBhHCJb0Lts=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2 h1:it114Kjpk79JVh6AfxFMP5oi1gb+RPzcSLiG3zF/J0w=
 github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.2/go.mod h1:b9mq0bG5xJ10ZcTEQJLZ22O9y71hIt2MGTLqROA/SAM=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1 h1:UFHzbA/voyzrVfxvm83LW6Hq2gd43F0mgchFnqrinjA=
-github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1/go.mod h1:sDQAfwJGv25uGPZA04x87ERglCG6avnRcBT9wYoMII8=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220602193636-404007edfc2b h1:L4ifQ7wEer0MSUr08JTepF8TJEBRexOF7jsv3H9jXZE=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220602193636-404007edfc2b/go.mod h1:sDQAfwJGv25uGPZA04x87ERglCG6avnRcBT9wYoMII8=
 github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.0 h1:GCS3ZzGZb9u2Jcg0ILkw2zdGvkNPkpsMmozP/dnM6Z0=
 github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.0/go.mod h1:7nyMrL0t9U76zy8ZaNlWKoOYci6cZRvbLFOlhDK9QyQ=
 github.com/hashicorp/go-multierror v0.0.0-20161216184304-ed905158d874/go.mod h1:JMRHfdO9jKNzS/+BTlxCjKNQHg/jZAft8U7LloJvN7I=

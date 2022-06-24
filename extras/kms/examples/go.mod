@@ -6,8 +6,8 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f
 	github.com/hashicorp/go-hclog v1.1.0
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220527124451-c7fba1586cc3
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.5-0.20220321175502-0989a9b6deb1
+	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20220624222051-8353b68ef7f2
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.6-0.20220602193636-404007edfc2b
 	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.0
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.3
 	gorm.io/driver/sqlite v1.2.4
