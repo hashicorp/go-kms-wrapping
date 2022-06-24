@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/go-dbw"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -39,20 +40,18 @@ type Kms struct {
 
 	externalWrapperCache sync.Map
 
-	purposes  []KeyPurpose
-	repo      *repository
-	withCache bool
+	collectionVersion uint64
+
+	purposes []KeyPurpose
+	repo     *repository
 }
 
 // New takes in a reader, writer and a list of key purposes it will support.
 // Every kms will support a KeyPurposeRootKey by default and it doesn't need to
 // be passed in as one of the supported purposes.
 //
-// The WithCache(bool) option is supported and if enabled then a cache of the
-// wrappers is enabled.  Once enabled, the cache will speed up calls to
-// GetWrapper(...) but the caller also becomes responsible to reset/clear the
-// cache whenever a scope is deleted from the db.
-func New(r dbw.Reader, w dbw.Writer, purposes []KeyPurpose, opt ...Option) (*Kms, error) {
+// No options are currently supported.
+func New(r dbw.Reader, w dbw.Writer, purposes []KeyPurpose, _ ...Option) (*Kms, error) {
 	const op = "kms.New"
 	repo, err := newRepository(r, w)
 	if err != nil {
@@ -61,22 +60,17 @@ func New(r dbw.Reader, w dbw.Writer, purposes []KeyPurpose, opt ...Option) (*Kms
 	purposes = append(purposes, KeyPurposeRootKey)
 	removeDuplicatePurposes(purposes)
 
-	opts := getOpts(opt...)
 	return &Kms{
-		purposes:  purposes,
-		repo:      repo,
-		withCache: opts.withCache,
+		purposes: purposes,
+		repo:     repo,
 	}, nil
 }
 
-// ClearCache clears the cached DEK wrappers and by default the DEK wrappers for all
+// clearCache clears the cached DEK wrappers and by default the DEK wrappers for all
 // scopes are cleared from the cache.  The WithScopeIds(...) allows the caller
 // to limit which scoped DEK wrappers are cleared from the cache.
-func (k *Kms) ClearCache(ctx context.Context, opt ...Option) error {
+func (k *Kms) clearCache(ctx context.Context, opt ...Option) error {
 	const op = "kms.(Kms).ResetCache"
-	if !k.withCache {
-		return nil
-	}
 	opts := getOpts(opt...)
 	switch {
 	case len(opts.withScopeIds) > 0:
@@ -107,10 +101,6 @@ func (k *Kms) addKey(ctx context.Context, cPurpose cachePurpose, kPurpose KeyPur
 	}
 	if !purposeListContains(k.purposes, kPurpose) {
 		return fmt.Errorf("%s: not a supported key purpose %q: %w", op, kPurpose, ErrInvalidParameter)
-	}
-
-	if !k.withCache && cPurpose == scopeWrapperCache {
-		return nil
 	}
 
 	opts := getOpts(opt...)
@@ -205,19 +195,29 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
-	val, ok := k.scopedWrapperCache.Load(scopedPurpose(scopeId, purpose))
-	if ok {
-		wrapper, ok := val.(*multi.PooledWrapper)
-		if !ok {
-			return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
+	currVersion, err := currentCollectionVersion(ctx, k.repo.reader)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to determine current version of the kms collection: %w", op, err)
+	}
+	switch {
+	case currVersion != atomic.LoadUint64(&k.collectionVersion):
+		k.clearCache(ctx)
+		atomic.StoreUint64(&k.collectionVersion, currVersion)
+	default:
+		val, ok := k.scopedWrapperCache.Load(scopedPurpose(scopeId, purpose))
+		if ok {
+			wrapper, ok := val.(*multi.PooledWrapper)
+			if !ok {
+				return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
+			}
+			if opts.withKeyId == "" {
+				return wrapper, nil
+			}
+			if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
+				return keyIdWrapper, nil
+			}
+			// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 		}
-		if opts.withKeyId == "" {
-			return wrapper, nil
-		}
-		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
-			return keyIdWrapper, nil
-		}
-		// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 	}
 
 	// We don't have it cached, so we'll need to read from the database. Get the
@@ -288,6 +288,10 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 
 	r, w, localTx, err := k.txFromOpts(ctx, opt...)
 	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := updateKeyCollectionVersion(ctx, w); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -384,6 +388,10 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	if err := updateKeyCollectionVersion(ctx, writer); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	// since we could have started a local txn, we'll use an anon function for
 	// all the stmts which should be managed within that possible local txn.
 	if err := func() error {
@@ -471,6 +479,10 @@ func (k *Kms) RewrapKeys(ctx context.Context, scopeId string, opt ...Option) err
 
 	reader, writer, localTx, err := k.txFromOpts(ctx, opt...)
 	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := updateKeyCollectionVersion(ctx, writer); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 

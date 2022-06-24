@@ -397,7 +397,7 @@ func TestKms_KeyId(t *testing.T) {
 	databaseKeyPurpose := KeyPurpose("database")
 
 	// Get the global scope's root wrapper
-	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
+	kmsCache, err := New(rw, rw, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
@@ -478,27 +478,24 @@ func TestKms_ClearCache(t *testing.T) {
 	databaseKeyPurpose := KeyPurpose("database")
 
 	// init kms with a cache
-	kmsCache, err := New(rw, rw, []KeyPurpose{"database"}, WithCache(true))
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// Make the global scope base keys
 	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
 	require.NoError(err)
+	assertCacheEqual(t, 0, kmsCache)
 
 	// First test: just getting the wrapper
 	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
 	require.NoError(err)
 	assertCacheEqual(t, 1, kmsCache)
 
-	// delete all the keys
-	testDeleteWhere(t, db, &rootKey{}, "1=1")
-
-	// can we still get the wrapper from the cache
-	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
-	require.NoError(err)
-
-	require.NoError(kmsCache.ClearCache(ctx))
+	require.NoError(kmsCache.clearCache(ctx))
 	assertCacheEqual(t, 0, kmsCache)
+
+	// delete all the keys (increment version)
+	testDeleteWhere(t, db, &rootKey{}, "1=1")
 
 	// should now fail to get the wrapper.
 	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
@@ -522,17 +519,17 @@ func TestKms_ClearCache(t *testing.T) {
 
 	assert.NotEqual(t, globalWrapper, orgWrapper)
 
-	kmsCache.ClearCache(ctx, WithScopeIds(orgScope))
+	kmsCache.clearCache(ctx, WithScopeIds(orgScope))
 	assertCacheEqual(t, 1, kmsCache)
 
-	// re-init kms without a cache
+	// re-init kms
 	kmsCache, err = New(rw, rw, []KeyPurpose{"database"})
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	_, err = kmsCache.GetWrapper(ctx, orgScope, databaseKeyPurpose)
 	require.NoError(err)
-	assertCacheEqual(t, 0, kmsCache)
-	require.NoError(kmsCache.ClearCache(ctx))
+	assertCacheEqual(t, 1, kmsCache)
+	require.NoError(kmsCache.clearCache(ctx))
 }
 
 func TestKms_RotateKeys(t *testing.T) {
@@ -598,6 +595,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rotate-key-version-error"))
 				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
 				require.NoError(t, err)
@@ -616,6 +614,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rewrap-root-key-version-error"))
 				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
@@ -636,6 +635,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
 				mock.ExpectQuery(`INSERT`).WillReturnError(errors.New("rotate-root-key-version-error"))
 				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
@@ -712,6 +712,9 @@ func TestKms_RotateKeys(t *testing.T) {
 				})
 			}
 
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			tc.opt = append(tc.opt, WithRewrap(tc.rewrap))
 
 			err = tc.kms.RotateKeys(testCtx, tc.scopeId, tc.opt...)
@@ -753,6 +756,10 @@ func TestKms_RotateKeys(t *testing.T) {
 					assert.NotEqual(currentRootKeyVersions[i].CtKey, newRootKeyVersions[i].CtKey)
 				}
 			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 	t.Run("WithTx", func(t *testing.T) {
@@ -942,6 +949,7 @@ func TestKms_RewrapKeys(t *testing.T) {
 				rw := dbw.New(db)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "scope_id", "create_time"}).AddRow("1", "global", time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"version", "create_time"}).AddRow(migrations.Version, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnError(errors.New("rewrapRootKeyVersionsTx-error"))
@@ -979,7 +987,11 @@ func TestKms_RewrapKeys(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(tc.kms, tc.scopeId)
 			}
-			err := tc.kms.RewrapKeys(testCtx, tc.scopeId, tc.opt...)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.RewrapKeys(testCtx, tc.scopeId, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -991,8 +1003,65 @@ func TestKms_RewrapKeys(t *testing.T) {
 				return
 			}
 			require.NoError(err)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
+}
+
+func TestKms_GetWrapperCaching(t *testing.T) {
+	t.Parallel()
+	require := require.New(t)
+	ctx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	extWrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+
+	const globalScope = "global"
+	databaseKeyPurpose := KeyPurpose("database")
+
+	// Get the global scope's root wrapper
+	kmsCache, err := New(rw, rw, []KeyPurpose{"database"})
+	require.NoError(err)
+	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
+	// Make the global scope base keys
+	err = kmsCache.CreateKeys(ctx, globalScope, []KeyPurpose{databaseKeyPurpose})
+	require.NoError(err)
+
+	assertCacheEqual(t, 0, kmsCache)
+	require.Equal(0, int(kmsCache.collectionVersion))
+
+	gotWrapper, err := kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+	require.NotEmpty(gotWrapper)
+	origKeyId, err := gotWrapper.KeyId(ctx)
+	require.NoError(err)
+
+	assertCacheEqual(t, 1, kmsCache)
+	require.Equal(2, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 2
+
+	err = kmsCache.RotateKeys(ctx, globalScope)
+	require.NoError(err)
+
+	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
+	require.NoError(err)
+	require.NotEmpty(gotWrapper)
+
+	assertCacheEqual(t, 1, kmsCache)
+	require.Equal(3, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 3
+
+	currKeyId, err := gotWrapper.KeyId(ctx)
+	require.NoError(err)
+	require.NotEqual(origKeyId, currKeyId)
+
+	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(origKeyId))
+	require.NoError(err)
+	require.NotEmpty(gotWrapper)
+	currKeyId, err = gotWrapper.KeyId(ctx)
+	require.NoError(err)
+	require.Equal(origKeyId, currKeyId)
 }
 
 func assertCacheEqual(t *testing.T, want int, k *Kms) {

@@ -11,6 +11,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/stretchr/testify v1.7.0
+	google.golang.org/protobuf v1.27.1
 	mvdan.cc/gofumpt v0.3.0
 )
 
@@ -45,7 +46,6 @@ require (
 	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gorm.io/driver/postgres v1.2.2 // indirect
 	gorm.io/driver/sqlite v1.2.4 // indirect

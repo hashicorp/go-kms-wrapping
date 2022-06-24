@@ -184,6 +184,7 @@ func TestRepository_CreateDataKey(t *testing.T) {
 				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "create_time"}).AddRow(rk.PrivateId, time.Now()))
 				mock.ExpectQuery(`INSERT INTO "kms_data_key"`).WillReturnError(errors.New("create-data-key-error"))
 				mock.ExpectRollback()
@@ -205,6 +206,7 @@ func TestRepository_CreateDataKey(t *testing.T) {
 				r, err := newRepository(rw, rw)
 				require.NoError(t, err)
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "root_key_id"}).AddRow(rkv.PrivateId, rkv.RootKeyId))
 				mock.ExpectQuery(`INSERT INTO`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"private_id", "create_time"}).AddRow(rk.PrivateId, time.Now()))
@@ -232,6 +234,10 @@ func TestRepository_CreateDataKey(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			dk, dv, err := tc.repo.CreateDataKey(context.Background(), tc.keyWrapper, tc.purpose, tc.key, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -253,6 +259,10 @@ func TestRepository_CreateDataKey(t *testing.T) {
 			foundKeyVersion, err := tc.repo.LookupDataKeyVersion(context.Background(), tc.keyWrapper, dv.PrivateId)
 			assert.NoError(err)
 			assert.Equal(dv, foundKeyVersion)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }
@@ -349,6 +359,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectExec(`DELETE`).WillReturnError(errors.New("delete-error"))
 				mock.ExpectRollback()
 				return r
@@ -375,6 +386,7 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 				require.NoError(t, err)
 				mock.ExpectQuery(`SELECT`).WillReturnRows(sqlmock.NewRows([]string{"scope_id", "create_time"}).AddRow(testScopeId, time.Now()))
 				mock.ExpectBegin()
+				mock.ExpectExec(`update kms_collection_version`).WillReturnResult(sqlmock.NewResult(1, 1))
 				mock.ExpectExec(`DELETE`).WillReturnResult(sqlmock.NewResult(0, 2))
 				mock.ExpectRollback()
 				return r
@@ -394,6 +406,10 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
 			deletedRows, err := tc.repo.DeleteDataKey(testCtx, tc.key.PrivateId, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
@@ -411,6 +427,10 @@ func TestRepository_DeleteDatabaseKey(t *testing.T) {
 			assert.Error(err)
 			assert.Nil(foundKey)
 			assert.ErrorIs(err, ErrRecordNotFound)
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
 		})
 	}
 }

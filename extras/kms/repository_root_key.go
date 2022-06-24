@@ -22,6 +22,9 @@ func (r *repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) error {
+			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+				return err
+			}
 			var err error
 			if returnedRk, returnedKv, err = createRootKeyTx(ctx, w, keyWrapper, scopeId, key); err != nil {
 				return fmt.Errorf("%s: %w", op, err)
@@ -126,6 +129,9 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) (err error) {
+			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+				return err
+			}
 			dk := k.Clone()
 			// no oplog entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)

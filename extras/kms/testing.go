@@ -202,7 +202,8 @@ func testSqliteSchemaAdditions(t *testing.T) string {
 }
 
 // testDeleteWhere allows you to easily delete resources for testing purposes
-// including all the current resources.
+// including all the current resources. The collection version is updated when
+// the resource is a key.
 func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause string, args ...interface{}) {
 	t.Helper()
 	require := require.New(t)
@@ -213,4 +214,10 @@ func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause stri
 	require.True(ok)
 	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
 	require.NoError(err)
+
+	switch i.(type) {
+	case *rootKey, *rootKeyVersion, *dataKey, *dataKeyVersion:
+		require.NoError(err, updateKeyCollectionVersion(ctx, dbw.New(conn)))
+
+	}
 }

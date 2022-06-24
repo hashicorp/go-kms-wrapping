@@ -23,6 +23,9 @@ func (r *repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrap
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(reader dbw.Reader, w dbw.Writer) error {
+			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+				return err
+			}
 			var err error
 			if returnedDk, returnedDv, err = createDataKeyTx(ctx, reader, w, rkvWrapper, purpose, key); err != nil {
 				return fmt.Errorf("%s: %w", op, err)
@@ -145,6 +148,9 @@ func (r *repository) DeleteDataKey(ctx context.Context, privateId string, opt ..
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) (err error) {
+			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+				return err
+			}
 			dk := k.Clone()
 			// no oplog entries for root keys
 			rowsDeleted, err = w.Delete(ctx, dk)

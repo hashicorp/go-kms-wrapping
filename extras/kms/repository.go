@@ -130,6 +130,51 @@ type vetForWriter interface {
 	vetForWrite(ctx context.Context, opType dbw.OpType) error
 }
 
+func updateKeyCollectionVersion(ctx context.Context, w dbw.Writer) error {
+	const (
+		op = "kms.updateKeyCollectionVersion"
+
+		sql = "update kms_collection_version set version = version + 1"
+	)
+	if isNil(w) {
+		return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
+	}
+
+	rowsUpdated, err := w.Exec(ctx, sql, nil)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if rowsUpdated != 1 {
+		return fmt.Errorf("%s: update %q rows and expected 1: %w", op, rowsUpdated, ErrInternal)
+	}
+	return nil
+}
+
+func currentCollectionVersion(ctx context.Context, r dbw.Reader) (uint64, error) {
+	const (
+		op = "kms.currentCollectionVersion"
+
+		sql = "select version from kms_collection_version"
+	)
+	if isNil(r) {
+		return 0, fmt.Errorf("%s: missing reader: %w", op, ErrInvalidParameter)
+	}
+
+	rows, err := r.Query(ctx, sql, nil)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+	v := struct {
+		Version uint64
+	}{}
+	for rows.Next() {
+		if err := r.ScanRows(rows, &v); err != nil {
+			return 0, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+	return v.Version, nil
+}
+
 func create(ctx context.Context, writer dbw.Writer, i interface{}, opt ...dbw.Option) error {
 	const op = "kms.create"
 	before := func(interface{}) error { return nil }
