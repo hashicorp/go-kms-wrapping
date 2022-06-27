@@ -313,9 +313,36 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	return nil
 }
 
-// RevokeRootKeyVersion will revoke (remove) a root key version. Be sure to
+// RevokeKey will revoke (remove) a key.  Be sure to rotate and rewrap KEKs
+// before revoking them.  If it's a DEK, then you need to re-encrypt all
+// data that was encrypted with the key before revoking it.  You must have
+// foreign key restrictions between DEK key IDs
+// (kms_data_key_version.private_id) and columns in your tables which store the
+// wrapper key ID used for encrypt/decrypt operations, otherwise you could lose
+// access to your encrypted data when you revoke a DEK that's still being used.
+func (k *Kms) RevokeKey(ctx context.Context, keyId string) error {
+	const op = "kms.(Kms).RevokeKey"
+	switch {
+	case keyId == "":
+		return fmt.Errorf("%s: missing key id: %w", op, ErrInvalidParameter)
+	case strings.HasPrefix(keyId, rootKeyVersionPrefix):
+		if err := k.revokeRootKeyVersion(ctx, keyId); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	case strings.HasPrefix(keyId, dataKeyVersionPrefix):
+		if err := k.revokeDataKeyVersion(ctx, keyId); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("%s: not a valid key id: %w", op, ErrInvalidParameter)
+	}
+}
+
+// revokeRootKeyVersion will revoke (remove) a root key version. Be sure to
 // rotate and rewrap the keys before revoking a root key version.
-func (k *Kms) RevokeRootKeyVersion(ctx context.Context, keyId string) error {
+func (k *Kms) revokeRootKeyVersion(ctx context.Context, keyId string) error {
 	const op = "kms.(Kms).RevokeRootKeyVersion"
 	switch {
 	case keyId == "":
@@ -331,12 +358,12 @@ func (k *Kms) RevokeRootKeyVersion(ctx context.Context, keyId string) error {
 	return nil
 }
 
-// RevokeDataKeyVersion will revoke (remove) a data key version (DEK).  Be sure
+// revokeDataKeyVersion will revoke (remove) a data key version (DEK).  Be sure
 // to rotate the DEKs and re-encrypt all data that uses a data key version (DEK)
 // before revoking it.  You must have foreign key restrictions between DEK key
 // IDs (kms_data_key_version.private_id) and columns in your tables which store
 // the wrapper key ID used for encrypt/decrypt operations.
-func (k *Kms) RevokeDataKeyVersion(ctx context.Context, keyId string) error {
+func (k *Kms) revokeDataKeyVersion(ctx context.Context, keyId string) error {
 	const op = "kms.(Kms).RevokeDataKeyVersion"
 	switch {
 	case keyId == "":
