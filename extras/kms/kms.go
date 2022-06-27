@@ -693,19 +693,18 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, fmt.Errorf("%s: not a supported key purpose %q: %w", op, purpose, ErrInvalidParameter)
 	}
 
-	keys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose))
+	keys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error listing keys for purpose %q: %w", op, purpose, err)
 	}
 	var keyId string
-	for _, k := range keys {
-		if k.GetRootKeyId() == rootKeyId {
-			keyId = k.GetPrivateId()
-			break
-		}
-	}
-	if keyId == "" {
+	switch {
+	case len(keys) == 0:
 		return nil, fmt.Errorf("%s: error finding %q key for scope %q: %w", op, purpose, scopeId, ErrKeyNotFound)
+	case len(keys) > 1:
+		return nil, fmt.Errorf("%s: found %q data keys for %q purpose: %w", op, len(keys), purpose, ErrInternal)
+	default:
+		keyId = keys[0].GetPrivateId()
 	}
 	keyVersions, err := k.repo.ListDataKeyVersions(ctx, rootWrapper, keyId, withOrderByVersion(descendingOrderBy))
 	if err != nil {
