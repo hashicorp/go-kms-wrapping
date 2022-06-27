@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -1399,6 +1400,137 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			currVersion, err := currentCollectionVersion(testCtx, rw)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
+		})
+	}
+}
+
+func TestKms_ListKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+
+	setupWithRotationFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
+		t.Helper()
+		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
+		require.NoError(t, k.RotateKeys(testCtx, "global"))
+		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(w.(*multi.PooledWrapper).AllKeyIds()))
+		return w.(*multi.PooledWrapper)
+	}
+
+	tests := []struct {
+		name            string
+		kms             *Kms
+		setup           func(t *testing.T, k *Kms) string // returns scopeId
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-scope-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				setupWithRotationFn(t, k)
+				return ""
+			},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing scope id",
+		},
+		{
+			name: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				setupWithRotationFn(t, k)
+				return "global"
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var testScopeId string
+			if tc.setup != nil {
+				testScopeId = tc.setup(t, tc.kms)
+			}
+
+			gotKeys, err := tc.kms.ListKeys(testCtx, testScopeId)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			var found []Key
+			for _, purpose := range tc.kms.Purposes() {
+				w, err := tc.kms.GetWrapper(testCtx, testScopeId, purpose)
+				require.NoError(err)
+				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+					switch purpose {
+					case KeyPurposeRootKey:
+						k := rootKeyVersion{}
+						k.PrivateId = id
+						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						newKey := Key{
+							Id:         id,
+							Scope:      testScopeId,
+							Type:       KeyTypeKek,
+							Version:    uint(k.Version),
+							CreateTime: k.CreateTime,
+							Purpose:    purpose,
+						}
+						found = append(found, newKey)
+					default:
+						k := dataKeyVersion{}
+						k.PrivateId = id
+						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						newKey := Key{
+							Id:         id,
+							Scope:      testScopeId,
+							Type:       KeyTypeDek,
+							Version:    uint(k.Version),
+							CreateTime: k.CreateTime,
+							Purpose:    purpose,
+						}
+						found = append(found, newKey)
+					}
+				}
+			}
+			sort.Slice(gotKeys, func(i, j int) bool {
+				return fmt.Sprintf("%s-%d", gotKeys[i].Purpose, gotKeys[i].Version) < fmt.Sprintf("%s-%d", gotKeys[j].Purpose, gotKeys[j].Version)
+			})
+			sort.Slice(found, func(i, j int) bool {
+				return fmt.Sprintf("%s-%d", found[i].Purpose, found[i].Version) < fmt.Sprintf("%s-%d", found[j].Purpose, found[j].Version)
+			})
+			assert.Equal(found, gotKeys)
+			// intentionally logging during verbose testing
+			for i, _ := range found {
+				t.Log(fmt.Sprintf("%#v", found[i]))
+				t.Log(fmt.Sprintf("%#v\n", gotKeys[i]))
+			}
 		})
 	}
 }

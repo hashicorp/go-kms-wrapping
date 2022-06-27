@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -252,6 +253,59 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	}
 
 	return wrapper, nil
+}
+
+// ListKeys returns the current list of kms keys
+func (k *Kms) ListKeys(ctx context.Context, scopeId string) ([]Key, error) {
+	const op = "kms.(Kms).ListKeys"
+	switch {
+	case scopeId == "":
+		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to lookup root key: %w", op, err)
+	}
+	var rkVersions []*rootKeyVersion
+	// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
+	if err := k.repo.list(ctx, &rkVersions, "root_key_id = ?", []interface{}{rk.PrivateId}, withOrderByVersion(ascendingOrderBy)); err != nil {
+		return nil, fmt.Errorf("%s: unable to list root key versions: %w", op, err)
+	}
+	var keys []Key
+	for _, rkv := range rkVersions {
+		keys = append(keys, Key{
+			Id:         rkv.PrivateId,
+			Scope:      rk.ScopeId,
+			Type:       KeyTypeKek,
+			Version:    uint(rkv.Version),
+			CreateTime: rkv.CreateTime,
+			Purpose:    KeyPurposeRootKey,
+		})
+	}
+
+	dataKeys, err := k.repo.ListDataKeys(ctx, withRootKeyId(rk.GetPrivateId()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to list data keys: %w", op, err)
+	}
+	for _, dk := range dataKeys {
+		var versions []*dataKeyVersion
+		// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
+		err := k.repo.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.GetPrivateId()}, withOrderByVersion(ascendingOrderBy))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		for _, dkv := range versions {
+			keys = append(keys, Key{
+				Id:         dkv.PrivateId,
+				Scope:      rk.ScopeId,
+				Type:       KeyTypeDek,
+				Version:    uint(dkv.Version),
+				CreateTime: dkv.CreateTime,
+				Purpose:    dk.Purpose,
+			})
+		}
+	}
+	return keys, nil
 }
 
 // CreateKeys creates the root key and DEKs for the given scope id.  By
