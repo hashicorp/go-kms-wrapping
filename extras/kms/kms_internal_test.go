@@ -3,7 +3,9 @@ package kms
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"sort"
 	"testing"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestKms_loadDek(t *testing.T) {
@@ -1072,4 +1075,496 @@ func assertCacheEqual(t *testing.T, want int, k *Kms) {
 		return true
 	})
 	assert.Equal(want, current)
+}
+
+func TestKms_RevokeRootKeyVersion(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+
+	setupWithRotationRewrapFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
+		t.Helper()
+		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
+		require.NoError(t, k.RotateKeys(testCtx, "global", WithRewrap(true)))
+		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(w.(*multi.PooledWrapper).AllKeyIds()))
+		return w.(*multi.PooledWrapper)
+	}
+
+	tests := []struct {
+		name            string
+		kms             *Kms
+		setup           func(t *testing.T, k *Kms) string // returns keyId
+		want            func(t *testing.T, testKeyId string, k *Kms)
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-key-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				_ = setupWithRotationRewrapFn(t, k)
+				return ""
+			},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing key id",
+		},
+		{
+			name: "invalid-key-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				_ = setupWithRotationRewrapFn(t, k)
+				return "invalid-key-id"
+			},
+			wantErr:         true,
+			wantErrIs:       ErrRecordNotFound,
+			wantErrContains: "unable to revoke root key version",
+		},
+		{
+			name: "key-in-use",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+				require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
+				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+				require.NoError(t, err)
+				require.Equal(t, 1, len(w.(*multi.PooledWrapper).AllKeyIds()))
+				currentKeyId, err := w.KeyId(testCtx)
+				require.NoError(t, err)
+
+				dbWrapper, err := k.GetWrapper(testCtx, "global", "database")
+				require.NoError(t, err)
+
+				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
+				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
+
+				return currentKeyId
+			},
+			want: func(t *testing.T, testKeyId string, k *Kms) {
+				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+				require.NoError(t, err)
+				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+					if testKeyId == id {
+						return
+					}
+				}
+				assert.Fail(t, "did not find: %q key id", testKeyId)
+			},
+			wantErr:         true,
+			wantErrContains: "unable to revoke root key version",
+		},
+		{
+			name: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				w := setupWithRotationRewrapFn(t, k)
+				currentKeyId, err := w.KeyId(testCtx)
+				require.NoError(t, err)
+				return currentKeyId
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var testKeyId string
+			if tc.setup != nil {
+				testKeyId = tc.setup(t, tc.kms)
+			}
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.revokeRootKeyVersion(testCtx, testKeyId)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				if tc.want != nil {
+					tc.want(t, testKeyId, tc.kms)
+				}
+				return
+			}
+			require.NoError(err)
+			w, err := tc.kms.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+			require.NoError(err)
+			for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+				assert.NotEqual(testKeyId, id)
+			}
+			if tc.want != nil {
+				tc.want(t, testKeyId, tc.kms)
+			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
+		})
+	}
+}
+
+func TestKms_RevokeDataKeyVersion(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+
+	setupWithRotationRewrapFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
+		t.Helper()
+		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
+		require.NoError(t, k.RotateKeys(testCtx, "global", WithRewrap(true)))
+		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(w.(*multi.PooledWrapper).AllKeyIds()))
+		return w.(*multi.PooledWrapper)
+	}
+
+	tests := []struct {
+		name            string
+		kms             *Kms
+		setup           func(t *testing.T, k *Kms) string // returns keyId
+		want            func(t *testing.T, testKeyId string, k *Kms)
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-key-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				_ = setupWithRotationRewrapFn(t, k)
+				return ""
+			},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing key id",
+		},
+		{
+			name: "invalid-key-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				_ = setupWithRotationRewrapFn(t, k)
+				return "invalid-key-id"
+			},
+			wantErr:         true,
+			wantErrIs:       ErrRecordNotFound,
+			wantErrContains: "unable to revoke data key version",
+		},
+		{
+			name: "key-in-use",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				testDeleteWhere(t, db, &rootKey{}, "1=1")
+				require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
+				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+				require.NoError(t, err)
+				require.Equal(t, 1, len(w.(*multi.PooledWrapper).AllKeyIds()))
+
+				dbWrapper, err := k.GetWrapper(testCtx, "global", "database")
+				require.NoError(t, err)
+				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
+				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
+
+				dbKeyId, err := dbWrapper.KeyId(testCtx)
+				require.NoError(t, err)
+				return dbKeyId
+			},
+			want: func(t *testing.T, testKeyId string, k *Kms) {
+				w, err := k.GetWrapper(testCtx, "global", KeyPurpose("database"))
+				require.NoError(t, err)
+				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+					if testKeyId == id {
+						return
+					}
+				}
+				assert.Fail(t, "did not find: %q key id", testKeyId)
+			},
+			wantErr:         true,
+			wantErrContains: "unable to revoke data key version",
+		},
+		{
+			name: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				t.Helper()
+				_ = setupWithRotationRewrapFn(t, k)
+				dbWrapper, err := k.GetWrapper(testCtx, "global", KeyPurpose("database"))
+				require.NoError(t, err)
+				dbKeyId, err := dbWrapper.KeyId(testCtx)
+				require.NoError(t, err)
+				return dbKeyId
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var testKeyId string
+			if tc.setup != nil {
+				testKeyId = tc.setup(t, tc.kms)
+			}
+
+			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+
+			err = tc.kms.revokeDataKeyVersion(testCtx, testKeyId)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				if tc.want != nil {
+					tc.want(t, testKeyId, tc.kms)
+				}
+				return
+			}
+			require.NoError(err)
+			dbWrapper, err := tc.kms.GetWrapper(testCtx, "global", KeyPurpose("database"))
+			require.NoError(err)
+			for _, id := range dbWrapper.(*multi.PooledWrapper).AllKeyIds() {
+				assert.NotEqual(testKeyId, id)
+			}
+			if tc.want != nil {
+				tc.want(t, testKeyId, tc.kms)
+			}
+
+			currVersion, err := currentCollectionVersion(testCtx, rw)
+			require.NoError(err)
+			assert.Greater(currVersion, prevVersion)
+		})
+	}
+}
+
+func TestKms_ListKeys(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+
+	setupWithRotationFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
+		t.Helper()
+		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
+		require.NoError(t, k.RotateKeys(testCtx, "global"))
+		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(w.(*multi.PooledWrapper).AllKeyIds()))
+		return w.(*multi.PooledWrapper)
+	}
+
+	tests := []struct {
+		name            string
+		kms             *Kms
+		setup           func(t *testing.T, k *Kms) string // returns scopeId
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "missing-scope-id",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				setupWithRotationFn(t, k)
+				return ""
+			},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing scope id",
+		},
+		{
+			name: "success",
+			kms: func() *Kms {
+				k, err := New(rw, rw, []KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(t *testing.T, k *Kms) string {
+				setupWithRotationFn(t, k)
+				return "global"
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			var testScopeId string
+			if tc.setup != nil {
+				testScopeId = tc.setup(t, tc.kms)
+			}
+
+			gotKeys, err := tc.kms.ListKeys(testCtx, testScopeId)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			var found []Key
+			for _, purpose := range tc.kms.Purposes() {
+				w, err := tc.kms.GetWrapper(testCtx, testScopeId, purpose)
+				require.NoError(err)
+				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+					switch purpose {
+					case KeyPurposeRootKey:
+						k := rootKeyVersion{}
+						k.PrivateId = id
+						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						newKey := Key{
+							Id:         id,
+							Scope:      testScopeId,
+							Type:       KeyTypeKek,
+							Version:    uint(k.Version),
+							CreateTime: k.CreateTime,
+							Purpose:    purpose,
+						}
+						found = append(found, newKey)
+					default:
+						k := dataKeyVersion{}
+						k.PrivateId = id
+						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						newKey := Key{
+							Id:         id,
+							Scope:      testScopeId,
+							Type:       KeyTypeDek,
+							Version:    uint(k.Version),
+							CreateTime: k.CreateTime,
+							Purpose:    purpose,
+						}
+						found = append(found, newKey)
+					}
+				}
+			}
+			sort.Slice(gotKeys, func(i, j int) bool {
+				return fmt.Sprintf("%s-%d", gotKeys[i].Purpose, gotKeys[i].Version) < fmt.Sprintf("%s-%d", gotKeys[j].Purpose, gotKeys[j].Version)
+			})
+			sort.Slice(found, func(i, j int) bool {
+				return fmt.Sprintf("%s-%d", found[i].Purpose, found[i].Version) < fmt.Sprintf("%s-%d", found[j].Purpose, found[j].Version)
+			})
+			assert.Equal(found, gotKeys)
+			// intentionally logging during verbose testing
+			for i, _ := range found {
+				t.Log(fmt.Sprintf("%#v", found[i]))
+				t.Log(fmt.Sprintf("%#v\n", gotKeys[i]))
+			}
+		})
+	}
+}
+
+type testEncryptedData struct {
+	PrivateId  string
+	KeyId      string
+	CipherText []byte
+}
+
+func (*testEncryptedData) TableName() string { return "kms_test_encrypted_data" }
+
+func testInsertEncryptedData(t *testing.T, w wrapping.Wrapper, rw *dbw.RW, pt []byte) string {
+	t.Helper()
+	require := require.New(t)
+	ctx := context.Background()
+
+	blob, err := w.Encrypt(ctx, pt)
+	require.NoError(err)
+	b, err := proto.Marshal(blob)
+	require.NoError(err)
+
+	keyId, err := w.KeyId(ctx)
+	require.NoError(err)
+
+	id, err := dbw.NewId("d_")
+	require.NoError(err)
+
+	d := &testEncryptedData{
+		PrivateId:  id,
+		KeyId:      keyId,
+		CipherText: []byte(base64.RawStdEncoding.EncodeToString(b)),
+	}
+	err = rw.Create(ctx, d)
+	require.NoError(err)
+	return id
 }

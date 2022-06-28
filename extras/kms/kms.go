@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -254,6 +255,59 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	return wrapper, nil
 }
 
+// ListKeys returns the current list of kms keys
+func (k *Kms) ListKeys(ctx context.Context, scopeId string) ([]Key, error) {
+	const op = "kms.(Kms).ListKeys"
+	switch {
+	case scopeId == "":
+		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId)
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to lookup root key: %w", op, err)
+	}
+	var rkVersions []*rootKeyVersion
+	// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
+	if err := k.repo.list(ctx, &rkVersions, "root_key_id = ?", []interface{}{rk.PrivateId}, withOrderByVersion(ascendingOrderBy)); err != nil {
+		return nil, fmt.Errorf("%s: unable to list root key versions: %w", op, err)
+	}
+	var keys []Key
+	for _, rkv := range rkVersions {
+		keys = append(keys, Key{
+			Id:         rkv.PrivateId,
+			Scope:      rk.ScopeId,
+			Type:       KeyTypeKek,
+			Version:    uint(rkv.Version),
+			CreateTime: rkv.CreateTime,
+			Purpose:    KeyPurposeRootKey,
+		})
+	}
+
+	dataKeys, err := k.repo.ListDataKeys(ctx, withRootKeyId(rk.GetPrivateId()))
+	if err != nil {
+		return nil, fmt.Errorf("%s: unable to list data keys: %w", op, err)
+	}
+	for _, dk := range dataKeys {
+		var versions []*dataKeyVersion
+		// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
+		err := k.repo.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.GetPrivateId()}, withOrderByVersion(ascendingOrderBy))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		for _, dkv := range versions {
+			keys = append(keys, Key{
+				Id:         dkv.PrivateId,
+				Scope:      rk.ScopeId,
+				Type:       KeyTypeDek,
+				Version:    uint(dkv.Version),
+				CreateTime: dkv.CreateTime,
+				Purpose:    dk.Purpose,
+			})
+		}
+	}
+	return keys, nil
+}
+
 // CreateKeys creates the root key and DEKs for the given scope id.  By
 // default, CreateKeys manages its own transaction (begin/rollback/commit).
 //
@@ -313,9 +367,36 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	return nil
 }
 
-// RevokeRootKeyVersion will revoke (remove) a root key version. Be sure to
+// RevokeKey will revoke (remove) a key.  Be sure to rotate and rewrap KEKs
+// before revoking them.  If it's a DEK, then you need to re-encrypt all
+// data that was encrypted with the key before revoking it.  You must have
+// foreign key restrictions between DEK key IDs
+// (kms_data_key_version.private_id) and columns in your tables which store the
+// wrapper key ID used for encrypt/decrypt operations, otherwise you could lose
+// access to your encrypted data when you revoke a DEK that's still being used.
+func (k *Kms) RevokeKey(ctx context.Context, keyId string) error {
+	const op = "kms.(Kms).RevokeKey"
+	switch {
+	case keyId == "":
+		return fmt.Errorf("%s: missing key id: %w", op, ErrInvalidParameter)
+	case strings.HasPrefix(keyId, rootKeyVersionPrefix):
+		if err := k.revokeRootKeyVersion(ctx, keyId); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	case strings.HasPrefix(keyId, dataKeyVersionPrefix):
+		if err := k.revokeDataKeyVersion(ctx, keyId); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("%s: not a valid key id: %w", op, ErrInvalidParameter)
+	}
+}
+
+// revokeRootKeyVersion will revoke (remove) a root key version. Be sure to
 // rotate and rewrap the keys before revoking a root key version.
-func (k *Kms) RevokeRootKeyVersion(ctx context.Context, keyId string) error {
+func (k *Kms) revokeRootKeyVersion(ctx context.Context, keyId string) error {
 	const op = "kms.(Kms).RevokeRootKeyVersion"
 	switch {
 	case keyId == "":
@@ -331,12 +412,12 @@ func (k *Kms) RevokeRootKeyVersion(ctx context.Context, keyId string) error {
 	return nil
 }
 
-// RevokeDataKeyVersion will revoke (remove) a data key version (DEK).  Be sure
+// revokeDataKeyVersion will revoke (remove) a data key version (DEK).  Be sure
 // to rotate the DEKs and re-encrypt all data that uses a data key version (DEK)
 // before revoking it.  You must have foreign key restrictions between DEK key
 // IDs (kms_data_key_version.private_id) and columns in your tables which store
 // the wrapper key ID used for encrypt/decrypt operations.
-func (k *Kms) RevokeDataKeyVersion(ctx context.Context, keyId string) error {
+func (k *Kms) revokeDataKeyVersion(ctx context.Context, keyId string) error {
 	const op = "kms.(Kms).RevokeDataKeyVersion"
 	switch {
 	case keyId == "":
@@ -693,19 +774,18 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, fmt.Errorf("%s: not a supported key purpose %q: %w", op, purpose, ErrInvalidParameter)
 	}
 
-	keys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose))
+	keys, err := k.repo.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId))
 	if err != nil {
 		return nil, fmt.Errorf("%s: error listing keys for purpose %q: %w", op, purpose, err)
 	}
 	var keyId string
-	for _, k := range keys {
-		if k.GetRootKeyId() == rootKeyId {
-			keyId = k.GetPrivateId()
-			break
-		}
-	}
-	if keyId == "" {
+	switch {
+	case len(keys) == 0:
 		return nil, fmt.Errorf("%s: error finding %q key for scope %q: %w", op, purpose, scopeId, ErrKeyNotFound)
+	case len(keys) > 1:
+		return nil, fmt.Errorf("%s: found %q data keys for %q purpose: %w", op, len(keys), purpose, ErrInternal)
+	default:
+		keyId = keys[0].GetPrivateId()
 	}
 	keyVersions, err := k.repo.ListDataKeyVersions(ctx, rootWrapper, keyId, withOrderByVersion(descendingOrderBy))
 	if err != nil {
