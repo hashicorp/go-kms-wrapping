@@ -16,7 +16,7 @@ const (
 type Key struct {
 
 	// Id is the key's id
-	Id string `json:"Id"`
+	Id string `json:"id"`
 
 	// Scope is the scope of the key
 	Scope string `json:"scope"`
@@ -30,6 +30,6 @@ type Key struct {
 	// CreateTime is the key's create time.
 	CreateTime time.Time `json:"create_time"`
 
-	// Purpose is the key's purpose, which is optional and only set for deks.
-	Purpose KeyPurpose `json:"key_purpose,omitempty"`
+	// Purpose is the key's purpose
+	Purpose KeyPurpose `json:"key_purpose"`
 }
