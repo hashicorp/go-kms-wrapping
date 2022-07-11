@@ -69,9 +69,8 @@ func main() {
 		return
 	}
 	// create a kms that supports both the default kms.KeyPurposeRootKey KEK and
-	// a "database" DEK.  Also, we'll enable in-memory caching of keys for the
-	// new kms.
-	k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"}, kms.WithCache(true))
+	// a "database" DEK.
+	k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to init kms: %s\n\n", err)
 		return
@@ -163,10 +162,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to rotate scope's keys: %s\n\n", err)
 		return
 	}
-	if err := k.ClearCache(mainCtx, kms.WithScopeIds(globalScope)); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to clear cache for scope: %q\n\n", globalScope)
-		return
-	}
 
 	fmt.Fprintf(os.Stderr, "successfully rotated keys\n")
 
@@ -233,15 +228,7 @@ func main() {
 		return
 	}
 
-	// Since we've deleted the scope (and it's associated keys), we need to
-	// clear kms in-memory cache for that scope.
-	if err := k.ClearCache(mainCtx, kms.WithScopeIds(globalScope)); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to clear cache for scope: %q\n\n", globalScope)
-		return
-	}
-
-	// since we've clear the kms cache, getting a wrapper for that scope should
-	// fail.
+	// getting a wrapper for that scope should fail.
 	dbWrapper, err = k.GetWrapper(mainCtx, globalScope, "database")
 	if err != nil && !errors.Is(err, kms.ErrKeyNotFound) {
 		fmt.Fprintf(os.Stderr, "failed to delete keys for scope: %s\n\n", err)
