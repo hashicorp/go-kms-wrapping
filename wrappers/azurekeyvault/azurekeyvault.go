@@ -334,6 +334,9 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 	default:
 		config := auth.NewMSIConfig()
 		config.Resource = strings.TrimSuffix(v.resource, "/")
+		if v.clientID != "" {
+			config.ClientID = v.clientID
+		}
 		authorizer, err = config.Authorizer()
 		if err != nil {
 			return nil, err
