@@ -2,6 +2,7 @@ package transit
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -202,8 +203,22 @@ func (c *TransitClient) Encrypt(plaintext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if secret == nil {
+		return nil, errors.New("after encrypt operation the returned secret from vault is nil")
+	}
+	if secret.Data == nil {
+		return nil, errors.New("after encrypt operation no data was found in returned secret from vault")
+	}
+	ct := secret.Data["ciphertext"]
+	if ct == nil {
+		return nil, errors.New("after encrypt operation ciphertext was not found in data returned from vault")
+	}
+	ctStr, ok := ct.(string)
+	if !ok {
+		return nil, errors.New("after encrypt operation ciphertext in data returned from vault is not a string")
+	}
 
-	return []byte(secret.Data["ciphertext"].(string)), nil
+	return []byte(ctStr), nil
 }
 
 func (c *TransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
@@ -214,10 +229,24 @@ func (c *TransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if secret == nil {
+		return nil, errors.New("after decrypt operation the returned secret from vault is nil")
+	}
+	if secret.Data == nil {
+		return nil, errors.New("after decrypt operation no data was found in returned secret from vault")
+	}
+	pt := secret.Data["plaintext"]
+	if pt == nil {
+		return nil, errors.New("after decrypt operation plaintext was not found in data returned from vault")
+	}
+	ptStr, ok := pt.(string)
+	if !ok {
+		return nil, errors.New("after decrypt operation plaintext in data returned from vault is not a string")
+	}
 
-	plaintext, err := base64.StdEncoding.DecodeString(secret.Data["plaintext"].(string))
+	plaintext, err := base64.StdEncoding.DecodeString(ptStr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error base64-decoding plaintext: %w", err)
 	}
 	return plaintext, nil
 }
