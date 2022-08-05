@@ -4,21 +4,22 @@ type WrapperType string
 
 // These values define known types of Wrappers
 const (
-	WrapperTypeUnknown         WrapperType = "unknown"
-	WrapperTypeAead            WrapperType = "aead"
-	WrapperTypeAliCloudKms     WrapperType = "alicloudkms"
-	WrapperTypeAwsKms          WrapperType = "awskms"
-	WrapperTypeAzureKeyVault   WrapperType = "azurekeyvault"
-	WrapperTypeGcpCkms         WrapperType = "gcpckms"
-	WrapperTypeHsmAuto         WrapperType = "hsm-auto"
-	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
-	WrapperTypeOciKms          WrapperType = "ocikms"
-	WrapperTypePkcs11          WrapperType = "pkcs11"
-	WrapperTypePooled          WrapperType = "pooled"
-	WrapperTypeShamir          WrapperType = "shamir"
-	WrapperTypeTencentCloudKms WrapperType = "tencentcloudkms"
-	WrapperTypeTransit         WrapperType = "transit"
-	WrapperTypeTest            WrapperType = "test-auto"
+	WrapperTypeUnknown           WrapperType = "unknown"
+	WrapperTypeAead              WrapperType = "aead"
+	WrapperTypeAliCloudKms       WrapperType = "alicloudkms"
+	WrapperTypeAwsKms            WrapperType = "awskms"
+	WrapperTypeAzureKeyVault     WrapperType = "azurekeyvault"
+	WrapperTypeGcpCkms           WrapperType = "gcpckms"
+	WrapperTypeHsmAuto           WrapperType = "hsm-auto"
+	WrapperTypeHuaweiCloudKms    WrapperType = "huaweicloudkms"
+	WrapperTypeOciKms            WrapperType = "ocikms"
+	WrapperTypePkcs11            WrapperType = "pkcs11"
+	WrapperTypePooled            WrapperType = "pooled"
+	WrapperTypeShamir            WrapperType = "shamir"
+	WrapperTypeTencentCloudKms   WrapperType = "tencentcloudkms"
+	WrapperTypeTransit           WrapperType = "transit"
+	WrapperTypeTest              WrapperType = "test-auto"
+	WrapperTypeHsmAutoDeprecated WrapperType = "hsm-auto"
 )
 
 func (t WrapperType) String() string {

@@ -132,6 +132,10 @@ func (t *TestWrapper) KeyBytes(context.Context) ([]byte, error) {
 	return t.secret, nil
 }
 
+func (t *TestWrapper) NonceSize() (int, error) {
+	return 12, nil
+}
+
 // Encrypt allows encrypting via the test wrapper
 func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...Option) (*BlobInfo, error) {
 	switch t.envelope {

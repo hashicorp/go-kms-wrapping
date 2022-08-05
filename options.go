@@ -51,6 +51,24 @@ func WithAad(with []byte) Option {
 	}
 }
 
+func WithIv(with []byte) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithIv = with
+			return nil
+		})
+	}
+}
+
+func WithKeyNotRequired(with bool) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithKeyNotRequired = with
+			return nil
+		})
+	}
+}
+
 // WithKeyId provides a common way to pass in a key identifier
 func WithKeyId(with string) Option {
 	return func() interface{} {

@@ -3,6 +3,7 @@ module github.com/hashicorp/go-kms-wrapping/v2
 go 1.17
 
 require (
+	github.com/golang/protobuf v1.5.0
 	github.com/hashicorp/go-uuid v1.0.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.7.0
