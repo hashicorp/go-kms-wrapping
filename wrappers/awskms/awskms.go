@@ -74,13 +74,13 @@ func NewWrapper() *Wrapper {
 // * Passed in config map
 // * Instance metadata role (access key and secret key)
 // * Default values
-func (k *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
 
-	k.keyNotRequired = opts.withKeyNotRequired
+	k.keyNotRequired = opts.Options.WithKeyNotRequired
 	k.logger = opts.withLogger
 
 	// Check and set KeyId

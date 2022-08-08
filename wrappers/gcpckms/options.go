@@ -98,16 +98,6 @@ func getDefaultOptions() options {
 	return options{}
 }
 
-// WithKeyNotRequired provides a way to not require a key at config time
-func WithKeyNotRequired(with bool) wrapping.Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) error {
-			o.withKeyNotRequired = with
-			return nil
-		})
-	}
-}
-
 // WithUserAgent provides a way to chose the user agent
 func WithUserAgent(with string) wrapping.Option {
 	return func() interface{} {
@@ -167,14 +157,3 @@ func WithCryptoKey(with string) wrapping.Option {
 		})
 	}
 }
-
-
-// WithLogger provides a way to pass in a logger
-func WithLogger(with hclog.Logger) wrapping.Option {
-	return func() interface{} {
-			return OptionFunc(func(o *options) error {
-						o.withLogger = with
-									return nil
-											})
-												}
-												}

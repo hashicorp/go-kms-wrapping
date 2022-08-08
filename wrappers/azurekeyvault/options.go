@@ -121,16 +121,6 @@ func WithDisallowEnvVars(with bool) wrapping.Option {
 	}
 }
 
-// WithKeyNotRequired provides a way to not require a key at config time
-func WithKeyNotRequired(with bool) wrapping.Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) error {
-			o.withKeyNotRequired = with
-			return nil
-		})
-	}
-}
-
 // WithTenantId provides a way to chose the tenant ID
 func WithTenantId(with string) wrapping.Option {
 	return func() interface{} {

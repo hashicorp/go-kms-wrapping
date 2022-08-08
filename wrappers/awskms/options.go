@@ -55,7 +55,7 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				if err != nil {
 					return nil, err
 				}
-				opts.withKeyNotRequired = keyNotRequired
+				opts.Options.WithKeyNotRequired = keyNotRequired
 			case "kms_key_id": // deprecated backend-specific value, set global
 				opts.WithKeyId = v
 			case "region":
@@ -103,7 +103,6 @@ type options struct {
 	*wrapping.Options
 
 	withDisallowEnvVars      bool
-	withKeyNotRequired       bool
 	withRegion               string
 	withEndpoint             string
 	withAccessKey            string
@@ -127,16 +126,6 @@ func WithDisallowEnvVars(with bool) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withDisallowEnvVars = with
-			return nil
-		})
-	}
-}
-
-// WithKeyNotRequired provides a way to not require a key at config time
-func WithKeyNotRequired(with bool) wrapping.Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) error {
-			o.withKeyNotRequired = with
 			return nil
 		})
 	}
@@ -237,16 +226,6 @@ func WithRoleArn(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withRoleArn = with
-			return nil
-		})
-	}
-}
-
-// WithLogger provides a way to pass in a logger
-func WithLogger(with hclog.Logger) wrapping.Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) error {
-			o.withLogger = with
 			return nil
 		})
 	}
