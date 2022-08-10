@@ -6,6 +6,7 @@ require (
 	github.com/hashicorp/go-hclog v1.1.0
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.4
 	github.com/hashicorp/go-plugin v1.4.3
+	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1

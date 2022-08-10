@@ -1,13 +1,16 @@
 package plugin
 
 import (
+	"fmt"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +26,8 @@ import (
 func TestPlugin(
 	t *testing.T,
 	pluginLoc string,
-	opt ...Option) (pluginWrapper wrapping.Wrapper, cleanup func()) {
+	opt ...Option,
+) (pluginWrapper wrapping.Wrapper, cleanup func()) {
 	t.Helper()
 	require := require.New(t)
 
@@ -41,8 +45,13 @@ func TestPlugin(
 	require.NoError(err)
 
 	pluginPath := filepath.Join(tmpDir, "plugin")
-	require.NoError(ioutil.WriteFile(pluginPath, pluginBytes, fs.FileMode(0700)))
-
+	randSuffix, err := base62.Random(5)
+	require.NoError(err)
+	pluginPath = fmt.Sprintf("%s-%s", pluginPath, randSuffix)
+	if runtime.GOOS == "windows" {
+		pluginPath = fmt.Sprintf("%s.exe", pluginPath)
+	}
+	require.NoError(ioutil.WriteFile(pluginPath, pluginBytes, fs.FileMode(0o700)))
 	client, err := NewWrapperClient(pluginPath, opt...)
 	require.NoError(err)
 
