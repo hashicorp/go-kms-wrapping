@@ -53,6 +53,14 @@ type Wrapper struct {
 	client *cloudkms.KeyManagementClient
 }
 
+var keyPermissions = []string{
+	"cloudkms.cryptoKeyVersions.useToSign",
+	"cloudkms.cryptoKeyVersions.useToVerify",
+	"cloudkms.cryptoKeyVersions.viewPublicKey",
+	"cloudkms.cryptoKeyVersions.useToDecrypt",
+	"cloudkms.cryptoKeyVersions.useToEncrypt",
+}
+
 var _ wrapping.Wrapper = (*Wrapper)(nil)
 
 func NewWrapper() *Wrapper {
@@ -146,13 +154,23 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		}
 		s.client = kmsClient
 
-		// Make sure user has permissions to encrypt (also checks if key exists)
+		// Make sure user has permissions to encrypt or sign and check if key exists
 		if !s.keyNotRequired {
 			ctx := context.Background()
-			if _, err := s.Encrypt(ctx, []byte("vault-gcpckms-test"), nil); err != nil {
-				return nil, fmt.Errorf("failed to encrypt with GCP CKMS - ensure the "+
-					"key exists and the service account has at least "+
-					"roles/cloudkms.cryptoKeyEncrypterDecrypter permission: %w", err)
+			_, err := s.client.GetCryptoKey(ctx, &kmspb.GetCryptoKeyRequest{Name: s.parentName})
+			if err != nil {
+				return nil, fmt.Errorf("error checking key existence: %s", err)
+			}
+
+			permissions, err := s.client.ResourceIAM(s.parentName).TestPermissions(ctx, keyPermissions)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(permissions) == 0 {
+				return nil, errors.New("permissions check failed - ensure the service account has at least " +
+					"roles/cloudkms.cryptoKeyEncrypterDecrypter permissions (for encryption keys) or " +
+					"roles/cloudkms.signerVerifier permissions (for signing keys)")
 			}
 		}
 	}
