@@ -117,10 +117,10 @@ func (k *Kms) addKey(ctx context.Context, cPurpose cachePurpose, kPurpose KeyPur
 	case externalWrapperCache:
 		k.externalWrapperCache.Store(kPurpose, wrapper)
 	case scopeWrapperCache:
-		if opts.withKeyId == "" {
+		if opts.withKeyVersionId == "" {
 			return fmt.Errorf("%s: missing key id for scoped wrapper cache: %w", op, ErrInvalidParameter)
 		}
-		k.scopedWrapperCache.Store(opts.withKeyId, wrapper)
+		k.scopedWrapperCache.Store(opts.withKeyVersionId, wrapper)
 	default:
 		return fmt.Errorf("%s: unsupported cache purpose %q: %w", op, cPurpose, ErrInvalidParameter)
 	}
@@ -211,10 +211,10 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 			if !ok {
 				return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
 			}
-			if opts.withKeyId == "" {
+			if opts.withKeyVersionId == "" {
 				return wrapper, nil
 			}
-			if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
+			if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdWrapper != nil {
 				return keyIdWrapper, nil
 			}
 			// Fall through to refresh our multiwrapper for this scope/purpose from the DB
@@ -241,12 +241,12 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	if err != nil {
 		return nil, fmt.Errorf("%s: error loading %q for scope %q: %w", op, purpose, scopeId, err)
 	}
-	if err := k.addKey(ctx, scopeWrapperCache, purpose, wrapper, WithKeyId(scopeId+string(purpose))); err != nil {
+	if err := k.addKey(ctx, scopeWrapperCache, purpose, wrapper, WithKeyVersionId(scopeId+string(purpose))); err != nil {
 		return nil, fmt.Errorf("%s: error adding key to cache: %w", op, err)
 	}
 
-	if opts.withKeyId != "" {
-		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyId); keyIdWrapper != nil {
+	if opts.withKeyVersionId != "" {
+		if keyIdWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdWrapper != nil {
 			return keyIdWrapper, nil
 		}
 		return nil, fmt.Errorf("%s: unable to find specified key ID: %w", op, ErrKeyNotFound)
@@ -256,7 +256,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 }
 
 // ListKeys returns the current list of kms keys
-func (k *Kms) ListKeys(ctx context.Context, scopeId string) ([]Key, error) {
+func (k *Kms) ListKeys(ctx context.Context, scopeId string) (*ScopeKeys, error) {
 	const op = "kms.(Kms).ListKeys"
 	switch {
 	case scopeId == "":
@@ -266,28 +266,28 @@ func (k *Kms) ListKeys(ctx context.Context, scopeId string) ([]Key, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to lookup root key: %w", op, err)
 	}
+	keys := ScopeKeys{
+		RootKey: newKeyFromRootKey(rk),
+	}
 	var rkVersions []*rootKeyVersion
 	// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
-	if err := k.repo.list(ctx, &rkVersions, "root_key_id = ?", []interface{}{rk.PrivateId}, withOrderByVersion(ascendingOrderBy)); err != nil {
+	if err := k.repo.list(ctx, &rkVersions, "root_key_id = ?", []interface{}{keys.RootKey.Id}, withOrderByVersion(ascendingOrderBy)); err != nil {
 		return nil, fmt.Errorf("%s: unable to list root key versions: %w", op, err)
 	}
-	var keys []Key
 	for _, rkv := range rkVersions {
-		keys = append(keys, Key{
+		keys.RootKey.Versions = append(keys.RootKey.Versions, &KeyVersion{
 			Id:         rkv.PrivateId,
-			Scope:      rk.ScopeId,
-			Type:       KeyTypeKek,
 			Version:    uint(rkv.Version),
 			CreateTime: rkv.CreateTime,
-			Purpose:    KeyPurposeRootKey,
 		})
 	}
 
-	dataKeys, err := k.repo.ListDataKeys(ctx, withRootKeyId(rk.GetPrivateId()))
+	dataKeys, err := k.repo.ListDataKeys(ctx, withRootKeyId(keys.RootKey.Id))
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to list data keys: %w", op, err)
 	}
 	for _, dk := range dataKeys {
+		dataKey := newKeyFromDataKey(dk, keys.RootKey.Scope)
 		var versions []*dataKeyVersion
 		// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
 		err := k.repo.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.GetPrivateId()}, withOrderByVersion(ascendingOrderBy))
@@ -295,17 +295,15 @@ func (k *Kms) ListKeys(ctx context.Context, scopeId string) ([]Key, error) {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		for _, dkv := range versions {
-			keys = append(keys, Key{
+			dataKey.Versions = append(dataKey.Versions, &KeyVersion{
 				Id:         dkv.PrivateId,
-				Scope:      rk.ScopeId,
-				Type:       KeyTypeDek,
 				Version:    uint(dkv.Version),
 				CreateTime: dkv.CreateTime,
-				Purpose:    dk.Purpose,
 			})
 		}
+		keys.DataKeys = append(keys.DataKeys, dataKey)
 	}
-	return keys, nil
+	return &keys, nil
 }
 
 // CreateKeys creates the root key and DEKs for the given scope id.  By

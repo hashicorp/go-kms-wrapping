@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -208,6 +209,7 @@ func TestKms_loadDek(t *testing.T) {
 			}
 			require.NoError(err)
 			gotKey, err := got.KeyBytes(testCtx)
+			require.NoError(err)
 			assert.Equal(tc.want, gotKey)
 		})
 	}
@@ -434,19 +436,19 @@ func TestKms_KeyId(t *testing.T) {
 	require.Equal(keyId2, tKeyId)
 
 	// Second: ask for each in turn
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId1))
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyId1))
 	require.NoError(err)
 	tKeyId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
 	require.Equal(keyId1, tKeyId)
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId2))
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyId2))
 	require.NoError(err)
 	tKeyId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
 	require.Equal(keyId2, tKeyId)
 
 	// Last: verify something bogus finds nothing
-	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId("foo"))
+	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId("foo"))
 	require.Error(err)
 
 	// empty cache and pull from database
@@ -454,12 +456,12 @@ func TestKms_KeyId(t *testing.T) {
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// ask for each in turn
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId1))
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyId1))
 	require.NoError(err)
 	tKeyId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
 	require.Equal(keyId1, tKeyId)
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId2))
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyId2))
 	require.NoError(err)
 	tKeyId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
@@ -1059,7 +1061,7 @@ func TestKms_GetWrapperCaching(t *testing.T) {
 	require.NoError(err)
 	require.NotEqual(origKeyId, currKeyId)
 
-	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(origKeyId))
+	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(origKeyId))
 	require.NoError(err)
 	require.NotEmpty(gotWrapper)
 	currKeyId, err = gotWrapper.KeyId(ctx)
@@ -1482,54 +1484,102 @@ func TestKms_ListKeys(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			var found []Key
+			found := &ScopeKeys{}
 			for _, purpose := range tc.kms.Purposes() {
 				w, err := tc.kms.GetWrapper(testCtx, testScopeId, purpose)
 				require.NoError(err)
 				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+				purposeSwitch:
 					switch purpose {
 					case KeyPurposeRootKey:
-						k := rootKeyVersion{}
-						k.PrivateId = id
-						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						kv := rootKeyVersion{}
+						kv.PrivateId = id
+						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
 						require.NoError(err)
-						newKey := Key{
-							Id:         id,
-							Scope:      testScopeId,
+						if found.RootKey != nil {
+							found.RootKey.Versions = append(found.RootKey.Versions, &KeyVersion{
+								Id:         id,
+								Version:    uint(kv.Version),
+								CreateTime: kv.CreateTime,
+							})
+							break
+						}
+						k := rootKey{}
+						k.PrivateId = kv.RootKeyId
+						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						found.RootKey = &Key{
+							Id:         k.PrivateId,
+							Scope:      k.ScopeId,
 							Type:       KeyTypeKek,
-							Version:    uint(k.Version),
 							CreateTime: k.CreateTime,
 							Purpose:    purpose,
+							Versions: []*KeyVersion{
+								{
+									Id:         id,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								},
+							},
 						}
-						found = append(found, newKey)
 					default:
-						k := dataKeyVersion{}
-						k.PrivateId = id
-						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						kv := dataKeyVersion{}
+						kv.PrivateId = id
+						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
 						require.NoError(err)
-						newKey := Key{
-							Id:         id,
-							Scope:      testScopeId,
+						for _, key := range found.DataKeys {
+							if key.Id == kv.DataKeyId {
+								key.Versions = append(key.Versions, &KeyVersion{
+									Id:         id,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								})
+								break purposeSwitch
+							}
+						}
+						k := dataKey{}
+						k.PrivateId = kv.DataKeyId
+						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						rk := rootKey{}
+						rk.PrivateId = k.RootKeyId
+						err = tc.kms.repo.reader.LookupBy(testCtx, &rk)
+						require.NoError(err)
+						found.DataKeys = append(found.DataKeys, &Key{
+							Id:         k.PrivateId,
+							Scope:      rk.ScopeId,
 							Type:       KeyTypeDek,
-							Version:    uint(k.Version),
 							CreateTime: k.CreateTime,
 							Purpose:    purpose,
-						}
-						found = append(found, newKey)
+							Versions: []*KeyVersion{
+								{
+									Id:         id,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								},
+							},
+						})
 					}
 				}
 			}
-			sort.Slice(gotKeys, func(i, j int) bool {
-				return fmt.Sprintf("%s-%d", gotKeys[i].Purpose, gotKeys[i].Version) < fmt.Sprintf("%s-%d", gotKeys[j].Purpose, gotKeys[j].Version)
-			})
-			sort.Slice(found, func(i, j int) bool {
-				return fmt.Sprintf("%s-%d", found[i].Purpose, found[i].Version) < fmt.Sprintf("%s-%d", found[j].Purpose, found[j].Version)
-			})
-			assert.Equal(found, gotKeys)
+			assert.Empty(cmp.Diff(gotKeys, found,
+				cmpopts.SortSlices(func(i, j *Key) bool {
+					return i.Purpose < j.Purpose
+				}),
+				cmpopts.SortSlices(func(i, j *KeyVersion) bool {
+					return i.Version < j.Version
+				}),
+			))
 			// intentionally logging during verbose testing
-			for i, _ := range found {
-				t.Log(fmt.Sprintf("%#v", found[i]))
-				t.Log(fmt.Sprintf("%#v\n", gotKeys[i]))
+			allFoundKeys := append(found.DataKeys, found.RootKey)
+			allGotKeys := append(gotKeys.DataKeys, gotKeys.RootKey)
+			for i := range allFoundKeys {
+				t.Logf("%#v", allFoundKeys[i])
+				if len(allGotKeys) <= i {
+					t.Logf("no more got keys")
+				} else {
+					t.Logf("%#v", allGotKeys[i])
+				}
 			}
 		})
 	}
