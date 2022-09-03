@@ -57,9 +57,9 @@ func withLimit(limit int) Option {
 
 // WithKeyVersionId allows specifying a key version ID that should be found in a scope's
 // multiwrapper; if it is not found, keys will be refreshed
-func WithKeyVersionId(keyId string) Option {
+func WithKeyVersionId(keyVersionId string) Option {
 	return func(o *options) {
-		o.withKeyVersionId = keyId
+		o.withKeyVersionId = keyVersionId
 	}
 }
 

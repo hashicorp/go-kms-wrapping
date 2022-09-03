@@ -154,7 +154,7 @@ func TestKms_AddExternalWrapper(t *testing.T) {
 			wrapperPurpose:  "recovery",
 			wantErr:         true,
 			wantErrIs:       kms.ErrInvalidParameter,
-			wantErrContains: "wrapper has no key ID",
+			wantErrContains: "wrapper has no key version ID",
 		},
 		{
 			name:           "success-non-default-purpose",
@@ -1117,8 +1117,8 @@ func TestKms_RevokeKey(t *testing.T) {
 	tests := []struct {
 		name            string
 		kms             *kms.Kms
-		setup           func(t *testing.T, k *kms.Kms) string // returns keyId
-		want            func(t *testing.T, testKeyId string, k *kms.Kms)
+		setup           func(t *testing.T, k *kms.Kms) (keyVersionId string)
+		want            func(t *testing.T, testKeyVersionId string, k *kms.Kms)
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -1139,7 +1139,7 @@ func TestKms_RevokeKey(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrIs:       kms.ErrInvalidParameter,
-			wantErrContains: "missing key id",
+			wantErrContains: "missing key version id",
 		},
 		{
 			name: "invalid-key-id",
@@ -1157,7 +1157,7 @@ func TestKms_RevokeKey(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrIs:       kms.ErrInvalidParameter,
-			wantErrContains: "not a valid key id",
+			wantErrContains: "not a valid key version id",
 		},
 		{
 			name: "root-key-version-key-not-found",
@@ -1217,19 +1217,19 @@ func TestKms_RevokeKey(t *testing.T) {
 				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
 				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
 
-				dbKeyId, err := dbWrapper.KeyId(testCtx)
+				dbKeyVersionId, err := dbWrapper.KeyId(testCtx)
 				require.NoError(t, err)
-				return dbKeyId
+				return dbKeyVersionId
 			},
-			want: func(t *testing.T, testKeyId string, k *kms.Kms) {
+			want: func(t *testing.T, testKeyVersionId string, k *kms.Kms) {
 				w, err := k.GetWrapper(testCtx, "global", kms.KeyPurpose("database"))
 				require.NoError(t, err)
-				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
-					if testKeyId == id {
+				for _, keyVersionId := range w.(*multi.PooledWrapper).AllKeyIds() {
+					if testKeyVersionId == keyVersionId {
 						return
 					}
 				}
-				assert.Fail(t, "did not find: %q key id", testKeyId)
+				assert.Fail(t, "did not find: %q key version id", testKeyVersionId)
 			},
 			wantErr:         true,
 			wantErrContains: "unable to revoke data key version",
@@ -1248,15 +1248,15 @@ func TestKms_RevokeKey(t *testing.T) {
 				_ = setupWithRotationRewrapFn(t, k)
 				dbWrapper, err := k.GetWrapper(testCtx, "global", kms.KeyPurpose("database"))
 				require.NoError(t, err)
-				dbKeyId, err := dbWrapper.KeyId(testCtx)
+				dbKeyVersionId, err := dbWrapper.KeyId(testCtx)
 				require.NoError(t, err)
-				return dbKeyId
+				return dbKeyVersionId
 			},
-			want: func(t *testing.T, testKeyId string, k *kms.Kms) {
+			want: func(t *testing.T, testKeyVersionId string, k *kms.Kms) {
 				dbWrapper, err := k.GetWrapper(testCtx, "global", kms.KeyPurpose("database"))
 				require.NoError(t, err)
-				for _, id := range dbWrapper.(*multi.PooledWrapper).AllKeyIds() {
-					assert.NotEqual(t, testKeyId, id)
+				for _, keyVersionId := range dbWrapper.(*multi.PooledWrapper).AllKeyIds() {
+					assert.NotEqual(t, testKeyVersionId, keyVersionId)
 				}
 			},
 		},
@@ -1272,15 +1272,15 @@ func TestKms_RevokeKey(t *testing.T) {
 			setup: func(t *testing.T, k *kms.Kms) string {
 				t.Helper()
 				w := setupWithRotationRewrapFn(t, k)
-				currentKeyId, err := w.KeyId(testCtx)
+				currentKeyVersionId, err := w.KeyId(testCtx)
 				require.NoError(t, err)
-				return currentKeyId
+				return currentKeyVersionId
 			},
-			want: func(t *testing.T, testKeyId string, k *kms.Kms) {
+			want: func(t *testing.T, testKeyVersionId string, k *kms.Kms) {
 				w, err := k.GetWrapper(testCtx, "global", kms.KeyPurposeRootKey)
 				require.NoError(t, err)
-				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
-					assert.NotEqual(t, testKeyId, id)
+				for _, keyVersionId := range w.(*multi.PooledWrapper).AllKeyIds() {
+					assert.NotEqual(t, testKeyVersionId, keyVersionId)
 				}
 			},
 		},
@@ -1288,15 +1288,15 @@ func TestKms_RevokeKey(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var testKeyId string
+			var testKeyVersionId string
 			if tc.setup != nil {
-				testKeyId = tc.setup(t, tc.kms)
+				testKeyVersionId = tc.setup(t, tc.kms)
 			}
 
 			prevVersion, err := currentCollectionVersion(testCtx, rw)
 			require.NoError(err)
 
-			err = tc.kms.RevokeKey(testCtx, testKeyId)
+			err = tc.kms.RevokeKeyVersion(testCtx, testKeyVersionId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -1306,13 +1306,13 @@ func TestKms_RevokeKey(t *testing.T) {
 					assert.Contains(err.Error(), tc.wantErrContains)
 				}
 				if tc.want != nil {
-					tc.want(t, testKeyId, tc.kms)
+					tc.want(t, testKeyVersionId, tc.kms)
 				}
 				return
 			}
 			require.NoError(err)
 			if tc.want != nil {
-				tc.want(t, testKeyId, tc.kms)
+				tc.want(t, testKeyVersionId, tc.kms)
 			}
 
 			currVersion, err := currentCollectionVersion(testCtx, rw)
@@ -1340,7 +1340,7 @@ func testInsertEncryptedData(t *testing.T, w wrapping.Wrapper, rw *dbw.RW, pt []
 	b, err := proto.Marshal(blob)
 	require.NoError(err)
 
-	keyId, err := w.KeyId(ctx)
+	keyVersionId, err := w.KeyId(ctx)
 	require.NoError(err)
 
 	id, err := dbw.NewId("d_")
@@ -1348,7 +1348,7 @@ func testInsertEncryptedData(t *testing.T, w wrapping.Wrapper, rw *dbw.RW, pt []
 
 	d := &testEncryptedData{
 		PrivateId:  id,
-		KeyId:      keyId,
+		KeyId:      keyVersionId,
 		CipherText: []byte(base64.RawStdEncoding.EncodeToString(b)),
 	}
 	err = rw.Create(ctx, d)

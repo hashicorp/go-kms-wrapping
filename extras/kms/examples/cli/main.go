@@ -104,9 +104,9 @@ func main() {
 		return
 	}
 
-	// get the DEK's key id so we can save it with the oidc row (since it will
+	// get the DEK version's id so we can save it with the oidc row (since it will
 	// be used to encrypt/decrypt ciphertext in the row)
-	dbWrapperKeyId, err := dbWrapper.KeyId(mainCtx)
+	dbWrapperKeyVersionId, err := dbWrapper.KeyId(mainCtx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get key id: %s\n\n", err)
 		return
@@ -123,7 +123,7 @@ func main() {
 		PrivateId:    oidcId,
 		ClientId:     "example-client-id",
 		ClientSecret: *pt,
-		KeyId:        dbWrapperKeyId,
+		KeyId:        dbWrapperKeyVersionId,
 	}
 
 	fmt.Fprintf(os.Stderr, "using the structwrapping pkg to wrap (encrypt) the new oidc record...\n")
@@ -171,13 +171,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "failed to get rotated wrapper for database: %s\n\n", err)
 		return
 	}
-	rotatedDbWrapperKeyId, err := rotateDbWrapper.KeyId(mainCtx)
+	rotatedDbWrapperKeyVersionId, err := rotateDbWrapper.KeyId(mainCtx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get key id for rotated wrapper: %s\n\n", err)
 		return
 	}
-	if rotatedDbWrapperKeyId == dbWrapperKeyId {
-		fmt.Fprintf(os.Stderr, "rotated key id %q should not equal original key id %q\n\n", rotatedDbWrapperKeyId, dbWrapperKeyId)
+	if rotatedDbWrapperKeyVersionId == dbWrapperKeyVersionId {
+		fmt.Fprintf(os.Stderr, "rotated key version id %q should not equal original key version id %q\n\n", rotatedDbWrapperKeyVersionId, dbWrapperKeyVersionId)
 		return
 	}
 
