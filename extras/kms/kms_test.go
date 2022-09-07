@@ -1323,9 +1323,9 @@ func TestKms_RevokeKey(t *testing.T) {
 }
 
 type testEncryptedData struct {
-	PrivateId  string
-	KeyId      string
-	CipherText []byte
+	PrivateId    string
+	KeyVersionId string
+	CipherText   []byte
 }
 
 func (*testEncryptedData) TableName() string { return "kms_test_encrypted_data" }
@@ -1347,9 +1347,9 @@ func testInsertEncryptedData(t *testing.T, w wrapping.Wrapper, rw *dbw.RW, pt []
 	require.NoError(err)
 
 	d := &testEncryptedData{
-		PrivateId:  id,
-		KeyId:      keyVersionId,
-		CipherText: []byte(base64.RawStdEncoding.EncodeToString(b)),
+		PrivateId:    id,
+		KeyVersionId: keyVersionId,
+		CipherText:   []byte(base64.RawStdEncoding.EncodeToString(b)),
 	}
 	err = rw.Create(ctx, d)
 	require.NoError(err)

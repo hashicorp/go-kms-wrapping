@@ -133,7 +133,7 @@ that's stored in the database.
                                     │private_id              │╲ │
                                     │client_id               │─○┘
                                     │client_secret           │╱  
-                                    │key_id                  │   
+                                    │key_version_id          │   
                                     │                        │   
                                     └────────────────────────┘   
 ```
