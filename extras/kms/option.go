@@ -63,6 +63,13 @@ func WithKeyVersionId(keyVersionId string) Option {
 	}
 }
 
+// WithKeyId allows specifying a key version ID that should be found in a scope's
+// multiwrapper; if it is not found, keys will be refreshed.
+// Deprecated: use WithKeyVersionId instead.
+func WithKeyId(keyVersionId string) Option {
+	return WithKeyVersionId(keyVersionId)
+}
+
 // withOrderByVersion provides an option to specify ordering by the
 // CreateTime field.
 func withOrderByVersion(by orderBy) Option {

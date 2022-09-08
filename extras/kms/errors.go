@@ -20,9 +20,6 @@ var (
 	// ErrKeyNotFound represents that no key was found
 	ErrKeyNotFound = errors.New("key not found")
 
-	// ErrKeyVersionNotFound represents that no key version was found
-	ErrKeyVersionNotFound = errors.New("key version not found")
-
 	// ErrInternal represents an internal error/issue
 	ErrInternal = errors.New("internal issue")
 )

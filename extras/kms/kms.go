@@ -174,10 +174,13 @@ func (k *Kms) GetExternalRootWrapper() (wrapping.Wrapper, error) {
 	return nil, fmt.Errorf("%s: missing external root wrapper: %w", op, ErrKeyNotFound)
 }
 
-// GetWrapper returns a wrapper for the given scope and purpose. When a keyVersionId is
+// GetWrapper returns a wrapper for the given scope and purpose.
+//
+// If an optional WithKeyVersionId(...) or WithKeyId(...) is
 // passed, it will ensure that the returning wrapper has that key version ID in the
 // multiwrapper. This is not necessary for encryption but should be supplied for
-// decryption.
+// decryption. WithKeyVersionId(...) and WithKeyId(...) are equivalent options,
+// describing the key version ID requested in the wrapper.
 //
 // Note: getting a wrapper for KeyPurposeRootKey is supported, but a root
 // wrapper is a KEK and should never be used for data encryption.
@@ -249,45 +252,44 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		if keyIdVersionWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdVersionWrapper != nil {
 			return keyIdVersionWrapper, nil
 		}
-		return nil, fmt.Errorf("%s: unable to find specified key version ID: %w", op, ErrKeyVersionNotFound)
+		return nil, fmt.Errorf("%s: unable to find specified key version ID: %w", op, ErrKeyNotFound)
 	}
 
 	return wrapper, nil
 }
 
-// ListKeys returns the current list of kms keys
-func (k *Kms) ListKeys(ctx context.Context, scopeId string) (*ScopeKeys, error) {
+// ListKeys returns the current list of kms keys.
+func (k *Kms) ListKeys(ctx context.Context, scopeId string) ([]Key, error) {
 	const op = "kms.(Kms).ListKeys"
 	switch {
 	case scopeId == "":
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
 	}
-	rk, err := k.repo.LookupRootKeyByScope(ctx, scopeId)
+	dbKey, err := k.repo.LookupRootKeyByScope(ctx, scopeId)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to lookup root key: %w", op, err)
 	}
-	keys := ScopeKeys{
-		RootKey: newKeyFromRootKey(rk),
-	}
 	var rkVersions []*rootKeyVersion
 	// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
-	if err := k.repo.list(ctx, &rkVersions, "root_key_id = ?", []interface{}{keys.RootKey.Id}, withOrderByVersion(ascendingOrderBy)); err != nil {
+	if err := k.repo.list(ctx, &rkVersions, "root_key_id = ?", []interface{}{dbKey.PrivateId}, withOrderByVersion(ascendingOrderBy)); err != nil {
 		return nil, fmt.Errorf("%s: unable to list root key versions: %w", op, err)
 	}
+	rk := newKeyFromRootKey(dbKey)
 	for _, rkv := range rkVersions {
-		keys.RootKey.Versions = append(keys.RootKey.Versions, &KeyVersion{
+		rk.Versions = append(rk.Versions, KeyVersion{
 			Id:         rkv.PrivateId,
 			Version:    uint(rkv.Version),
 			CreateTime: rkv.CreateTime,
 		})
 	}
 
-	dataKeys, err := k.repo.ListDataKeys(ctx, withRootKeyId(keys.RootKey.Id))
+	dataKeys, err := k.repo.ListDataKeys(ctx, withRootKeyId(rk.Id))
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to list data keys: %w", op, err)
 	}
+	keys := []Key{rk}
 	for _, dk := range dataKeys {
-		dataKey := newKeyFromDataKey(dk, keys.RootKey.Scope)
+		dataKey := newKeyFromDataKey(dk, rk.Scope)
 		var versions []*dataKeyVersion
 		// we don't need to decrypt their keys, so we'll get them directly from the repo.list(...)
 		err := k.repo.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.GetPrivateId()}, withOrderByVersion(ascendingOrderBy))
@@ -295,15 +297,15 @@ func (k *Kms) ListKeys(ctx context.Context, scopeId string) (*ScopeKeys, error) 
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
 		for _, dkv := range versions {
-			dataKey.Versions = append(dataKey.Versions, &KeyVersion{
+			dataKey.Versions = append(dataKey.Versions, KeyVersion{
 				Id:         dkv.PrivateId,
 				Version:    uint(dkv.Version),
 				CreateTime: dkv.CreateTime,
 			})
 		}
-		keys.DataKeys = append(keys.DataKeys, dataKey)
+		keys = append(keys, dataKey)
 	}
-	return &keys, nil
+	return keys, nil
 }
 
 // CreateKeys creates the root key and DEKs for the given scope id.  By
@@ -365,6 +367,12 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	return nil
 }
 
+// RevokeKey will revoke (remove) a key version.
+// Deprecated: use RevokeKeyVersion instead.
+func (k *Kms) RevokeKey(ctx context.Context, keyVersionId string) error {
+	return k.RevokeKeyVersion(ctx, keyVersionId)
+}
+
 // RevokeKeyVersion will revoke (remove) a key version.  Be sure to rotate and rewrap KEK
 // versions before revoking them.  If it's a DEK, then you need to re-encrypt all
 // data that was encrypted with the key version before revoking it.  You must have
@@ -405,7 +413,7 @@ func (k *Kms) revokeRootKeyVersion(ctx context.Context, keyVersionId string) err
 	case err != nil:
 		return fmt.Errorf("%s: unable to revoke root key version: %w", op, err)
 	case rowsDeleted == 0:
-		return fmt.Errorf("%s: unable to revoke root key version: %w", op, ErrKeyVersionNotFound)
+		return fmt.Errorf("%s: unable to revoke root key version: %w", op, ErrKeyNotFound)
 	}
 	return nil
 }
@@ -426,7 +434,7 @@ func (k *Kms) revokeDataKeyVersion(ctx context.Context, keyVersionId string) err
 	case err != nil:
 		return fmt.Errorf("%s: unable to revoke data key version: %w", op, err)
 	case rowsDeleted == 0:
-		return fmt.Errorf("%s: unable to revoke data key version: %w", op, ErrKeyVersionNotFound)
+		return fmt.Errorf("%s: unable to revoke data key version: %w", op, ErrKeyNotFound)
 	}
 	return nil
 }
@@ -530,7 +538,7 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 }
 
 // RewrapKeys will re-encrypt all versions of a scope's KEK with the external
-// root key wrapper and re-rencrypt all versions of a scopes DEKs with the latest
+// root key wrapper and re-encrypt all versions of a scopes DEKs with the latest
 // KEK version. If you wish to rewrap and rotate keys, then use the RotateKeys function.
 //
 // WithTx(...) and WithReaderWriter(...) options are supported which allow the
@@ -726,7 +734,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (_ *m
 		return nil, "", fmt.Errorf("%s: error looking up root key versions for scope %q: %w", op, scopeId, err)
 	}
 	if len(rootKeyVersions) == 0 {
-		return nil, "", fmt.Errorf("%s: no root key versions found for scope %q: %w", op, scopeId, ErrKeyVersionNotFound)
+		return nil, "", fmt.Errorf("%s: no root key versions found for scope %q: %w", op, scopeId, ErrKeyNotFound)
 	}
 
 	var pooled *multi.PooledWrapper
@@ -788,7 +796,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 		return nil, fmt.Errorf("%s: error looking up %q key versions for scope %q: %w", op, purpose, scopeId, err)
 	}
 	if len(keyVersions) == 0 {
-		return nil, fmt.Errorf("%s: no %q key versions found for scope %q: %w", op, purpose, scopeId, ErrKeyVersionNotFound)
+		return nil, fmt.Errorf("%s: no %q key versions found for scope %q: %w", op, purpose, scopeId, ErrKeyNotFound)
 	}
 
 	var pooled *multi.PooledWrapper

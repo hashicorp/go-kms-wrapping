@@ -12,7 +12,7 @@ const (
 	KeyTypeDek = "dek"
 )
 
-// KeyVersion is a key's version (the construct containing the encryption key itself)
+// KeyVersion is a key's version (the construct containing the key material)
 type KeyVersion struct {
 
 	// Id is the key version's id
@@ -43,12 +43,12 @@ type Key struct {
 	// Purpose is the key's purpose
 	Purpose KeyPurpose `json:"key_purpose"`
 
-	// Versions is a list of key versions belonging to this key
-	Versions []*KeyVersion `json:"versions"`
+	// Versions is a list of key versions for this key
+	Versions []KeyVersion `json:"versions"`
 }
 
-func newKeyFromRootKey(key *rootKey) *Key {
-	return &Key{
+func newKeyFromRootKey(key *rootKey) Key {
+	return Key{
 		Id:         key.PrivateId,
 		Scope:      key.ScopeId,
 		CreateTime: key.CreateTime,
@@ -57,23 +57,12 @@ func newKeyFromRootKey(key *rootKey) *Key {
 	}
 }
 
-func newKeyFromDataKey(key *dataKey, scope string) *Key {
-	return &Key{
+func newKeyFromDataKey(key *dataKey, scope string) Key {
+	return Key{
 		Id:         key.PrivateId,
 		Scope:      scope,
 		CreateTime: key.CreateTime,
 		Type:       KeyTypeDek,
 		Purpose:    key.Purpose,
 	}
-}
-
-// ScopeKeys is the package containing all keys in use by a certain scope
-// including a single root key (KEK) and all data keys (DEKs)
-type ScopeKeys struct {
-
-	// RootKey is the scope's root KEK (containing all key versions)
-	RootKey *Key `json:"root_key"`
-
-	// DataKeys is a slice of all the DEKs used by the scope (each key containing all key versions)
-	DataKeys []*Key `json:"data_keys"`
 }

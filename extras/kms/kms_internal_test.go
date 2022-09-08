@@ -177,7 +177,7 @@ func TestKms_loadDek(t *testing.T) {
 			rootWrapper:     rkw,
 			rootKeyId:       rk.PrivateId,
 			wantErr:         true,
-			wantErrContains: "key version not found",
+			wantErrContains: "key not found",
 		},
 		{
 			name: "success",
@@ -325,7 +325,7 @@ func TestKms_loadRoot(t *testing.T) {
 			}(),
 			scopeId:         "global",
 			wantErr:         true,
-			wantErrContains: "key version not found",
+			wantErrContains: "key not found",
 		},
 		{
 			name: "success",
@@ -1484,7 +1484,7 @@ func TestKms_ListKeys(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			found := &ScopeKeys{}
+			var found []Key
 			for _, purpose := range tc.kms.Purposes() {
 				w, err := tc.kms.GetWrapper(testCtx, testScopeId, purpose)
 				require.NoError(err)
@@ -1496,40 +1496,42 @@ func TestKms_ListKeys(t *testing.T) {
 						kv.PrivateId = keyVersionId
 						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
 						require.NoError(err)
-						if found.RootKey != nil {
-							found.RootKey.Versions = append(found.RootKey.Versions, &KeyVersion{
-								Id:         keyVersionId,
-								Version:    uint(kv.Version),
-								CreateTime: kv.CreateTime,
-							})
-							break
+						for i := range found {
+							if found[i].Purpose == purpose && found[i].Id == kv.RootKeyId {
+								found[i].Versions = append(found[i].Versions, KeyVersion{
+									Id:         keyVersionId,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								})
+								break purposeSwitch
+							}
 						}
 						k := rootKey{}
 						k.PrivateId = kv.RootKeyId
 						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
 						require.NoError(err)
-						found.RootKey = &Key{
+						found = append(found, Key{
 							Id:         k.PrivateId,
 							Scope:      k.ScopeId,
 							Type:       KeyTypeKek,
 							CreateTime: k.CreateTime,
 							Purpose:    purpose,
-							Versions: []*KeyVersion{
+							Versions: []KeyVersion{
 								{
 									Id:         keyVersionId,
 									Version:    uint(kv.Version),
 									CreateTime: kv.CreateTime,
 								},
 							},
-						}
+						})
 					default:
 						kv := dataKeyVersion{}
 						kv.PrivateId = keyVersionId
 						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
 						require.NoError(err)
-						for _, key := range found.DataKeys {
-							if key.Id == kv.DataKeyId {
-								key.Versions = append(key.Versions, &KeyVersion{
+						for i := range found {
+							if found[i].Purpose == purpose && found[i].Id == kv.DataKeyId {
+								found[i].Versions = append(found[i].Versions, KeyVersion{
 									Id:         keyVersionId,
 									Version:    uint(kv.Version),
 									CreateTime: kv.CreateTime,
@@ -1545,13 +1547,13 @@ func TestKms_ListKeys(t *testing.T) {
 						rk.PrivateId = k.RootKeyId
 						err = tc.kms.repo.reader.LookupBy(testCtx, &rk)
 						require.NoError(err)
-						found.DataKeys = append(found.DataKeys, &Key{
+						found = append(found, Key{
 							Id:         k.PrivateId,
 							Scope:      rk.ScopeId,
 							Type:       KeyTypeDek,
 							CreateTime: k.CreateTime,
 							Purpose:    purpose,
-							Versions: []*KeyVersion{
+							Versions: []KeyVersion{
 								{
 									Id:         keyVersionId,
 									Version:    uint(kv.Version),
@@ -1563,22 +1565,20 @@ func TestKms_ListKeys(t *testing.T) {
 				}
 			}
 			assert.Empty(cmp.Diff(gotKeys, found,
-				cmpopts.SortSlices(func(i, j *Key) bool {
+				cmpopts.SortSlices(func(i, j Key) bool {
 					return i.Purpose < j.Purpose
 				}),
-				cmpopts.SortSlices(func(i, j *KeyVersion) bool {
+				cmpopts.SortSlices(func(i, j KeyVersion) bool {
 					return i.Version < j.Version
 				}),
 			))
 			// intentionally logging during verbose testing
-			allFoundKeys := append(found.DataKeys, found.RootKey)
-			allGotKeys := append(gotKeys.DataKeys, gotKeys.RootKey)
-			for i := range allFoundKeys {
-				t.Logf("%#v", allFoundKeys[i])
-				if len(allGotKeys) <= i {
+			for i := range found {
+				t.Logf("%#v", found[i])
+				if len(gotKeys) <= i {
 					t.Logf("no more got keys")
 				} else {
-					t.Logf("%#v", allGotKeys[i])
+					t.Logf("%#v", gotKeys[i])
 				}
 			}
 		})

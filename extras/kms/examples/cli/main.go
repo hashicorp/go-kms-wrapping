@@ -104,7 +104,7 @@ func main() {
 		return
 	}
 
-	// get the DEK version's id so we can save it with the oidc row (since it will
+	// get the DEK's version id so we can save it with the oidc row (since it will
 	// be used to encrypt/decrypt ciphertext in the row)
 	dbWrapperKeyVersionId, err := dbWrapper.KeyId(mainCtx)
 	if err != nil {
@@ -123,7 +123,7 @@ func main() {
 		PrivateId:    oidcId,
 		ClientId:     "example-client-id",
 		ClientSecret: *pt,
-		KeyId:        dbWrapperKeyVersionId,
+		KeyVersionId: dbWrapperKeyVersionId,
 	}
 
 	fmt.Fprintf(os.Stderr, "using the structwrapping pkg to wrap (encrypt) the new oidc record...\n")

@@ -12,7 +12,7 @@ type OIDC struct {
 	CtClientSecret []byte `json:"-" gorm:"column:client_secret" wrapping:"ct,client_secret"`
 	// ClientSecret is the oidc client secret (plaintext)
 	ClientSecret string `json:"client_secret,omitempty" wrapping:"pt,client_secret"`
-	// KeyVersionId is the wrapper key version id used to encrypt/decrypt the client secret
+	// KeyVersionId is the key's version id used to encrypt/decrypt the client secret
 	KeyVersionId string `json:"key_version_id,omitempty" gorm:"not_null"`
 	// CreateTime from the db
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
