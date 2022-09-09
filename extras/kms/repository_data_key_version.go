@@ -199,6 +199,13 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 // Options are ignored.
 func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
 	const op = "kms.(repository).ListDataKeyVersionReferencers"
+	typ, _, err := r.reader.Dialect()
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to get db dialect: %w", op, err)
+	}
+	if typ != dbw.Postgres {
+		return nil, fmt.Errorf("unsupported DB dialect: %q", typ)
+	}
 	rows, err := r.reader.Query(
 		ctx,
 		`
