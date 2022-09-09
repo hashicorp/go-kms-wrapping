@@ -3,6 +3,7 @@ package kms
 import (
 	"context"
 	"errors"
+	"os"
 	"sort"
 	"testing"
 	"time"
@@ -1189,4 +1190,20 @@ func Test_rewrapDataKeyVersionsTx(t *testing.T) {
 			require.NoError(err)
 		})
 	}
+}
+
+func TestRepository_ListDataKeyVersionReferencers(t *testing.T) {
+	if os.Getenv("DB_DIALECT") != "postgres" {
+		t.Skip("Cannot test ListDataKeyVersionReferences on sqlite")
+		return
+	}
+	t.Parallel()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	testRepo, err := newRepository(rw, rw)
+	require.NoError(t, err)
+
+	tableNames, err := testRepo.ListDataKeyVersionReferencers(context.Background())
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"kms_test_encrypted_data"}, tableNames)
 }
