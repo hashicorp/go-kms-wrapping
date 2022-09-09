@@ -22,7 +22,7 @@ type Option func(*options)
 // options = how options are represented
 type options struct {
 	withLimit          int
-	withKeyId          string
+	withKeyVersionId   string
 	withOrderByVersion orderBy
 	withRetryCnt       uint
 	withErrorsMatching func(error) bool
@@ -55,12 +55,19 @@ func withLimit(limit int) Option {
 	}
 }
 
-// WithKeyId allows specifying a key ID that should be found in a scope's
+// WithKeyVersionId allows specifying a key version ID that should be found in a scope's
 // multiwrapper; if it is not found, keys will be refreshed
-func WithKeyId(keyId string) Option {
+func WithKeyVersionId(keyVersionId string) Option {
 	return func(o *options) {
-		o.withKeyId = keyId
+		o.withKeyVersionId = keyVersionId
 	}
+}
+
+// WithKeyId allows specifying a key version ID that should be found in a scope's
+// multiwrapper; if it is not found, keys will be refreshed.
+// Deprecated: use WithKeyVersionId instead.
+func WithKeyId(keyVersionId string) Option {
+	return WithKeyVersionId(keyVersionId)
 }
 
 // withOrderByVersion provides an option to specify ordering by the

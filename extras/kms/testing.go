@@ -180,7 +180,7 @@ func testPostgresSchemaAdditions(t *testing.T) string {
 	begin;
 	create table kms_test_encrypted_data (
 		private_id text primary key,
-		key_id text not null 
+		key_version_id text not null 
 			references kms_data_key_version(private_id)
 			on delete restrict
 			on update cascade,
@@ -193,7 +193,7 @@ func testSqliteSchemaAdditions(t *testing.T) string {
 	const sql = `
 	create table kms_test_encrypted_data (
 		private_id text primary key,
-		key_id text not null 
+		key_version_id text not null 
 			references kms_data_key_version(private_id)
 			on delete restrict
 			on update cascade,

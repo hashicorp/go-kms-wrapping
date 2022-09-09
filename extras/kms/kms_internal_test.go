@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"sort"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -208,6 +209,7 @@ func TestKms_loadDek(t *testing.T) {
 			}
 			require.NoError(err)
 			gotKey, err := got.KeyBytes(testCtx)
+			require.NoError(err)
 			assert.Equal(tc.want, gotKey)
 		})
 	}
@@ -339,9 +341,9 @@ func TestKms_loadRoot(t *testing.T) {
 				var pool *multi.PooledWrapper
 				for _, wrapper := range []wrapping.Wrapper{rkw1, rkw2} {
 					w := aead.NewWrapper()
-					keyId, err := wrapper.KeyId(testCtx)
+					keyVersionId, err := wrapper.KeyId(testCtx)
 					require.NoError(t, err)
-					_, err = w.SetConfig(testCtx, wrapping.WithKeyId(keyId))
+					_, err = w.SetConfig(testCtx, wrapping.WithKeyId(keyVersionId))
 					require.NoError(t, err)
 					err = w.SetAesGcmKeyBytes([]byte(testDefaultWrapperSecret))
 					require.NoError(t, err)
@@ -423,30 +425,30 @@ func TestKms_KeyId(t *testing.T) {
 	require.NoError(err)
 	require.Len(dkvs, 2)
 
-	keyId1 := dkvs[0].GetPrivateId()
-	keyId2 := dkvs[1].GetPrivateId()
+	keyVersionId1 := dkvs[0].GetPrivateId()
+	keyVersionId2 := dkvs[1].GetPrivateId()
 
 	// First test: just getting the key should return the latest
 	wrapper, err := kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
 	require.NoError(err)
-	tKeyId, err := wrapper.KeyId(context.Background())
+	tKeyVersionId, err := wrapper.KeyId(context.Background())
 	require.NoError(err)
-	require.Equal(keyId2, tKeyId)
+	require.Equal(keyVersionId2, tKeyVersionId)
 
 	// Second: ask for each in turn
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId1))
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyVersionId1))
 	require.NoError(err)
-	tKeyId, err = wrapper.KeyId(context.Background())
+	tKeyVersionId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
-	require.Equal(keyId1, tKeyId)
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId2))
+	require.Equal(keyVersionId1, tKeyVersionId)
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyVersionId2))
 	require.NoError(err)
-	tKeyId, err = wrapper.KeyId(context.Background())
+	tKeyVersionId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
-	require.Equal(keyId2, tKeyId)
+	require.Equal(keyVersionId2, tKeyVersionId)
 
 	// Last: verify something bogus finds nothing
-	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId("foo"))
+	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId("foo"))
 	require.Error(err)
 
 	// empty cache and pull from database
@@ -454,16 +456,16 @@ func TestKms_KeyId(t *testing.T) {
 	require.NoError(err)
 	require.NoError(kmsCache.AddExternalWrapper(ctx, KeyPurposeRootKey, extWrapper))
 	// ask for each in turn
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId1))
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyVersionId1))
 	require.NoError(err)
-	tKeyId, err = wrapper.KeyId(context.Background())
+	tKeyVersionId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
-	require.Equal(keyId1, tKeyId)
-	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(keyId2))
+	require.Equal(keyVersionId1, tKeyVersionId)
+	wrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(keyVersionId2))
 	require.NoError(err)
-	tKeyId, err = wrapper.KeyId(context.Background())
+	tKeyVersionId, err = wrapper.KeyId(context.Background())
 	require.NoError(err)
-	require.Equal(keyId2, tKeyId)
+	require.Equal(keyVersionId2, tKeyVersionId)
 }
 
 func TestKms_ClearCache(t *testing.T) {
@@ -1039,7 +1041,7 @@ func TestKms_GetWrapperCaching(t *testing.T) {
 	gotWrapper, err := kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
 	require.NoError(err)
 	require.NotEmpty(gotWrapper)
-	origKeyId, err := gotWrapper.KeyId(ctx)
+	origKeyVersionId, err := gotWrapper.KeyId(ctx)
 	require.NoError(err)
 
 	assertCacheEqual(t, 1, kmsCache)
@@ -1055,16 +1057,16 @@ func TestKms_GetWrapperCaching(t *testing.T) {
 	assertCacheEqual(t, 1, kmsCache)
 	require.Equal(3, int(kmsCache.collectionVersion)) // version starts as 1 in the db... so we're looking for 3
 
-	currKeyId, err := gotWrapper.KeyId(ctx)
+	currKeyVersionId, err := gotWrapper.KeyId(ctx)
 	require.NoError(err)
-	require.NotEqual(origKeyId, currKeyId)
+	require.NotEqual(origKeyVersionId, currKeyVersionId)
 
-	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyId(origKeyId))
+	gotWrapper, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose, WithKeyVersionId(origKeyVersionId))
 	require.NoError(err)
 	require.NotEmpty(gotWrapper)
-	currKeyId, err = gotWrapper.KeyId(ctx)
+	currKeyVersionId, err = gotWrapper.KeyId(ctx)
 	require.NoError(err)
-	require.Equal(origKeyId, currKeyId)
+	require.Equal(origKeyVersionId, currKeyVersionId)
 }
 
 func assertCacheEqual(t *testing.T, want int, k *Kms) {
@@ -1098,8 +1100,8 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 	tests := []struct {
 		name            string
 		kms             *Kms
-		setup           func(t *testing.T, k *Kms) string // returns keyId
-		want            func(t *testing.T, testKeyId string, k *Kms)
+		setup           func(t *testing.T, k *Kms) (keyVersionId string)
+		want            func(t *testing.T, testKeyVersionId string, k *Kms)
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -1120,7 +1122,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "missing key id",
+			wantErrContains: "missing key version id",
 		},
 		{
 			name: "invalid-key-id",
@@ -1134,7 +1136,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			setup: func(t *testing.T, k *Kms) string {
 				t.Helper()
 				_ = setupWithRotationRewrapFn(t, k)
-				return "invalid-key-id"
+				return "invalid-key-version-id"
 			},
 			wantErr:         true,
 			wantErrIs:       ErrRecordNotFound,
@@ -1156,7 +1158,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
 				require.NoError(t, err)
 				require.Equal(t, 1, len(w.(*multi.PooledWrapper).AllKeyIds()))
-				currentKeyId, err := w.KeyId(testCtx)
+				currentKeyVersionId, err := w.KeyId(testCtx)
 				require.NoError(t, err)
 
 				dbWrapper, err := k.GetWrapper(testCtx, "global", "database")
@@ -1165,17 +1167,17 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
 				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
 
-				return currentKeyId
+				return currentKeyVersionId
 			},
-			want: func(t *testing.T, testKeyId string, k *Kms) {
+			want: func(t *testing.T, testKeyVersionId string, k *Kms) {
 				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
 				require.NoError(t, err)
 				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
-					if testKeyId == id {
+					if testKeyVersionId == id {
 						return
 					}
 				}
-				assert.Fail(t, "did not find: %q key id", testKeyId)
+				assert.Fail(t, "did not find: %q key version id", testKeyVersionId)
 			},
 			wantErr:         true,
 			wantErrContains: "unable to revoke root key version",
@@ -1192,24 +1194,24 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			setup: func(t *testing.T, k *Kms) string {
 				t.Helper()
 				w := setupWithRotationRewrapFn(t, k)
-				currentKeyId, err := w.KeyId(testCtx)
+				currentKeyVersionId, err := w.KeyId(testCtx)
 				require.NoError(t, err)
-				return currentKeyId
+				return currentKeyVersionId
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var testKeyId string
+			var testKeyVersionId string
 			if tc.setup != nil {
-				testKeyId = tc.setup(t, tc.kms)
+				testKeyVersionId = tc.setup(t, tc.kms)
 			}
 
 			prevVersion, err := currentCollectionVersion(testCtx, rw)
 			require.NoError(err)
 
-			err = tc.kms.revokeRootKeyVersion(testCtx, testKeyId)
+			err = tc.kms.revokeRootKeyVersion(testCtx, testKeyVersionId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -1219,7 +1221,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 					assert.Contains(err.Error(), tc.wantErrContains)
 				}
 				if tc.want != nil {
-					tc.want(t, testKeyId, tc.kms)
+					tc.want(t, testKeyVersionId, tc.kms)
 				}
 				return
 			}
@@ -1227,10 +1229,10 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			w, err := tc.kms.GetWrapper(testCtx, "global", KeyPurposeRootKey)
 			require.NoError(err)
 			for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
-				assert.NotEqual(testKeyId, id)
+				assert.NotEqual(testKeyVersionId, id)
 			}
 			if tc.want != nil {
-				tc.want(t, testKeyId, tc.kms)
+				tc.want(t, testKeyVersionId, tc.kms)
 			}
 
 			currVersion, err := currentCollectionVersion(testCtx, rw)
@@ -1261,8 +1263,8 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 	tests := []struct {
 		name            string
 		kms             *Kms
-		setup           func(t *testing.T, k *Kms) string // returns keyId
-		want            func(t *testing.T, testKeyId string, k *Kms)
+		setup           func(t *testing.T, k *Kms) (keyVersionId string)
+		want            func(t *testing.T, testKeyVersionId string, k *Kms)
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
@@ -1283,7 +1285,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			},
 			wantErr:         true,
 			wantErrIs:       ErrInvalidParameter,
-			wantErrContains: "missing key id",
+			wantErrContains: "missing key version id",
 		},
 		{
 			name: "invalid-key-id",
@@ -1297,7 +1299,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			setup: func(t *testing.T, k *Kms) string {
 				t.Helper()
 				_ = setupWithRotationRewrapFn(t, k)
-				return "invalid-key-id"
+				return "invalid-key-version-id"
 			},
 			wantErr:         true,
 			wantErrIs:       ErrRecordNotFound,
@@ -1325,19 +1327,19 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
 				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
 
-				dbKeyId, err := dbWrapper.KeyId(testCtx)
+				dbKeyVersionId, err := dbWrapper.KeyId(testCtx)
 				require.NoError(t, err)
-				return dbKeyId
+				return dbKeyVersionId
 			},
-			want: func(t *testing.T, testKeyId string, k *Kms) {
+			want: func(t *testing.T, testKeyVersionId string, k *Kms) {
 				w, err := k.GetWrapper(testCtx, "global", KeyPurpose("database"))
 				require.NoError(t, err)
 				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
-					if testKeyId == id {
+					if testKeyVersionId == id {
 						return
 					}
 				}
-				assert.Fail(t, "did not find: %q key id", testKeyId)
+				assert.Fail(t, "did not find: %q key version id", testKeyVersionId)
 			},
 			wantErr:         true,
 			wantErrContains: "unable to revoke data key version",
@@ -1356,24 +1358,24 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 				_ = setupWithRotationRewrapFn(t, k)
 				dbWrapper, err := k.GetWrapper(testCtx, "global", KeyPurpose("database"))
 				require.NoError(t, err)
-				dbKeyId, err := dbWrapper.KeyId(testCtx)
+				dbKeyVersionId, err := dbWrapper.KeyId(testCtx)
 				require.NoError(t, err)
-				return dbKeyId
+				return dbKeyVersionId
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			var testKeyId string
+			var testKeyVersionId string
 			if tc.setup != nil {
-				testKeyId = tc.setup(t, tc.kms)
+				testKeyVersionId = tc.setup(t, tc.kms)
 			}
 
 			prevVersion, err := currentCollectionVersion(testCtx, rw)
 			require.NoError(err)
 
-			err = tc.kms.revokeDataKeyVersion(testCtx, testKeyId)
+			err = tc.kms.revokeDataKeyVersion(testCtx, testKeyVersionId)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -1383,18 +1385,18 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 					assert.Contains(err.Error(), tc.wantErrContains)
 				}
 				if tc.want != nil {
-					tc.want(t, testKeyId, tc.kms)
+					tc.want(t, testKeyVersionId, tc.kms)
 				}
 				return
 			}
 			require.NoError(err)
 			dbWrapper, err := tc.kms.GetWrapper(testCtx, "global", KeyPurpose("database"))
 			require.NoError(err)
-			for _, id := range dbWrapper.(*multi.PooledWrapper).AllKeyIds() {
-				assert.NotEqual(testKeyId, id)
+			for _, keyVersionId := range dbWrapper.(*multi.PooledWrapper).AllKeyIds() {
+				assert.NotEqual(testKeyVersionId, keyVersionId)
 			}
 			if tc.want != nil {
-				tc.want(t, testKeyId, tc.kms)
+				tc.want(t, testKeyVersionId, tc.kms)
 			}
 
 			currVersion, err := currentCollectionVersion(testCtx, rw)
@@ -1486,59 +1488,107 @@ func TestKms_ListKeys(t *testing.T) {
 			for _, purpose := range tc.kms.Purposes() {
 				w, err := tc.kms.GetWrapper(testCtx, testScopeId, purpose)
 				require.NoError(err)
-				for _, id := range w.(*multi.PooledWrapper).AllKeyIds() {
+				for _, keyVersionId := range w.(*multi.PooledWrapper).AllKeyIds() {
+				purposeSwitch:
 					switch purpose {
 					case KeyPurposeRootKey:
-						k := rootKeyVersion{}
-						k.PrivateId = id
-						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						kv := rootKeyVersion{}
+						kv.PrivateId = keyVersionId
+						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
 						require.NoError(err)
-						newKey := Key{
-							Id:         id,
-							Scope:      testScopeId,
+						for i := range found {
+							if found[i].Purpose == purpose && found[i].Id == kv.RootKeyId {
+								found[i].Versions = append(found[i].Versions, KeyVersion{
+									Id:         keyVersionId,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								})
+								break purposeSwitch
+							}
+						}
+						k := rootKey{}
+						k.PrivateId = kv.RootKeyId
+						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						found = append(found, Key{
+							Id:         k.PrivateId,
+							Scope:      k.ScopeId,
 							Type:       KeyTypeKek,
-							Version:    uint(k.Version),
 							CreateTime: k.CreateTime,
 							Purpose:    purpose,
-						}
-						found = append(found, newKey)
+							Versions: []KeyVersion{
+								{
+									Id:         keyVersionId,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								},
+							},
+						})
 					default:
-						k := dataKeyVersion{}
-						k.PrivateId = id
-						err := tc.kms.repo.reader.LookupBy(testCtx, &k)
+						kv := dataKeyVersion{}
+						kv.PrivateId = keyVersionId
+						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
 						require.NoError(err)
-						newKey := Key{
-							Id:         id,
-							Scope:      testScopeId,
+						for i := range found {
+							if found[i].Purpose == purpose && found[i].Id == kv.DataKeyId {
+								found[i].Versions = append(found[i].Versions, KeyVersion{
+									Id:         keyVersionId,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								})
+								break purposeSwitch
+							}
+						}
+						k := dataKey{}
+						k.PrivateId = kv.DataKeyId
+						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
+						require.NoError(err)
+						rk := rootKey{}
+						rk.PrivateId = k.RootKeyId
+						err = tc.kms.repo.reader.LookupBy(testCtx, &rk)
+						require.NoError(err)
+						found = append(found, Key{
+							Id:         k.PrivateId,
+							Scope:      rk.ScopeId,
 							Type:       KeyTypeDek,
-							Version:    uint(k.Version),
 							CreateTime: k.CreateTime,
 							Purpose:    purpose,
-						}
-						found = append(found, newKey)
+							Versions: []KeyVersion{
+								{
+									Id:         keyVersionId,
+									Version:    uint(kv.Version),
+									CreateTime: kv.CreateTime,
+								},
+							},
+						})
 					}
 				}
 			}
-			sort.Slice(gotKeys, func(i, j int) bool {
-				return fmt.Sprintf("%s-%d", gotKeys[i].Purpose, gotKeys[i].Version) < fmt.Sprintf("%s-%d", gotKeys[j].Purpose, gotKeys[j].Version)
-			})
-			sort.Slice(found, func(i, j int) bool {
-				return fmt.Sprintf("%s-%d", found[i].Purpose, found[i].Version) < fmt.Sprintf("%s-%d", found[j].Purpose, found[j].Version)
-			})
-			assert.Equal(found, gotKeys)
+			assert.Empty(cmp.Diff(gotKeys, found,
+				cmpopts.SortSlices(func(i, j Key) bool {
+					return i.Purpose < j.Purpose
+				}),
+				cmpopts.SortSlices(func(i, j KeyVersion) bool {
+					return i.Version < j.Version
+				}),
+			))
 			// intentionally logging during verbose testing
-			for i, _ := range found {
-				t.Log(fmt.Sprintf("%#v", found[i]))
-				t.Log(fmt.Sprintf("%#v\n", gotKeys[i]))
+			for i := range found {
+				t.Logf("%#v", found[i])
+				if len(gotKeys) <= i {
+					t.Logf("no more got keys")
+				} else {
+					t.Logf("%#v", gotKeys[i])
+				}
 			}
 		})
 	}
 }
 
 type testEncryptedData struct {
-	PrivateId  string
-	KeyId      string
-	CipherText []byte
+	PrivateId    string
+	KeyVersionId string
+	CipherText   []byte
 }
 
 func (*testEncryptedData) TableName() string { return "kms_test_encrypted_data" }
@@ -1553,16 +1603,16 @@ func testInsertEncryptedData(t *testing.T, w wrapping.Wrapper, rw *dbw.RW, pt []
 	b, err := proto.Marshal(blob)
 	require.NoError(err)
 
-	keyId, err := w.KeyId(ctx)
+	keyVersionId, err := w.KeyId(ctx)
 	require.NoError(err)
 
 	id, err := dbw.NewId("d_")
 	require.NoError(err)
 
 	d := &testEncryptedData{
-		PrivateId:  id,
-		KeyId:      keyId,
-		CipherText: []byte(base64.RawStdEncoding.EncodeToString(b)),
+		PrivateId:    id,
+		KeyVersionId: keyVersionId,
+		CipherText:   []byte(base64.RawStdEncoding.EncodeToString(b)),
 	}
 	err = rw.Create(ctx, d)
 	require.NoError(err)

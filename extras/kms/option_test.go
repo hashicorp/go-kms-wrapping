@@ -35,11 +35,11 @@ func Test_GetOpts(t *testing.T) {
 		opts.withErrorsMatching = nil
 		assert.Equal(opts, testOpts)
 	})
-	t.Run("WithKeyId", func(t *testing.T) {
+	t.Run("WithKeyVersionId", func(t *testing.T) {
 		assert := assert.New(t)
-		opts := getOpts(WithKeyId("id"))
+		opts := getOpts(WithKeyVersionId("id"))
 		testOpts := getDefaultOptions()
-		testOpts.withKeyId = "id"
+		testOpts.withKeyVersionId = "id"
 		testOpts.withErrorsMatching = nil
 		opts.withErrorsMatching = nil
 		assert.Equal(opts, testOpts)

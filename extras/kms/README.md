@@ -41,7 +41,7 @@ it:
   deleted that are currently being used to encrypt/decrypt data.
   
   For example, you have a table named `oidc` which contains the app's encrypted
-  oidc client_secret. The `oidc` table should have a `key_id` column with a
+  oidc client_secret. The `oidc` table should have a `key_version_id` column with a
   restricted FK to `kms_data_key_version(private_id)` which prevents in use DEKs
   from being deleted. 
 
