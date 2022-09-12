@@ -561,6 +561,8 @@ github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f h1:W9IOXASfpDhDY/
 github.com/hashicorp/go-dbw v0.0.0-20220412153211-c470aec9369f/go.mod h1:w9gD0GS/RPaf1BQ//LmdWfQpW8SFwamwL1hmtzQ58p0=
 github.com/hashicorp/go-dbw v0.0.0-20220909235115-9cd5a08ce47b h1:A5Y9Bld7JAzSnyE+CmucOWyB45rKe36OiaWIPWCPBKU=
 github.com/hashicorp/go-dbw v0.0.0-20220909235115-9cd5a08ce47b/go.mod h1:+GVM0D4y16TzXQWrVZKv3cjNHF2M7cHEBPaDAON3V6I=
+github.com/hashicorp/go-dbw v0.0.0-20220910135738-ed4505749995 h1:+cSg/gVZ1RMFeZbZoQTbNu8pnb30bDQ6jysmKBKDSvg=
+github.com/hashicorp/go-dbw v0.0.0-20220910135738-ed4505749995/go.mod h1:+GVM0D4y16TzXQWrVZKv3cjNHF2M7cHEBPaDAON3V6I=
 github.com/hashicorp/go-hclog v1.0.0 h1:bkKf0BeBXcSYa7f5Fyi9gMuQ8gNsxeiNpZjR6VxNZeo=
 github.com/hashicorp/go-hclog v1.0.0/go.mod h1:whpDNt7SSdeAju8AWKIWsul05p54N/39EeqMAyrmvFQ=
 github.com/hashicorp/go-hclog v1.2.2 h1:ihRI7YFwcZdiSD7SIenIhHfQH3OuDvWerAUBZbeQS3M=

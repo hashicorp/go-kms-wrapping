@@ -713,7 +713,6 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 // referencing the private_id column of the data key version table.
 // This can be useful when re-encrypting data that references a specific
 // data key version by private_id.
-// Note: only works for Postgres backends.
 // Options are ignored.
 func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
 	return k.repo.ListDataKeyVersionReferencers(ctx)
