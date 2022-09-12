@@ -714,9 +714,10 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 // This can be useful when re-encrypting data that references a specific
 // data key version by private_id.
 // Supported options:
-//   - WithTx.
+//   - WithTx
+//   - WithReaderWriter
 func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
-	return k.repo.ListDataKeyVersionReferencers(ctx)
+	return k.repo.ListDataKeyVersionReferencers(ctx, opt...)
 }
 
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (_ *multi.PooledWrapper, rootKeyId string, _ error) {

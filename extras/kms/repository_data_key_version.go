@@ -196,7 +196,8 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 // ListDataKeyVersionReferencers will lists the names of all tables
 // referencing the private_id column of the data key version table.
 // Supported options:
-//   - WithTx.
+//   - WithTx
+//   - WithReaderWriter
 func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
 	const op = "kms.(repository).ListDataKeyVersionReferencers"
 	typ, _, err := r.reader.Dialect()
@@ -215,7 +216,12 @@ func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...O
 	queryFn := r.reader.Query
 	opts := getOpts(opt...)
 	if opts.withTx != nil {
+		if opts.withReader != nil || opts.withWriter != nil {
+			return nil, fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
 		queryFn = opts.withTx.Query
+	} else if opts.withReader != nil {
+		queryFn = opts.withReader.Query
 	}
 	rows, err := queryFn(ctx, query, nil)
 	if err != nil {
