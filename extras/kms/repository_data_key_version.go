@@ -195,7 +195,8 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 
 // ListDataKeyVersionReferencers will lists the names of all tables
 // referencing the private_id column of the data key version table.
-// Options are ignored.
+// Supported options:
+//   - WithTx.
 func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
 	const op = "kms.(repository).ListDataKeyVersionReferencers"
 	typ, _, err := r.reader.Dialect()
@@ -211,7 +212,12 @@ func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...O
 	default:
 		return nil, fmt.Errorf("unsupported DB dialect: %q", typ)
 	}
-	rows, err := r.reader.Query(ctx, query, nil)
+	queryFn := r.reader.Query
+	opts := getOpts(opt...)
+	if opts.withTx != nil {
+		queryFn = opts.withTx.Query
+	}
+	rows, err := queryFn(ctx, query, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%s: failed to list foreign referencers: %w", op, err)
 	}

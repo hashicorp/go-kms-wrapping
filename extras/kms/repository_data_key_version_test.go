@@ -1201,4 +1201,12 @@ func TestRepository_ListDataKeyVersionReferencers(t *testing.T) {
 	tableNames, err := testRepo.ListDataKeyVersionReferencers(context.Background())
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"kms_test_encrypted_data"}, tableNames)
+
+	tx, err := rw.Begin(context.Background())
+	require.NoError(t, err)
+	tableNames, err = testRepo.ListDataKeyVersionReferencers(context.Background(), WithTx(tx))
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"kms_test_encrypted_data"}, tableNames)
+	err = tx.Commit(context.Background())
+	require.NoError(t, err)
 }
