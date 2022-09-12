@@ -1165,7 +1165,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 				require.NoError(t, err)
 
 				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
-				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
+				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1") })
 
 				return currentKeyVersionId
 			},
@@ -1325,7 +1325,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 				dbWrapper, err := k.GetWrapper(testCtx, "global", "database")
 				require.NoError(t, err)
 				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
-				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
+				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1") })
 
 				dbKeyVersionId, err := dbWrapper.KeyId(testCtx)
 				require.NoError(t, err)
