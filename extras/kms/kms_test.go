@@ -1364,7 +1364,7 @@ func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause stri
 		TableName() string
 	})
 	require.True(ok)
-	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
 	require.NoError(err)
 }
 

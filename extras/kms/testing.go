@@ -205,6 +205,7 @@ func testSqliteSchemaAdditions(t *testing.T) string {
 // including all the current resources. The collection version is updated when
 // the resource is a key.
 func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause string, args ...interface{}) {
+	t.Helper()
 	require := require.New(t)
 	ctx := context.Background()
 	tabler, ok := i.(interface {

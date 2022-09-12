@@ -146,7 +146,7 @@ func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	var foundKeys []rootKeyVersion
+	var foundKeys []*rootKeyVersion
 	if err := r.reader.SearchWhere(ctx, &foundKeys, "root_key_id = ?", []interface{}{rootKeyId}, dbw.WithLimit(1), dbw.WithOrder("version desc")); err != nil {
 		return nil, fmt.Errorf("%s: failed for %q: %w", op, rootKeyId, err)
 	}
@@ -156,7 +156,7 @@ func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if err := foundKeys[0].Decrypt(ctx, keyWrapper); err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	return &foundKeys[0], nil
+	return foundKeys[0], nil
 }
 
 // ListRootKeyVersions in versions of a root key. Supported options: WithLimit,
