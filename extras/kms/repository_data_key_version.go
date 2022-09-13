@@ -193,6 +193,56 @@ func (r *repository) ListDataKeyVersions(ctx context.Context, rkvWrapper wrappin
 	return versions, nil
 }
 
+// ListDataKeyVersionReferencers will lists the names of all tables
+// referencing the private_id column of the data key version table.
+// Supported options:
+//   - WithTx
+//   - WithReaderWriter
+func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
+	const op = "kms.(repository).ListDataKeyVersionReferencers"
+	typ, _, err := r.reader.Dialect()
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to get db dialect: %w", op, err)
+	}
+	var query string
+	switch typ {
+	case dbw.Postgres:
+		query = postgresForeignReferencersQuery
+	case dbw.Sqlite:
+		query = sqliteForeignReferencersQuery
+	default:
+		return nil, fmt.Errorf("unsupported DB dialect: %q", typ)
+	}
+	queryFn := r.reader.Query
+	opts := getOpts(opt...)
+	if opts.withTx != nil {
+		if opts.withReader != nil || opts.withWriter != nil {
+			return nil, fmt.Errorf("%s: WithTx(...) and WithReaderWriter(...) options cannot be used at the same time: %w", op, ErrInvalidParameter)
+		}
+		queryFn = opts.withTx.Query
+	} else if opts.withReader != nil {
+		queryFn = opts.withReader.Query
+	}
+	rows, err := queryFn(ctx, query, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to list foreign referencers: %w", op, err)
+	}
+	defer rows.Close()
+	var tableNames []string
+	for rows.Next() {
+		var tableName string
+		err := rows.Scan(&tableName)
+		if err != nil {
+			return nil, fmt.Errorf("%s: failed to scan table name into string: %w", op, err)
+		}
+		tableNames = append(tableNames, tableName)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: failed to iterate rows: %w", op, err)
+	}
+	return tableNames, nil
+}
+
 // rewrapDataKeyVersionsTx will rewrap (re-encrypt) the data key versions for a
 // given rootKeyId with the latest root key version wrapper.
 // This function encapsulates all the work required within a dbw.TxHandler and

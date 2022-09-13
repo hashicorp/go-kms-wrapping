@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ["1.18", "1.17", "1.16"]
+        go: ["1.19", "1.18", "1.17"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
@@ -38,7 +38,7 @@ jobs:
   sqlite:
     strategy:
       matrix:
-        go: ["1.18", "1.17", "1.16"]
+        go: ["1.19", "1.18", "1.17"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
@@ -72,7 +72,7 @@ jobs:
             "postgres:11",
             "postgres:10",
           ]
-        go: ["1.18", "1.17", "1.16"]
+        go: ["1.19", "1.18", "1.17"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 

@@ -709,6 +709,17 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 	return nil
 }
 
+// ListDataKeyVersionReferencers will lists the names of all tables
+// referencing the private_id column of the data key version table.
+// This can be useful when re-encrypting data that references a specific
+// data key version by private_id.
+// Supported options:
+//   - WithTx
+//   - WithReaderWriter
+func (k *Kms) ListDataKeyVersionReferencers(ctx context.Context, opt ...Option) ([]string, error) {
+	return k.repo.ListDataKeyVersionReferencers(ctx, opt...)
+}
+
 func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (_ *multi.PooledWrapper, rootKeyId string, _ error) {
 	const op = "kms.(Kms).loadRoot"
 	if scopeId == "" {

@@ -27,4 +27,7 @@ Canonical reference for changes, improvements, and bugfixes for the kms package.
 ## Enhancements
 * `WithKeyId` has been deprecated in favor of the new `WithKeyVersionId`.
 * `RevokeKey` has been deprecated in favor of the new `RevokeKeyVersion`.
+* Added `ListDataKeyReferencers` to allow listing the names of tables referencing the
+  data key version table's private_id column. This can be useful when finding what
+  data needs to be re-encrypted before destroying a key version.
 

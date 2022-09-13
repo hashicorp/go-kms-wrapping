@@ -1215,7 +1215,7 @@ func TestKms_RevokeKey(t *testing.T) {
 				dbWrapper, err := k.GetWrapper(testCtx, "global", "database")
 				require.NoError(t, err)
 				testInsertEncryptedData(t, dbWrapper, rw, []byte("test-plaintext"))
-				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1", nil) })
+				t.Cleanup(func() { testDeleteWhere(t, db, &testEncryptedData{}, "1=1") })
 
 				dbKeyVersionId, err := dbWrapper.KeyId(testCtx)
 				require.NoError(t, err)
@@ -1364,7 +1364,7 @@ func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause stri
 		TableName() string
 	})
 	require.True(ok)
-	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), []interface{}{args})
+	_, err := dbw.New(conn).Exec(ctx, fmt.Sprintf(`delete from "%s" where %s`, tabler.TableName(), whereClause), args)
 	require.NoError(err)
 }
 

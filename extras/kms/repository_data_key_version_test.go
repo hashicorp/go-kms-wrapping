@@ -1190,3 +1190,42 @@ func Test_rewrapDataKeyVersionsTx(t *testing.T) {
 		})
 	}
 }
+
+func TestRepository_ListDataKeyVersionReferencers(t *testing.T) {
+	t.Parallel()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	testRepo, err := newRepository(rw, rw)
+	require.NoError(t, err)
+
+	t.Run("No options", func(t *testing.T) {
+		tableNames, err := testRepo.ListDataKeyVersionReferencers(context.Background())
+		require.NoError(t, err)
+		require.ElementsMatch(t, []string{"kms_test_encrypted_data"}, tableNames)
+	})
+	t.Run("WithTx", func(t *testing.T) {
+		tx, err := rw.Begin(context.Background())
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_ = tx.Rollback(context.Background())
+		})
+		tableNames, err := testRepo.ListDataKeyVersionReferencers(context.Background(), WithTx(tx))
+		require.NoError(t, err)
+		require.ElementsMatch(t, []string{"kms_test_encrypted_data"}, tableNames)
+		err = tx.Commit(context.Background())
+		require.NoError(t, err)
+	})
+
+	t.Run("WithReaderWriter", func(t *testing.T) {
+		tx, err := rw.Begin(context.Background())
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_ = tx.Rollback(context.Background())
+		})
+		tableNames, err := testRepo.ListDataKeyVersionReferencers(context.Background(), WithReaderWriter(tx, tx))
+		require.NoError(t, err)
+		require.ElementsMatch(t, []string{"kms_test_encrypted_data"}, tableNames)
+		err = tx.Commit(context.Background())
+		require.NoError(t, err)
+	})
+}
