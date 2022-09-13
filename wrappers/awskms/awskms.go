@@ -97,6 +97,8 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		return nil, fmt.Errorf("key id not found in env or config for aws kms wrapper configuration")
 	}
 
+	k.currentKeyId.Store(k.keyId)
+
 	// Please see GetRegion for an explanation of the order in which region is parsed.
 	k.region, err = awsutil.GetRegion(opts.withRegion)
 	if err != nil {
