@@ -252,8 +252,9 @@ func (r *repository) ListDataKeyVersionReferencers(ctx context.Context, opt ...O
 // by the caller.
 func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rkvWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) error {
 	const (
-		op           = "kms.rewrapDataKeyVersionsTx"
-		keyFieldName = "CtKey"
+		op                        = "kms.rewrapDataKeyVersionsTx"
+		keyFieldName              = "CtKey"
+		rootKeyVersionIdFieldName = "RootKeyVersionId"
 	)
 	if isNil(reader) {
 		return fmt.Errorf("%s: missing reader: %w", op, ErrInvalidParameter)
@@ -268,6 +269,10 @@ func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
 
+	currentKeyVersionId, err := rkvWrapper.KeyId(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: unable to get current key version ID: %w", op, err)
+	}
 	r, err := newRepository(reader, writer)
 	if err != nil {
 		return fmt.Errorf("%s: unable to create repo: %w", op, err)
@@ -288,7 +293,8 @@ func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 			if err := v.Encrypt(ctx, rkvWrapper); err != nil {
 				return fmt.Errorf("%s: failed to rewrap data key version: %w", op, err)
 			}
-			rowsAffected, err := writer.Update(ctx, v, []string{keyFieldName}, nil, dbw.WithVersion(&v.Version))
+			v.RootKeyVersionId = currentKeyVersionId
+			rowsAffected, err := writer.Update(ctx, v, []string{keyFieldName, rootKeyVersionIdFieldName}, nil, dbw.WithVersion(&v.Version))
 			if err != nil {
 				return fmt.Errorf("%s: failed to update data key version: %w", op, err)
 			}

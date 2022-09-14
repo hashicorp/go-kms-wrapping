@@ -25,7 +25,7 @@ type mockTestWrapper struct {
 }
 
 func (m *mockTestWrapper) KeyId(context.Context) (string, error) {
-	if m.err != nil {
+	if m.err != nil && !m.encryptError && !m.decryptError {
 		return "", m.err
 	}
 	return m.keyId, nil
