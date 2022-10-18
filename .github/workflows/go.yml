@@ -33,7 +33,9 @@ jobs:
         run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
 
       - name: Test
-        run: find . -name go.mod -execdir go test ./... \;
+        # exclude the transit plugin since it's tested with the plugin-transit
+        # job, which requires a vault container to be running
+        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir go test ./... \;
 
   sqlite:
     strategy:
