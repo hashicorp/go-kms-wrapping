@@ -33,7 +33,9 @@ jobs:
         run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
 
       - name: Test
-        run: find . -name go.mod -execdir go test ./... \;
+        # exclude the transit plugin since it's tested with the plugin-transit
+        # job, which requires a vault container to be running
+        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir go test ./... \;
 
   sqlite:
     strategy:
@@ -110,3 +112,36 @@ jobs:
       - name: Tests
         working-directory: ./extras/kms
         run: make test-postgres
+
+  plugin-transit:
+    strategy:
+      matrix:
+        go: ["1.19", "1.18", "1.17"]
+        platform: [ubuntu-latest] # can not run in macOS and Windows
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+
+      - name: go mod package cache
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
+
+      - name: Setup docker-compose
+        run: sudo curl -L "https://github.com/docker/compose/releases/download/v2.11.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose && sudo /usr/local/bin/docker-compose --version
+
+      - name: Start containers
+        working-directory: ./wrappers/transit
+        run: sudo docker-compose -f "docker-compose.yml" up -d --build
+
+      - name: Tests
+        working-directory: ./wrappers/transit
+        run: go test ./...
