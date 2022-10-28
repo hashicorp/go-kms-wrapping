@@ -142,8 +142,8 @@ func WithScopeIds(id ...string) Option {
 	}
 }
 
-// withReader provides an optional reader
-func withReader(r dbw.Reader) Option {
+// WithReader provides an optional reader
+func WithReader(r dbw.Reader) Option {
 	return func(o *options) {
 		o.withReader = r
 	}
