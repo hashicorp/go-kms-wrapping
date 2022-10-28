@@ -211,7 +211,7 @@ func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 		return fmt.Errorf("%s: unable to create repo: %w", op, err)
 	}
 	// rewrap the rootKey versions using the scope's root key to find them
-	rkvs, err := r.ListRootKeyVersions(ctx, rootWrapper, rootKeyId, withReader(reader))
+	rkvs, err := r.ListRootKeyVersions(ctx, rootWrapper, rootKeyId, WithReader(reader))
 	if err != nil {
 		return fmt.Errorf("%s: unable to list root key versions: %w", op, err)
 	}

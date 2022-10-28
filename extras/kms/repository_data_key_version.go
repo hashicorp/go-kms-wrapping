@@ -277,13 +277,13 @@ func rewrapDataKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 	if err != nil {
 		return fmt.Errorf("%s: unable to create repo: %w", op, err)
 	}
-	dks, err := r.ListDataKeys(ctx, withRootKeyId(rootKeyId), withReader(reader))
+	dks, err := r.ListDataKeys(ctx, withRootKeyId(rootKeyId), WithReader(reader))
 	if err != nil {
 		return fmt.Errorf("%s: unable to list the current data keys: %w", op, err)
 	}
 	for _, dk := range dks {
 		var versions []*dataKeyVersion
-		if err := r.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, withReader(reader)); err != nil {
+		if err := r.list(ctx, &versions, "data_key_id = ?", []interface{}{dk.PrivateId}, WithReader(reader)); err != nil {
 			return fmt.Errorf("%s: unable to list the current data key versions: %w", op, err)
 		}
 		for _, v := range versions {
@@ -338,7 +338,7 @@ func rotateDataKeyVersionTx(ctx context.Context, reader dbw.Reader, writer dbw.W
 	if err != nil {
 		return fmt.Errorf("%s: unable to create repo: %w", op, err)
 	}
-	dataKeys, err := r.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId), withReader(reader))
+	dataKeys, err := r.ListDataKeys(ctx, withPurpose(purpose), withRootKeyId(rootKeyId), WithReader(reader))
 	switch {
 	case err != nil:
 		return fmt.Errorf("%s: unable to lookup data key for %q: %w", op, purpose, err)

@@ -501,6 +501,30 @@ func TestKms_GetWrapper(t *testing.T) {
 			assert.NotNil(got)
 		})
 	}
+	t.Run("with-reader", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		db, _ := kms.TestDb(t)
+		rw := dbw.New(db)
+		k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+		require.NoError(err)
+		require.NoError(k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper))
+		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		require.NoError(k.CreateKeys(testCtx, "global", []kms.KeyPurpose{"database", "auth"}))
+
+		emptyDb, _ := kms.TestDb(t)
+		emptyRw := dbw.New(emptyDb)
+		emptyKms, err := kms.New(emptyRw, emptyRw, []kms.KeyPurpose{"database", "auth"})
+		require.NoError(err)
+		require.NoError(emptyKms.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper))
+
+		got, err := emptyKms.GetWrapper(testCtx, "global", "database")
+		assert.Empty(got)
+		assert.Error(err)
+
+		got, err = emptyKms.GetWrapper(testCtx, "global", "database", kms.WithReader(rw))
+		assert.NotEmpty(got)
+		assert.NoError(err)
+	})
 }
 
 func TestKms_CreateKeys(t *testing.T) {
