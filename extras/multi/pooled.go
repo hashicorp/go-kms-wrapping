@@ -116,6 +116,10 @@ func (m *PooledWrapper) SetEncryptingWrapper(ctx context.Context, w wrapping.Wra
 	m.m.Lock()
 	defer m.m.Unlock()
 
+	wrapper := m.wrappers[keyId]
+	if wrapper != nil {
+		return false, nil
+	}
 	m.wrappers[BaseEncryptor] = w
 	m.wrappers[keyId] = w
 	return true, nil
