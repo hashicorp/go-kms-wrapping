@@ -56,6 +56,32 @@ func Test_EnvelopeEncrypt(t *testing.T) {
 			want: []byte(nil),
 		},
 		{
+			name:       "success-with-iv",
+			pt:         []byte("test"),
+			want:       []byte("test"),
+			encryptOpt: []Option{WithIV([]byte("test-with-iv"))},
+		},
+		{
+			name:       "success-with-nil-iv",
+			pt:         []byte("test"),
+			want:       []byte("test"),
+			encryptOpt: []Option{WithIV(nil)},
+		},
+		{
+			name:       "error-with-empty-iv",
+			pt:         []byte("test"),
+			want:       []byte("test"),
+			encryptOpt: []Option{WithIV([]byte(""))},
+			wantErr:    true,
+		},
+		{
+			name:       "success-with-iv-and-aad",
+			pt:         []byte("test"),
+			want:       []byte("test"),
+			encryptOpt: []Option{WithIV([]byte("test-with-iv")), WithAad([]byte("test"))},
+			decryptOpt: []Option{WithAad([]byte("test"))},
+		},
+		{
 			name: "success",
 			pt:   []byte("test"),
 			want: []byte("test"),

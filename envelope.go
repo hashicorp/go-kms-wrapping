@@ -29,10 +29,20 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	iv, err := uuid.GenerateRandomBytes(12)
-	if err != nil {
-		return nil, err
+
+	var iv []byte
+	if opts.WithIv != nil {
+		if len(opts.WithIv) != 12 {
+			return nil, fmt.Errorf("invalid IV provided: expected 12 bytes, got %d", len(opts.WithIv))
+		}
+		iv = opts.WithIv
+	} else {
+		iv, err = uuid.GenerateRandomBytes(12)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	aead, err := aeadEncrypter(key)
 	if err != nil {
 		return nil, err
