@@ -3,7 +3,10 @@ package plugin
 import (
 	context "context"
 	"fmt"
+	"os"
 	"os/exec"
+	"os/signal"
+	"syscall"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	gp "github.com/hashicorp/go-plugin"
@@ -31,6 +34,15 @@ func ServePlugin(wrapper wrapping.Wrapper, opt ...Option) error {
 	if err != nil {
 		return err
 	}
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGHUP)
+	go func() {
+		for {
+			<-signalCh
+		}
+	}()
+
 	wrapServer, err := NewWrapperServer(wrapper)
 	if err != nil {
 		return err
