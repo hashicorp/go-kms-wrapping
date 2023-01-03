@@ -310,3 +310,8 @@ func (s *Wrapper) createClient() (*cloudkms.KeyManagementClient, error) {
 func (s *Wrapper) KeyRingResourceName() string {
 	return fmt.Sprintf("projects/%s/locations/%s/keyRings/%s", s.project, s.location, s.keyRing)
 }
+
+// LocationName returns the relative location name.
+func (s *Wrapper) LocationName() string {
+	return fmt.Sprintf("projects/%s/locations/%s", s.project, s.location)
+}
