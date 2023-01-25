@@ -71,3 +71,13 @@ func WithConfigMap(with map[string]string) Option {
 		})
 	}
 }
+
+// WithIV provides
+func WithIV(with []byte) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithIv = with
+			return nil
+		})
+	}
+}
