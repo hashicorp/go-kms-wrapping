@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	cloud.google.com/go/kms v1.3.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.7
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	google.golang.org/api v0.70.0
 	google.golang.org/genproto v0.0.0-20220301145929-1ac2ace0dbf7

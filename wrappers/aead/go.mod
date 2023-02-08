@@ -2,10 +2,11 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 
 go 1.17
 
-require github.com/hashicorp/go-kms-wrapping/v2 v2.0.5
+require github.com/hashicorp/go-kms-wrapping/v2 v2.0.7
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
