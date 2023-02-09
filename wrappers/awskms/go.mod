@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.43.8
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.1.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.0
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.7
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.1.6
 	github.com/stretchr/testify v1.7.0
 )
@@ -14,6 +14,7 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.7.0 // indirect
+	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
