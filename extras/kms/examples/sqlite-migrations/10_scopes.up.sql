@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 create table scope (
     private_id text not null primary key,
     create_time timestamp not null default current_timestamp
