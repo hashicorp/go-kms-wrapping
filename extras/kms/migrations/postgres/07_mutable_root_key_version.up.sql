@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
 -- we need to make the root_key_version_id mutable in order to support

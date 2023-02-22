@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 begin;
 
 create domain kms_private_id as text

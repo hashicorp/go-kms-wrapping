@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 create table oidc (
     private_id text not null primary key,
     client_id text not null,

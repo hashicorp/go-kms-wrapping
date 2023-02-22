@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 -- we need to make the key and version columns mutable in order to support
 -- rewrapping the root key versions.
 drop trigger kms_immutable_columns_kms_root_key_version;

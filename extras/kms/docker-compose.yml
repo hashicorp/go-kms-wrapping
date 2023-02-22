@@ -1,3 +1,6 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
 # this is used to bring up a postgres database for when you want to run tests
 # that depend on postgres.  For example, when running: `make test-postgres`
 version: '3'

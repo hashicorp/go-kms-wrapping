@@ -1,3 +1,6 @@
+-- Copyright (c) HashiCorp, Inc.
+-- SPDX-License-Identifier: MPL-2.0
+
 create table kms_collection_version (
     version int not null,
     create_time timestamp not null default current_timestamp,
