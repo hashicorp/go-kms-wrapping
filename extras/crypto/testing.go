@@ -16,6 +16,7 @@ import (
 	"github.com/mr-tron/base58"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/blake2b"
+	"google.golang.org/protobuf/proto"
 )
 
 // TestWithEd25519 produces test hmac sha256 using a derived Ed25519 key
@@ -33,7 +34,8 @@ func TestWithEd25519(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapp
 }
 
 // TestWithBlake2b produces a test hmac sha256 using derived blake2b.  Supported
-// options: WithPrk
+// options: WithPrk, WithBase64Encoding, WithBase58Encoding,
+// WithMarshaledSigInfo
 func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapping.Option) string {
 	t.Helper()
 	require := require.New(t)
@@ -54,10 +56,39 @@ func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapp
 		require.Equal(n, 32)
 		key = blake2b.Sum256(readerKey)
 	}
-	return TestHmacSha256(t, key[:], data, opt...)
+
+	switch {
+	case opts.withMarshaledSigInfo:
+		passedOpts := []wrapping.Option{}
+		if opts.withPrefix != "" {
+			passedOpts = append(passedOpts, WithPrefix(opts.withPrefix))
+		}
+		hmac := TestHmacSha256(t, key[:], data, passedOpts...)
+		keyId, err := w.KeyId(context.Background())
+		require.NoError(err)
+		si := &wrapping.SigInfo{
+			Signature: []byte(hmac),
+			KeyInfo: &wrapping.KeyInfo{
+				KeyId: keyId,
+			},
+		}
+		enc, err := proto.Marshal(si)
+		require.NoError(err)
+		switch {
+		case opts.withBase64Encoding:
+			return base64.RawURLEncoding.EncodeToString(enc)
+		case opts.withBase58Encoding:
+			return base58.Encode(enc)
+		default:
+			return string(enc)
+		}
+	default:
+		return TestHmacSha256(t, key[:], data, opt...)
+	}
 }
 
-// TestHmacSha256 produces a test hmac sha256
+// TestHmacSha256 produces a test hmac sha256. Supported options:
+// WithBase64Encoding, WithBase58Encoding, WithPrefix
 func TestHmacSha256(t *testing.T, key, data []byte, opt ...wrapping.Option) string {
 	t.Helper()
 	require := require.New(t)

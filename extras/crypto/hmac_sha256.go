@@ -15,6 +15,7 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/blake2b"
+	"google.golang.org/protobuf/proto"
 )
 
 // HmacSha256WithPrk will HmacSha256 using the provided prk.  See HmacSha256 for
@@ -25,8 +26,9 @@ func HmacSha256WithPrk(ctx context.Context, data, prk []byte, opt ...wrapping.Op
 }
 
 // HmacSha256 the provided data. Supports WithSalt, WithInfo, WithPrefix,
-// WithEd25519 and WithPrk options. WithEd25519 is a "legacy" way to complete
-// this operation and should not be used in new operations unless backward
+// WithEd25519, WithPrk, WithMarshaledSigInfo, WithBase64Encoding,
+// WithBase58Encoding options. WithEd25519 is a "legacy" way to complete this
+// operation and should not be used in new operations unless backward
 // compatibility is needed. The WithPrefix option will prepend the prefix to the
 // hmac-sha256 value.
 func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt ...wrapping.Option) (string, error) {
@@ -46,6 +48,9 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt .
 	}
 	if opts.withEd25519 && opts.withPrk != nil {
 		return "", fmt.Errorf("%s: you cannot specify both ed25519 and a prk: %w", op, wrapping.ErrInvalidParameter)
+	}
+	if opts.withBase58Encoding && opts.withBase64Encoding {
+		return "", fmt.Errorf("%s: you cannot specify both WithBase58Encoding and WithBase64Encoding: %w", op, wrapping.ErrInvalidParameter)
 	}
 	var key [32]byte
 	switch {
@@ -84,6 +89,24 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt .
 	mac := hmac.New(sha256.New, key[:])
 	_, _ = mac.Write(data)
 	hmac := mac.Sum(nil)
+
+	if opts.withMarshaledSigInfo {
+		keyId, err := cipher.KeyId(ctx)
+		if err != nil {
+			return "", fmt.Errorf("%s: error retrieving key id: %w", op, err)
+		}
+		si := &wrapping.SigInfo{
+			Signature: hmac,
+			KeyInfo: &wrapping.KeyInfo{
+				KeyId: keyId,
+			},
+		}
+		enc, err := proto.Marshal(si)
+		if err != nil {
+			return "", fmt.Errorf("%s: error encoding as sig info: %w", op, err)
+		}
+		hmac = enc
+	}
 
 	var hmacString string
 	switch {
