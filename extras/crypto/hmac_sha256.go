@@ -100,6 +100,7 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt .
 			KeyInfo: &wrapping.KeyInfo{
 				KeyId: keyId,
 			},
+			HmacType: wrapping.HmacType_SHA256.Enum(),
 		}
 		enc, err := proto.Marshal(si)
 		if err != nil {
