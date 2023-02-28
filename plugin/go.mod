@@ -1,6 +1,6 @@
 module github.com/hashicorp/go-kms-wrapping/plugin/v2
 
-go 1.17
+go 1.20
 
 require (
 	github.com/hashicorp/go-hclog v1.4.0
