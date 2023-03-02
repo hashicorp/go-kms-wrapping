@@ -83,6 +83,10 @@ message KeyInfo {
 
 	// Mechanism specific flags
 	uint64 flags = 6;
+
+	KeyType key_type = 7;
+	repeated KeyPurpose key_purposes = 8;
+
 }
 
 // Options holds options common to all wrappers
@@ -97,8 +101,18 @@ message Options {
 
 	// Wrapper-specific configuration to pass along
 	map<string, string> with_config_map = 30;
+
+	// The purposes of the key being specified
+	repeated KeyPurpose with_key_purposes = 40;
+
+	// The type of the key being specified
+	KeyType with_key_type = 50;
+
+	// optional bytes of entropy
+	bytes with_random = 60; 
 }
 
+// SigInfo contains information about a cryptographic signature
 message SigInfo {
 	// KeyInfo contains information about the key that was used to create this value
 	KeyInfo key_info = 10;
@@ -119,3 +133,33 @@ enum HmacType {
 	SHA384 				= 3;
 	SHA512 				= 4;
 }
+ 
+// KeyType defines the key's type
+  enum KeyType {
+	KEY_TYPE_UNKNOWN 	= 0;
+	RSA2048 			= 1;
+	RSA3072 			= 2;
+	RSA4096 			= 3;
+	AES256_GCM96 		= 4;
+	ECDSA_P256 			= 5;
+	ECDSA_P384 			= 6;
+	ECDSA_P521			= 7;
+	HMAC_SHA2_224		= 8;
+	HMAC_SHA2_256		= 9;
+	HMAC_SHA2_384		= 10;
+	HMAC_SHA2_512		= 11;
+	ED25519 			= 12;
+  }
+
+
+  // KeyPurpose defines the cryptographic capabilities of a key.
+  enum KeyPurpose {
+	KeyPurpose_Unknown = 0;
+	Encrypt	= 1;
+	Decrypt	= 2;
+	Sign	= 3;
+	Verify	= 4;
+	Wrap	= 5;
+	Unwrap	= 6;
+	MAC		= 7;
+  }
