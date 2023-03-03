@@ -293,3 +293,60 @@ func TestSigner_SetConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestSigner_KeyBytes(t *testing.T) {
+	t.Parallel()
+	const (
+		testKeyId      = "key-id"
+		testKeyPurpose = wrapping.KeyPurpose_Sign
+	)
+	testCtx := context.Background()
+	_, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		opt             []wrapping.Option
+		signer          *Signer
+		wantBytes       []byte
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "success",
+			signer: func() *Signer {
+				testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey))
+				require.NoError(t, err)
+				return testSigner
+			}(),
+			wantBytes: []byte(testPrivKey),
+		},
+		{
+			name:            "missing-bytes",
+			signer:          &Signer{},
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "missing bytes",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			gotBytes, err := tc.signer.KeyBytes(testCtx)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Empty(gotBytes)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.wantBytes, gotBytes)
+		})
+	}
+}

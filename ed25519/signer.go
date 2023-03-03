@@ -18,6 +18,7 @@ type Signer struct {
 }
 
 var _ wrapping.SigInfoSigner = (*Signer)(nil)
+var _ wrapping.KeyExporter = (*Signer)(nil)
 
 // NewSigner creates a new Signer.   Supported options: WithKeyId,
 // WithKeyPurposes, WithPrivKey
@@ -97,4 +98,12 @@ func (s *Signer) Sign(tx context.Context, msg []byte, _ ...wrapping.Option) (*wr
 			KeyPurposes: s.keyPurposes,
 		},
 	}, nil
+}
+
+// KeyBytes returns the current key bytes
+func (s *Signer) KeyBytes(context.Context) ([]byte, error) {
+	if s.privKey == nil {
+		return nil, fmt.Errorf("missing bytes: %w", wrapping.ErrInvalidParameter)
+	}
+	return s.privKey, nil
 }

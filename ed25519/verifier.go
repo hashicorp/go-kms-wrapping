@@ -19,6 +19,7 @@ type Verifier struct {
 }
 
 var _ wrapping.SigInfoVerifier = (*Verifier)(nil)
+var _ wrapping.KeyExporter = (*Verifier)(nil)
 
 // NewVerifier creates a new verifier.  Supported options: WithKeyId,
 // WithKeyPurposes, WithPubKey
@@ -91,4 +92,12 @@ func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo
 		return false, fmt.Errorf("%s: missing sig info: %w", op, wrapping.ErrInvalidParameter)
 	}
 	return ed25519.Verify(s.pubKey, msg, sig.Signature), nil
+}
+
+// KeyBytes returns the current key bytes
+func (s *Verifier) KeyBytes(context.Context) ([]byte, error) {
+	if s.pubKey == nil {
+		return nil, fmt.Errorf("missing bytes: %w", wrapping.ErrInvalidParameter)
+	}
+	return s.pubKey, nil
 }

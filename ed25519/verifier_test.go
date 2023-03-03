@@ -179,3 +179,60 @@ func TestVerifier_SetConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestVerifier_KeyBytes(t *testing.T) {
+	t.Parallel()
+	const (
+		testKeyId      = "key-id"
+		testKeyPurpose = wrapping.KeyPurpose_Sign
+	)
+	testCtx := context.Background()
+	testPubKey, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		opt             []wrapping.Option
+		verifier        *Verifier
+		wantBytes       []byte
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "success",
+			verifier: func() *Verifier {
+				testVerifier, err := NewVerifier(testCtx, WithPubKey(testPubKey))
+				require.NoError(t, err)
+				return testVerifier
+			}(),
+			wantBytes: []byte(testPubKey),
+		},
+		{
+			name:            "missing-bytes",
+			verifier:        &Verifier{},
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "missing bytes",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			gotBytes, err := tc.verifier.KeyBytes(testCtx)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Empty(gotBytes)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.wantBytes, gotBytes)
+		})
+	}
+}
