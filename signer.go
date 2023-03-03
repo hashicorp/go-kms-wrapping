@@ -15,5 +15,5 @@ type SigInfoSigner interface {
 // the form of a SigInfo
 type SigInfoVerifier interface {
 	// Verify a msg signature in the form of a SigInfo
-	Verify(ctx context.Context, msg []byte, sig *SigInfo) (bool, error)
+	Verify(ctx context.Context, msg []byte, sig *SigInfo, opt ...Option) (bool, error)
 }

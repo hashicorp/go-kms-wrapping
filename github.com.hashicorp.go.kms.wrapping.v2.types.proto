@@ -84,7 +84,9 @@ message KeyInfo {
 	// Mechanism specific flags
 	uint64 flags = 6;
 
+	// The key type
 	KeyType key_type = 7;
+	// The key purposes
 	repeated KeyPurpose key_purposes = 8;
 
 }
@@ -127,39 +129,36 @@ message SigInfo {
 
 // HmacType defines the hmac algorithm type
 enum HmacType {
-	HMAC_TYPE_UNKNOWN 	= 0;
-	SHA224 				= 1;
-	SHA256 				= 2;
-	SHA384 				= 3;
-	SHA512 				= 4;
+	HMAC_TYPE_UNKNOWN = 0;
+	SHA224            = 1;
+	SHA256            = 2;
+	SHA384            = 3;
+	SHA512            = 4;
 }
  
 // KeyType defines the key's type
   enum KeyType {
-	KEY_TYPE_UNKNOWN 	= 0;
-	RSA2048 			= 1;
-	RSA3072 			= 2;
-	RSA4096 			= 3;
-	AES256_GCM96 		= 4;
-	ECDSA_P256 			= 5;
-	ECDSA_P384 			= 6;
-	ECDSA_P521			= 7;
-	HMAC_SHA2_224		= 8;
-	HMAC_SHA2_256		= 9;
-	HMAC_SHA2_384		= 10;
-	HMAC_SHA2_512		= 11;
-	ED25519 			= 12;
+	KEY_TYPE_UNKNOWN = 0;
+	RSA2048          = 1;
+	RSA3072          = 2;
+	RSA4096          = 3;
+	AES256           = 4;
+	ECDSA_P256       = 5;
+	ECDSA_P384       = 6;
+	ECDSA_P521       = 7;
+	HMAC             = 8;
+	ED25519          = 12;
   }
 
 
   // KeyPurpose defines the cryptographic capabilities of a key.
   enum KeyPurpose {
 	KeyPurpose_Unknown = 0;
-	Encrypt	= 1;
-	Decrypt	= 2;
-	Sign	= 3;
-	Verify	= 4;
-	Wrap	= 5;
-	Unwrap	= 6;
-	MAC		= 7;
+	Encrypt = 1;
+	Decrypt = 2;
+	Sign    = 3;
+	Verify  = 4;
+	Wrap    = 5;
+	Unwrap  = 6;
+	MAC     = 7;
   }

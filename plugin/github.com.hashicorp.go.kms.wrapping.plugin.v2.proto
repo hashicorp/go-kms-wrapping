@@ -82,7 +82,7 @@ message HmacKeyIdResponse {
 
 message KeyBytesRequest {};
 message KeyBytesResponse {
-	bytes key_bytes = 10;
+	bytes key_bytes = 10 [json_name="key_bytes"];
 }
 
 message SignRequest {
@@ -94,8 +94,9 @@ message SignResponse {
 }
 
 message VerifyRequest {
-	bytes msg = 10;
-	github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo sig_info = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 10;
+	bytes msg = 20;
+	github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo sig_info = 30;
 }
 message VerifyResponse {
 	bool verified = 10;
