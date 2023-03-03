@@ -61,6 +61,7 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 			case ConfigKeyId:
 				opts.WithKeyId = v
 			case ConfigKeyPurposes:
+				opts.WithKeyPurposes = []wrapping.KeyPurpose{} // start with an empty list
 				for _, raw := range strings.Split(v, ",") {
 					p, ok := wrapping.KeyPurpose_value[strings.TrimSpace(raw)]
 					if !ok {

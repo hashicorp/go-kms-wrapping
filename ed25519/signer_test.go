@@ -24,6 +24,10 @@ func Test_NewSigner(t *testing.T) {
 	require.NoError(t, err)
 	marshKey, err := x509.MarshalPKCS8PrivateKey(testPrivKey)
 	require.NoError(t, err)
+
+	_, testPrivKey2, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name            string
 		opt             []wrapping.Option
@@ -50,6 +54,41 @@ func Test_NewSigner(t *testing.T) {
 		{
 			name: "success-with-config",
 			opt: []wrapping.Option{
+				wrapping.WithConfigMap(map[string]string{
+					ConfigKeyId:       testKeyId,
+					ConfigKeyPurposes: wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Sign)],
+					ConfigPrivKey:     string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: marshKey})),
+				}),
+			},
+			wantSigner: &Signer{
+				privKey:     testPrivKey,
+				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
+				keyId:       testKeyId,
+				keyType:     wrapping.KeyType_ED25519,
+			},
+		},
+		{
+			name: "success-with-local-opts-and-config",
+			opt: []wrapping.Option{
+				WithPrivKey(testPrivKey2),
+				wrapping.WithConfigMap(map[string]string{
+					ConfigKeyId:       testKeyId,
+					ConfigKeyPurposes: wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Sign)],
+					ConfigPrivKey:     string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: marshKey})),
+				}),
+			},
+			wantSigner: &Signer{
+				privKey:     testPrivKey2,
+				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
+				keyId:       testKeyId,
+				keyType:     wrapping.KeyType_ED25519,
+			},
+		},
+		{
+			name: "success-with-wrapping-opts-and-config",
+			opt: []wrapping.Option{
+				wrapping.WithKeyId("wrapping-key-id"),
+				wrapping.WithKeyPurposes(wrapping.KeyPurpose_MAC),
 				wrapping.WithConfigMap(map[string]string{
 					ConfigKeyId:       testKeyId,
 					ConfigKeyPurposes: wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Sign)],

@@ -24,6 +24,8 @@ func Test_NewVerifier(t *testing.T) {
 	require.NoError(t, err)
 	marshKey, err := x509.MarshalPKIXPublicKey(testPubKey)
 	require.NoError(t, err)
+	testPubKey2, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
 	tests := []struct {
 		name            string
 		pubKey          ed25519.PublicKey
@@ -50,8 +52,27 @@ func Test_NewVerifier(t *testing.T) {
 			},
 		},
 		{
-			name: "success-with-config",
+			name: "success-with-local-opts-and-config",
 			opt: []wrapping.Option{
+				WithPubKey(testPubKey2),
+				wrapping.WithConfigMap(map[string]string{
+					ConfigKeyId:       testKeyId,
+					ConfigKeyPurposes: wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Verify)],
+					ConfigPubKey:      string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: marshKey})),
+				}),
+			},
+			want: &Verifier{
+				pubKey:      testPubKey2,
+				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
+				keyId:       testKeyId,
+				keyType:     wrapping.KeyType_ED25519,
+			},
+		},
+		{
+			name: "success-with-wrapping-opts-and-config",
+			opt: []wrapping.Option{
+				wrapping.WithKeyId("wrapping-key-id"),
+				wrapping.WithKeyPurposes(wrapping.KeyPurpose_MAC),
 				wrapping.WithConfigMap(map[string]string{
 					ConfigKeyId:       testKeyId,
 					ConfigKeyPurposes: wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Verify)],

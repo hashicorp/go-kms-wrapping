@@ -23,7 +23,10 @@ var _ wrapping.SigInfoSigner = (*Signer)(nil)
 var _ wrapping.KeyExporter = (*Signer)(nil)
 
 // NewSigner creates a new Signer.   Supported options: WithKeyId,
-// WithKeyPurposes, WithPrivKey
+// WithKeyPurposes, WithPrivKey, WithConfigMap
+//
+// Note: options order of precedence is: local options, WithConfigMap provided
+// options and finally wrapping options.
 func NewSigner(ctx context.Context, opt ...wrapping.Option) (*Signer, error) {
 	const op = "ed25519.NewSigner"
 	opts, err := getOpts(opt...)
@@ -46,7 +49,8 @@ func NewSigner(ctx context.Context, opt ...wrapping.Option) (*Signer, error) {
 // Supported options: wrapping.WithKeyId, wrapping.WithKeyPurposes,
 // wrapping.WithConfigMap and the local WithPrivKey
 //
-// Note the local options take precedence over WithConfigMap provided options.
+// Note: options order of precedence is: local options, WithConfigMap provided
+// options and finally wrapping options.
 //
 // wrapping.WithConfigMap supports a ConfigPrivKey to set the Signer priv key
 // along with ConfigKeyId, and ConfigKeyPurposes.  ConfigKeyPurposes are a

@@ -24,7 +24,10 @@ var _ wrapping.SigInfoVerifier = (*Verifier)(nil)
 var _ wrapping.KeyExporter = (*Verifier)(nil)
 
 // NewVerifier creates a new verifier.  Supported options: WithKeyId,
-// WithKeyPurposes, WithPubKey
+// WithKeyPurposes, WithPubKey, WithConfigMap
+//
+// Note: options order of precedence is: local options, WithConfigMap provided
+// options and finally wrapping options.
 func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error) {
 	const op = "ed25519.NewEd25519Verifier"
 	opts, err := getOpts(opt...)
@@ -47,7 +50,8 @@ func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error)
 // Supported options: wrapping.WithKeyId, wrapping.WithKeyPurposes,
 // wrapping.WithConfigMap and the local WithPubKey
 //
-// Note the local options take precedence over WithConfigMap provided options.
+// Note: options order of precedence is: local options, WithConfigMap provided
+// options and finally wrapping options.
 //
 // wrapping.WithConfigMap supports a ConfigPubKey to set the Signer pub key.
 // along with ConfigKeyId, and ConfigKeyPurposes.  ConfigKeyPurposes are a
