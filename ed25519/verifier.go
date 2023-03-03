@@ -6,8 +6,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"golang.org/x/exp/slices"
 )
 
 // Verifier provides and ed25519 implementation for the wrapping.Verifier interface
@@ -24,7 +26,7 @@ var _ wrapping.KeyExporter = (*Verifier)(nil)
 // NewVerifier creates a new verifier.  Supported options: WithKeyId,
 // WithKeyPurposes, WithPubKey
 func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error) {
-	const op = "crypto.NewEd25519Verifier"
+	const op = "ed25519.NewEd25519Verifier"
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -44,6 +46,8 @@ func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error)
 //
 // Supported options: wrapping.WithKeyId, wrapping.WithKeyPurposes,
 // wrapping.WithConfigMap and the local WithPubKey
+//
+// Note the local options take precedence over WithConfigMap provided options.
 //
 // wrapping.WithConfigMap supports a ConfigPubKey to set the Signer pub key.
 // along with ConfigKeyId, and ConfigKeyPurposes.  ConfigKeyPurposes are a
@@ -81,7 +85,7 @@ func (s *Verifier) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappi
 }
 
 // Verify will verify the signature of the provided msg.  No options are currently supported.
-func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo) (bool, error) {
+func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo, _ ...wrapping.Option) (bool, error) {
 	const op = "crypto.(Ed25519Verifier).Verify"
 	switch {
 	case s.pubKey == nil:
@@ -90,6 +94,19 @@ func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo
 		return false, fmt.Errorf("%s: missing message: %w", op, wrapping.ErrInvalidParameter)
 	case sig == nil:
 		return false, fmt.Errorf("%s: missing sig info: %w", op, wrapping.ErrInvalidParameter)
+	case len(s.keyPurposes) > 0 && !slices.Contains(s.keyPurposes, wrapping.KeyPurpose_Verify):
+		supportedPurposes := make([]string, 0, len(s.keyPurposes))
+		for _, n := range wrapping.KeyPurpose_name {
+			supportedPurposes = append(supportedPurposes, n)
+		}
+		return false,
+			fmt.Errorf(
+				"%s: key's supported purposes %q does not contain %s: %w",
+				op,
+				strings.Join(supportedPurposes, ", "),
+				wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Verify)],
+				wrapping.ErrInvalidParameter,
+			)
 	}
 	return ed25519.Verify(s.pubKey, msg, sig.Signature), nil
 }

@@ -14,10 +14,10 @@ import (
 )
 
 const (
-	ConfigPrivKey     = "priv-key"
-	ConfigPubKey      = "pub-key"
-	ConfigKeyId       = "key-id"
-	ConfigKeyPurposes = "key-purposes"
+	ConfigPrivKey     = "priv_key"
+	ConfigPubKey      = "pub_key"
+	ConfigKeyId       = "key_id"
+	ConfigKeyPurposes = "key_purposes"
 )
 
 // getOpts iterates the inbound Options and returns a struct
@@ -62,7 +62,7 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.WithKeyId = v
 			case ConfigKeyPurposes:
 				for _, raw := range strings.Split(v, ",") {
-					p, ok := wrapping.KeyPurpose_value[raw]
+					p, ok := wrapping.KeyPurpose_value[strings.TrimSpace(raw)]
 					if !ok {
 						return nil, fmt.Errorf("%s: invalid key purpose %q: %w", op, raw, wrapping.ErrInvalidParameter)
 					}
@@ -130,7 +130,8 @@ func getDefaultOptions() options {
 	return options{}
 }
 
-// WithPrivKey provides a common way to pass in a private key.
+// WithPrivKey provides a common way to pass in a private key.  This local
+// option will override a ConfigMap provide option.
 func WithPrivKey(k ed25519.PrivateKey) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
@@ -140,7 +141,8 @@ func WithPrivKey(k ed25519.PrivateKey) wrapping.Option {
 	}
 }
 
-// WithPubKey provides a common way to pass in a public key.
+// WithPubKey provides a common way to pass in a public key. This local
+// option will override a ConfigMap provide option.
 func WithPubKey(k ed25519.PublicKey) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {

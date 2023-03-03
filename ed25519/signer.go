@@ -5,11 +5,13 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"fmt"
+	"strings"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"golang.org/x/exp/slices"
 )
 
-// Signer provides and ed25519 implementation for the wrapping.Signer interface
+// Signer provides an ed25519 implementation for the wrapping.Signer interface
 type Signer struct {
 	privKey     ed25519.PrivateKey
 	keyId       string
@@ -23,7 +25,7 @@ var _ wrapping.KeyExporter = (*Signer)(nil)
 // NewSigner creates a new Signer.   Supported options: WithKeyId,
 // WithKeyPurposes, WithPrivKey
 func NewSigner(ctx context.Context, opt ...wrapping.Option) (*Signer, error) {
-	const op = "crypto.NewSigner"
+	const op = "ed25519.NewSigner"
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -43,6 +45,8 @@ func NewSigner(ctx context.Context, opt ...wrapping.Option) (*Signer, error) {
 //
 // Supported options: wrapping.WithKeyId, wrapping.WithKeyPurposes,
 // wrapping.WithConfigMap and the local WithPrivKey
+//
+// Note the local options take precedence over WithConfigMap provided options.
 //
 // wrapping.WithConfigMap supports a ConfigPrivKey to set the Signer priv key
 // along with ConfigKeyId, and ConfigKeyPurposes.  ConfigKeyPurposes are a
@@ -77,12 +81,25 @@ func (s *Signer) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping
 
 // Sign creates a signature of the provided msg.  No options are currently supported.
 func (s *Signer) Sign(tx context.Context, msg []byte, _ ...wrapping.Option) (*wrapping.SigInfo, error) {
-	const op = "crypto.(Ed25519Signer).Sign"
+	const op = "ed25519.(Ed25519Signer).Sign"
 	switch {
 	case s.privKey == nil:
 		return nil, fmt.Errorf("%s: missing private key: %w", op, wrapping.ErrInvalidParameter)
 	case msg == nil:
 		return nil, fmt.Errorf("%s: missing message: %w", op, wrapping.ErrInvalidParameter)
+	case len(s.keyPurposes) > 0 && !slices.Contains(s.keyPurposes, wrapping.KeyPurpose_Sign):
+		supportedPurposes := make([]string, 0, len(s.keyPurposes))
+		for _, n := range wrapping.KeyPurpose_name {
+			supportedPurposes = append(supportedPurposes, n)
+		}
+		return nil,
+			fmt.Errorf(
+				"%s: key's supported purposes %q does not contain %s: %w",
+				op,
+				strings.Join(supportedPurposes, ", "),
+				wrapping.KeyPurpose_name[int32(wrapping.KeyPurpose_Sign)],
+				wrapping.ErrInvalidParameter,
+			)
 	}
 	// intentionally passing in a nil rand reader since it's not required... and
 	// if that changes we want a panic in the unit tests
