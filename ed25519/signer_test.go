@@ -195,6 +195,8 @@ func Test_SignVerify(t *testing.T) {
 			gotVerify, err := tc.verifier.Verify(testCtx, tc.msg, gotSig)
 			require.NoError(err)
 			assert.True(gotVerify)
+
+			assert.True(ed25519.Verify(tc.verifier.(*Verifier).pubKey, tc.msg, gotSig.Signature))
 		})
 	}
 
