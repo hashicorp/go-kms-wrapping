@@ -93,8 +93,8 @@ func (s *Signer) Sign(tx context.Context, msg []byte, _ ...wrapping.Option) (*wr
 		return nil, fmt.Errorf("%s: missing message: %w", op, wrapping.ErrInvalidParameter)
 	case len(s.keyPurposes) > 0 && !slices.Contains(s.keyPurposes, wrapping.KeyPurpose_Sign):
 		supportedPurposes := make([]string, 0, len(s.keyPurposes))
-		for _, n := range wrapping.KeyPurpose_name {
-			supportedPurposes = append(supportedPurposes, n)
+		for _, p := range s.keyPurposes {
+			supportedPurposes = append(supportedPurposes, wrapping.KeyPurpose_name[int32(p)])
 		}
 		return nil,
 			fmt.Errorf(

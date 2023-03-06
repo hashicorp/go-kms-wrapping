@@ -178,6 +178,36 @@ func TestVerifier_SetConfig(t *testing.T) {
 				return testSigner
 			}(),
 		},
+		{
+			name: "missing-pub-key",
+			opt: []wrapping.Option{
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+			},
+			verifier: func() *Verifier {
+				testVerifier, err := NewVerifier(testCtx, WithPubKey(testPubKey))
+				require.NoError(t, err)
+				return testVerifier
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "missing public key",
+		},
+		{
+			name: "invalid-pub-key",
+			opt: []wrapping.Option{
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+			},
+			verifier: func() *Verifier {
+				testVerifier, err := NewVerifier(testCtx, WithPubKey(testPubKey))
+				require.NoError(t, err)
+				return testVerifier
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "missing public key",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

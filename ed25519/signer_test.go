@@ -160,6 +160,22 @@ func Test_SignVerify(t *testing.T) {
 			verifier: testVerifier,
 		},
 		{
+			name: "invalid-purpose",
+			signer: func() *Signer {
+				testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey), wrapping.WithKeyPurposes(wrapping.KeyPurpose_MAC))
+				require.NoError(t, err)
+				return testSigner
+			}(),
+			msg: testPt,
+			sig: func() *wrapping.SigInfo {
+				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_ED25519))
+				return si
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "key's supported purposes \"MAC\" does not contain Sign",
+		},
+		{
 			name:            "missing-msg",
 			signer:          testSigner,
 			wantErr:         true,
@@ -228,6 +244,21 @@ func Test_SignVerify(t *testing.T) {
 			msg:             testPt,
 			wantErrIs:       wrapping.ErrInvalidParameter,
 			wantErrContains: "missing sig info",
+		},
+		{
+			name: "invalid-purpose",
+			verifier: func() *Verifier {
+				testVerifier, err := NewVerifier(testCtx, WithPubKey(testPubKey), wrapping.WithKeyPurposes(wrapping.KeyPurpose_MAC))
+				require.NoError(t, err)
+				return testVerifier
+			}(),
+			msg: testPt,
+			sig: func() *wrapping.SigInfo {
+				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_ED25519))
+				return si
+			}(),
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "key's supported purposes \"MAC\" does not contain Verify",
 		},
 	}
 	for _, tc := range verifyErrorTests {
@@ -311,6 +342,36 @@ func TestSigner_SetConfig(t *testing.T) {
 				require.NoError(t, err)
 				return testSigner
 			}(),
+		},
+		{
+			name: "missing-priv-key",
+			opt: []wrapping.Option{
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+			},
+			signer: func() *Signer {
+				testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey))
+				require.NoError(t, err)
+				return testSigner
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "missing private key",
+		},
+		{
+			name: "missing-key-purpose",
+			opt: []wrapping.Option{
+				WithPrivKey(testPrivKey),
+				wrapping.WithKeyId(testKeyId),
+			},
+			signer: func() *Signer {
+				testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey))
+				require.NoError(t, err)
+				return testSigner
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "missing key purpose",
 		},
 	}
 	for _, tc := range tests {

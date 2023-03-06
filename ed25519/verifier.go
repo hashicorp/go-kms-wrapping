@@ -45,7 +45,7 @@ func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error)
 	}, nil
 }
 
-// SetConfig sets the fields on the Signer
+// SetConfig sets the fields on the Verifier
 //
 // Supported options: wrapping.WithKeyId, wrapping.WithKeyPurposes,
 // wrapping.WithConfigMap and the local WithPubKey
@@ -53,7 +53,7 @@ func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error)
 // Note: options order of precedence is: local options, WithConfigMap provided
 // options and finally wrapping options.
 //
-// wrapping.WithConfigMap supports a ConfigPubKey to set the Signer pub key.
+// wrapping.WithConfigMap supports a ConfigPubKey to set the Verifier pub key.
 // along with ConfigKeyId, and ConfigKeyPurposes.  ConfigKeyPurposes are a
 // comma delimited list of wrapping.KeyPurpose_name values (for example:
 // "Sign, Verify")
@@ -61,7 +61,7 @@ func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error)
 // The values in WithConfigMap can also be set via the package's native local
 // options.
 func (s *Verifier) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
-	const op = "ed25519.(Signer).SetConfig"
+	const op = "ed25519.(Verifier).SetConfig"
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -90,7 +90,7 @@ func (s *Verifier) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappi
 
 // Verify will verify the signature of the provided msg.  No options are currently supported.
 func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo, _ ...wrapping.Option) (bool, error) {
-	const op = "crypto.(Ed25519Verifier).Verify"
+	const op = "crypto.(Verifier).Verify"
 	switch {
 	case s.pubKey == nil:
 		return false, fmt.Errorf("%s: missing public key: %w", op, wrapping.ErrInvalidParameter)
@@ -100,8 +100,8 @@ func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo
 		return false, fmt.Errorf("%s: missing sig info: %w", op, wrapping.ErrInvalidParameter)
 	case len(s.keyPurposes) > 0 && !slices.Contains(s.keyPurposes, wrapping.KeyPurpose_Verify):
 		supportedPurposes := make([]string, 0, len(s.keyPurposes))
-		for _, n := range wrapping.KeyPurpose_name {
-			supportedPurposes = append(supportedPurposes, n)
+		for _, p := range s.keyPurposes {
+			supportedPurposes = append(supportedPurposes, wrapping.KeyPurpose_name[int32(p)])
 		}
 		return false,
 			fmt.Errorf(
