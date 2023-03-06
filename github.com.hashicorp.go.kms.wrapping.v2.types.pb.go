@@ -24,6 +24,62 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// HmacType defines the hmac algorithm type
+type HmacType int32
+
+const (
+	HmacType_HMAC_TYPE_UNKNOWN HmacType = 0
+	HmacType_SHA224            HmacType = 1
+	HmacType_SHA256            HmacType = 2
+	HmacType_SHA384            HmacType = 3
+	HmacType_SHA512            HmacType = 4
+)
+
+// Enum value maps for HmacType.
+var (
+	HmacType_name = map[int32]string{
+		0: "HMAC_TYPE_UNKNOWN",
+		1: "SHA224",
+		2: "SHA256",
+		3: "SHA384",
+		4: "SHA512",
+	}
+	HmacType_value = map[string]int32{
+		"HMAC_TYPE_UNKNOWN": 0,
+		"SHA224":            1,
+		"SHA256":            2,
+		"SHA384":            3,
+		"SHA512":            4,
+	}
+)
+
+func (x HmacType) Enum() *HmacType {
+	p := new(HmacType)
+	*p = x
+	return p
+}
+
+func (x HmacType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (HmacType) Descriptor() protoreflect.EnumDescriptor {
+	return file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_enumTypes[0].Descriptor()
+}
+
+func (HmacType) Type() protoreflect.EnumType {
+	return &file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_enumTypes[0]
+}
+
+func (x HmacType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use HmacType.Descriptor instead.
+func (HmacType) EnumDescriptor() ([]byte, []int) {
+	return file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDescGZIP(), []int{0}
+}
+
 // WrapperConfig is the result of a call to SetConfig on a wrapper, returning
 // relevant information about the wrapper and its updated configuration
 type WrapperConfig struct {
@@ -439,6 +495,72 @@ func (x *Options) GetWithConfigMap() map[string]string {
 	return nil
 }
 
+type SigInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	// KeyInfo contains information about the key that was used to create this value
+	KeyInfo *KeyInfo `protobuf:"bytes,10,opt,name=key_info,json=keyInfo,proto3" json:"key_info,omitempty"`
+	// Signature contains the bytes of the signature
+	Signature []byte `protobuf:"bytes,20,opt,name=signature,proto3" json:"signature,omitempty"`
+	// HmacType (optional) defines the hmac algorithm used
+	HmacType *HmacType `protobuf:"varint,30,opt,name=hmac_type,json=hmacType,proto3,enum=github.com.hashicorp.go.kms.wrapping.v2.types.HmacType,oneof" json:"hmac_type,omitempty"`
+}
+
+func (x *SigInfo) Reset() {
+	*x = SigInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SigInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SigInfo) ProtoMessage() {}
+
+func (x *SigInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SigInfo.ProtoReflect.Descriptor instead.
+func (*SigInfo) Descriptor() ([]byte, []int) {
+	return file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *SigInfo) GetKeyInfo() *KeyInfo {
+	if x != nil {
+		return x.KeyInfo
+	}
+	return nil
+}
+
+func (x *SigInfo) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
+}
+
+func (x *SigInfo) GetHmacType() HmacType {
+	if x != nil && x.HmacType != nil {
+		return *x.HmacType
+	}
+	return HmacType_HMAC_TYPE_UNKNOWN
+}
+
 var File_github_com_hashicorp_go_kms_wrapping_v2_types_proto protoreflect.FileDescriptor
 
 var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDesc = []byte{
@@ -515,11 +637,31 @@ var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDesc = []byte{
 	0x74, 0x68, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x4d, 0x61, 0x70, 0x45, 0x6e, 0x74, 0x72, 0x79,
 	0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b,
 	0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x42, 0x32, 0x5a, 0x30,
-	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69,
-	0x63, 0x6f, 0x72, 0x70, 0x2f, 0x67, 0x6f, 0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x77, 0x72, 0x61, 0x70,
-	0x70, 0x69, 0x6e, 0x67, 0x2f, 0x76, 0x32, 0x3b, 0x77, 0x72, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0xe3, 0x01, 0x0a,
+	0x07, 0x53, 0x69, 0x67, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x51, 0x0a, 0x08, 0x6b, 0x65, 0x79, 0x5f,
+	0x69, 0x6e, 0x66, 0x6f, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x36, 0x2e, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72,
+	0x70, 0x2e, 0x67, 0x6f, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x77, 0x72, 0x61, 0x70, 0x70, 0x69, 0x6e,
+	0x67, 0x2e, 0x76, 0x32, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4b, 0x65, 0x79, 0x49, 0x6e,
+	0x66, 0x6f, 0x52, 0x07, 0x6b, 0x65, 0x79, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1c, 0x0a, 0x09, 0x73,
+	0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x18, 0x14, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09,
+	0x73, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72, 0x65, 0x12, 0x59, 0x0a, 0x09, 0x68, 0x6d, 0x61,
+	0x63, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x1e, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x37, 0x2e, 0x67,
+	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2e, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63,
+	0x6f, 0x72, 0x70, 0x2e, 0x67, 0x6f, 0x2e, 0x6b, 0x6d, 0x73, 0x2e, 0x77, 0x72, 0x61, 0x70, 0x70,
+	0x69, 0x6e, 0x67, 0x2e, 0x76, 0x32, 0x2e, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x48, 0x6d, 0x61,
+	0x63, 0x54, 0x79, 0x70, 0x65, 0x48, 0x00, 0x52, 0x08, 0x68, 0x6d, 0x61, 0x63, 0x54, 0x79, 0x70,
+	0x65, 0x88, 0x01, 0x01, 0x42, 0x0c, 0x0a, 0x0a, 0x5f, 0x68, 0x6d, 0x61, 0x63, 0x5f, 0x74, 0x79,
+	0x70, 0x65, 0x2a, 0x51, 0x0a, 0x08, 0x48, 0x6d, 0x61, 0x63, 0x54, 0x79, 0x70, 0x65, 0x12, 0x15,
+	0x0a, 0x11, 0x48, 0x4d, 0x41, 0x43, 0x5f, 0x54, 0x59, 0x50, 0x45, 0x5f, 0x55, 0x4e, 0x4b, 0x4e,
+	0x4f, 0x57, 0x4e, 0x10, 0x00, 0x12, 0x0a, 0x0a, 0x06, 0x53, 0x48, 0x41, 0x32, 0x32, 0x34, 0x10,
+	0x01, 0x12, 0x0a, 0x0a, 0x06, 0x53, 0x48, 0x41, 0x32, 0x35, 0x36, 0x10, 0x02, 0x12, 0x0a, 0x0a,
+	0x06, 0x53, 0x48, 0x41, 0x33, 0x38, 0x34, 0x10, 0x03, 0x12, 0x0a, 0x0a, 0x06, 0x53, 0x48, 0x41,
+	0x35, 0x31, 0x32, 0x10, 0x04, 0x42, 0x32, 0x5a, 0x30, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x61, 0x73, 0x68, 0x69, 0x63, 0x6f, 0x72, 0x70, 0x2f, 0x67, 0x6f,
+	0x2d, 0x6b, 0x6d, 0x73, 0x2d, 0x77, 0x72, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x2f, 0x76, 0x32,
+	0x3b, 0x77, 0x72, 0x61, 0x70, 0x70, 0x69, 0x6e, 0x67, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
@@ -534,27 +676,32 @@ func file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDescGZIP() []by
 	return file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDescData
 }
 
-var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_goTypes = []interface{}{
-	(*WrapperConfig)(nil),   // 0: github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig
-	(*EnvelopeInfo)(nil),    // 1: github.com.hashicorp.go.kms.wrapping.v2.types.EnvelopeInfo
-	(*BlobInfo)(nil),        // 2: github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo
-	(*KeyInfo)(nil),         // 3: github.com.hashicorp.go.kms.wrapping.v2.types.KeyInfo
-	(*Options)(nil),         // 4: github.com.hashicorp.go.kms.wrapping.v2.types.Options
-	nil,                     // 5: github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig.MetadataEntry
-	nil,                     // 6: github.com.hashicorp.go.kms.wrapping.v2.types.Options.WithConfigMapEntry
-	(*structpb.Struct)(nil), // 7: google.protobuf.Struct
+	(HmacType)(0),           // 0: github.com.hashicorp.go.kms.wrapping.v2.types.HmacType
+	(*WrapperConfig)(nil),   // 1: github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig
+	(*EnvelopeInfo)(nil),    // 2: github.com.hashicorp.go.kms.wrapping.v2.types.EnvelopeInfo
+	(*BlobInfo)(nil),        // 3: github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo
+	(*KeyInfo)(nil),         // 4: github.com.hashicorp.go.kms.wrapping.v2.types.KeyInfo
+	(*Options)(nil),         // 5: github.com.hashicorp.go.kms.wrapping.v2.types.Options
+	(*SigInfo)(nil),         // 6: github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo
+	nil,                     // 7: github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig.MetadataEntry
+	nil,                     // 8: github.com.hashicorp.go.kms.wrapping.v2.types.Options.WithConfigMapEntry
+	(*structpb.Struct)(nil), // 9: google.protobuf.Struct
 }
 var file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_depIdxs = []int32{
-	5, // 0: github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig.metadata:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig.MetadataEntry
-	3, // 1: github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo.key_info:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.KeyInfo
-	7, // 2: github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo.client_data:type_name -> google.protobuf.Struct
-	6, // 3: github.com.hashicorp.go.kms.wrapping.v2.types.Options.with_config_map:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.Options.WithConfigMapEntry
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	7, // 0: github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig.metadata:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig.MetadataEntry
+	4, // 1: github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo.key_info:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.KeyInfo
+	9, // 2: github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo.client_data:type_name -> google.protobuf.Struct
+	8, // 3: github.com.hashicorp.go.kms.wrapping.v2.types.Options.with_config_map:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.Options.WithConfigMapEntry
+	4, // 4: github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo.key_info:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.KeyInfo
+	0, // 5: github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo.hmac_type:type_name -> github.com.hashicorp.go.kms.wrapping.v2.types.HmacType
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_init() }
@@ -623,19 +770,33 @@ func file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_init() {
 				return nil
 			}
 		}
+		file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SigInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
+	file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes[5].OneofWrappers = []interface{}{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   7,
+			NumEnums:      1,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_goTypes,
 		DependencyIndexes: file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_depIdxs,
+		EnumInfos:         file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_enumTypes,
 		MessageInfos:      file_github_com_hashicorp_go_kms_wrapping_v2_types_proto_msgTypes,
 	}.Build()
 	File_github_com_hashicorp_go_kms_wrapping_v2_types_proto = out.File

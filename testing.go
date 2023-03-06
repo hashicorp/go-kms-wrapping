@@ -17,6 +17,10 @@ type TestWrapper struct {
 	keyId       string
 
 	envelope bool
+
+	ReturnKeyIdError   error
+	ReturnDecryptError error
+	ReturnEncryptError error
 }
 
 type TestInitFinalizer struct {
@@ -102,6 +106,9 @@ func (t *TestWrapper) Type(_ context.Context) (WrapperType, error) {
 
 // KeyId returns the configured key ID
 func (t *TestWrapper) KeyId(_ context.Context) (string, error) {
+	if t.ReturnKeyIdError != nil {
+		return "", t.ReturnKeyIdError
+	}
 	return t.keyId, nil
 }
 
@@ -137,6 +144,9 @@ func (t *TestWrapper) KeyBytes(context.Context) ([]byte, error) {
 
 // Encrypt allows encrypting via the test wrapper
 func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...Option) (*BlobInfo, error) {
+	if t.ReturnEncryptError != nil {
+		return nil, t.ReturnEncryptError
+	}
 	switch t.envelope {
 	case true:
 		env, err := EnvelopeEncrypt(plaintext, nil)
@@ -184,6 +194,9 @@ func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...Opt
 
 // Decrypt allows decrypting via the test wrapper
 func (t *TestWrapper) Decrypt(_ context.Context, dwi *BlobInfo, opts ...Option) ([]byte, error) {
+	if t.ReturnDecryptError != nil {
+		return nil, t.ReturnDecryptError
+	}
 	switch t.envelope {
 	case true:
 		keyPlaintext, err := t.obscureBytes(dwi.KeyInfo.WrappedKey)

@@ -76,6 +76,15 @@ func Test_HmacSha256(t *testing.T) {
 			wantErrContains: "you cannot specify both a wrapper or prk",
 		},
 		{
+			name:            "base58-and-base64",
+			data:            []byte("test"),
+			wrapper:         testWrapper,
+			opts:            []wrapping.Option{crypto.WithBase58Encoding(), crypto.WithBase64Encoding()},
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "you cannot specify both WithBase58Encoding and WithBase64Encoding",
+		},
+		{
 			name:     "blake2b-with-prefix",
 			data:     []byte("test"),
 			wrapper:  testWrapper,
@@ -108,6 +117,27 @@ func Test_HmacSha256(t *testing.T) {
 			wrapper:  testWrapper,
 			opts:     []wrapping.Option{crypto.WithEd25519()},
 			wantHmac: crypto.TestWithEd25519(t, []byte("test"), testWrapper, nil, nil),
+		},
+		{
+			name:     "blake2b-WithMarshaledSigInfo",
+			data:     []byte("test"),
+			wrapper:  testWrapper,
+			opts:     []wrapping.Option{crypto.WithMarshaledSigInfo()},
+			wantHmac: crypto.TestWithBlake2b(t, []byte("test"), testWrapper, nil, nil, crypto.WithMarshaledSigInfo()),
+		},
+		{
+			name:     "blake2b-WithMarshaledSigInfo-WithBase58Encoding",
+			data:     []byte("test"),
+			wrapper:  testWrapper,
+			opts:     []wrapping.Option{crypto.WithMarshaledSigInfo(), crypto.WithBase58Encoding()},
+			wantHmac: crypto.TestWithBlake2b(t, []byte("test"), testWrapper, nil, nil, crypto.WithMarshaledSigInfo(), crypto.WithBase58Encoding()),
+		},
+		{
+			name:     "blake2b-WithMarshaledSigInfo-WithBase64Encoding",
+			data:     []byte("test"),
+			wrapper:  testWrapper,
+			opts:     []wrapping.Option{crypto.WithMarshaledSigInfo(), crypto.WithBase64Encoding()},
+			wantHmac: crypto.TestWithBlake2b(t, []byte("test"), testWrapper, nil, nil, crypto.WithMarshaledSigInfo(), crypto.WithBase64Encoding()),
 		},
 	}
 	for _, tc := range tests {

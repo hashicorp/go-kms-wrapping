@@ -39,13 +39,14 @@ type OptionFunc func(*options) error
 
 // options = how options are represented
 type options struct {
-	withPrefix         string
-	withPrk            []byte
-	withEd25519        bool
-	withBase64Encoding bool
-	withBase58Encoding bool
-	withSalt           []byte
-	withInfo           []byte
+	withPrefix           string
+	withPrk              []byte
+	withEd25519          bool
+	withBase64Encoding   bool
+	withBase58Encoding   bool
+	withMarshaledSigInfo bool
+	withSalt             []byte
+	withInfo             []byte
 }
 
 func getDefaultOptions() options {
@@ -99,6 +100,17 @@ func WithBase58Encoding() wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withBase58Encoding = true
+			return nil
+		})
+	}
+}
+
+// WithMarshaledSigInfo allows an optional request to wrap the returned data into
+// a marshaled  wrapping.SigInfo protobuf
+func WithMarshaledSigInfo() wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withMarshaledSigInfo = true
 			return nil
 		})
 	}
