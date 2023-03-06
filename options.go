@@ -84,11 +84,11 @@ func WithKeyType(keyType KeyType) Option {
 	}
 }
 
-// WithRandom provides a common way to pass in entropy
-func WithRandom(b []byte) Option {
+// WithRandomBytes provides a common way to pass in entropy
+func WithRandomBytes(b []byte) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithRandom = b
+			o.WithRandomBytes = b
 			return nil
 		})
 	}

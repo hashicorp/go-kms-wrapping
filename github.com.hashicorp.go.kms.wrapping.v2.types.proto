@@ -111,7 +111,7 @@ message Options {
 	KeyType with_key_type = 50;
 
 	// optional bytes of entropy
-	bytes with_random = 60; 
+	bytes with_random_bytes = 60; 
 }
 
 // SigInfo contains information about a cryptographic signature
@@ -147,7 +147,7 @@ enum HmacType {
 	ECDSA_P384       = 6;
 	ECDSA_P521       = 7;
 	HMAC             = 8;
-	ED25519          = 12;
+	ED25519          = 9;
   }
 
 
