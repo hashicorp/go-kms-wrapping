@@ -64,6 +64,36 @@ func WithKeyId(with string) Option {
 	}
 }
 
+// WithKeyPurpose provides a common way to pass in a key purpose
+func WithKeyPurposes(purpose ...KeyPurpose) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithKeyPurposes = purpose
+			return nil
+		})
+	}
+}
+
+// WithKeyType provides a common way to pass in a key type
+func WithKeyType(keyType KeyType) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithKeyType = keyType
+			return nil
+		})
+	}
+}
+
+// WithRandomBytes provides a common way to pass in entropy
+func WithRandomBytes(b []byte) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithRandomBytes = b
+			return nil
+		})
+	}
+}
+
 // WithConfigMap is an option accepted by wrappers at configuration time
 // and/or in other function calls to control wrapper-specific behavior.
 func WithConfigMap(with map[string]string) Option {
