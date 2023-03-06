@@ -117,8 +117,9 @@ func (s *Verifier) Verify(ctx context.Context, msg []byte, sig *wrapping.SigInfo
 
 // KeyBytes returns the current key bytes
 func (s *Verifier) KeyBytes(context.Context) ([]byte, error) {
+	const op = "ed25519.(Verifier).KeyBytes"
 	if s.pubKey == nil {
-		return nil, fmt.Errorf("missing bytes: %w", wrapping.ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing bytes: %w", op, wrapping.ErrInvalidParameter)
 	}
 	return s.pubKey, nil
 }

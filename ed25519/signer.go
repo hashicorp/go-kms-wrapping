@@ -123,8 +123,9 @@ func (s *Signer) Sign(tx context.Context, msg []byte, _ ...wrapping.Option) (*wr
 
 // KeyBytes returns the current key bytes
 func (s *Signer) KeyBytes(context.Context) ([]byte, error) {
+	const op = "ed25519.(Signer).KeyBytes"
 	if s.privKey == nil {
-		return nil, fmt.Errorf("missing bytes: %w", wrapping.ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing bytes: %w", op, wrapping.ErrInvalidParameter)
 	}
 	return s.privKey, nil
 }
