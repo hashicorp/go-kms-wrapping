@@ -1,0 +1,13 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+version: v1
+plugins:
+  - name: go
+    out: .
+    opt:
+      - paths=source_relative
+  - name: go-grpc
+    out: .
+    opt:
+      - paths=source_relative
