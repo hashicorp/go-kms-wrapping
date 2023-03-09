@@ -42,13 +42,13 @@ func Test_NewVerifier(t *testing.T) {
 				WithPubKey(testPubKey),
 				wrapping.WithKeyId(testKeyId),
 				wrapping.WithKeyPurposes(testKeyPurpose),
-				wrapping.WithKeyType(wrapping.KeyType_ED25519),
+				wrapping.WithKeyType(wrapping.KeyType_Ed25519),
 			},
 			want: &Verifier{
 				pubKey:      testPubKey,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 		{
@@ -65,7 +65,7 @@ func Test_NewVerifier(t *testing.T) {
 				pubKey:      testPubKey2,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 		{
@@ -83,7 +83,7 @@ func Test_NewVerifier(t *testing.T) {
 				pubKey:      testPubKey,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 	}

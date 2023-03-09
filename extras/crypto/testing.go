@@ -69,9 +69,10 @@ func TestWithBlake2b(t *testing.T, data []byte, w wrapping.Wrapper, opt ...wrapp
 		si := &wrapping.SigInfo{
 			Signature: []byte(hmac),
 			KeyInfo: &wrapping.KeyInfo{
-				KeyId: keyId,
+				KeyId:       keyId,
+				KeyPurposes: []wrapping.KeyPurpose{wrapping.KeyPurpose_Sign},
 			},
-			HmacType: wrapping.HmacType_SHA256.Enum(),
+			HmacType: wrapping.HmacType_Sha256.Enum(),
 		}
 		enc, err := proto.Marshal(si)
 		require.NoError(err)

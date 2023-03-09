@@ -114,3 +114,23 @@ func WithIV(with []byte) Option {
 		})
 	}
 }
+
+// WithKeyEncoding provides a common way to pass in a key encoding
+func WithKeyEncoding(encoding KeyEncoding) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithKeyEncoding = encoding
+			return nil
+		})
+	}
+}
+
+// WithWrappedKeyEncoding provides a common way to pass in a wrapped_key encoding
+func WithWrappedKeyEncoding(encoding KeyEncoding) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithWrappedKeyEncoding = encoding
+			return nil
+		})
+	}
+}

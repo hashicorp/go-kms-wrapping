@@ -59,6 +59,42 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts)
 		assert.Equal(strOpts, opts.WithConfigMap)
 	})
+	t.Run("WithKeyPurposes", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithKeyPurposes(KeyPurpose_Sign))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.Equal([]KeyPurpose{KeyPurpose_Sign}, opts.WithKeyPurposes)
+	})
+	t.Run("WithKeyType", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithKeyType(KeyType_Ed25519))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.Equal(KeyType_Ed25519, opts.WithKeyType)
+	})
+	t.Run("WithRandomBytes", func(t *testing.T) {
+		testBytes := []byte("test")
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithRandomBytes(testBytes))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.Equal(testBytes, opts.WithRandomBytes)
+	})
+	t.Run("WithKeyEncoding", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithKeyEncoding(KeyEncoding_Bytes))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.Equal(KeyEncoding_Bytes, opts.WithKeyEncoding)
+	})
+	t.Run("WithWrappedKeyEncoding", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithWrappedKeyEncoding(KeyEncoding_Bytes))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.Equal(KeyEncoding_Bytes, opts.WithWrappedKeyEncoding)
+	})
 }
 
 func testOptionWithError(t *testing.T) Option {

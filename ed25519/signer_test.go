@@ -42,13 +42,13 @@ func Test_NewSigner(t *testing.T) {
 				WithPrivKey(testPrivKey),
 				wrapping.WithKeyId(testKeyId),
 				wrapping.WithKeyPurposes(testKeyPurpose),
-				wrapping.WithKeyType(wrapping.KeyType_ED25519),
+				wrapping.WithKeyType(wrapping.KeyType_Ed25519),
 			},
 			wantSigner: &Signer{
 				privKey:     testPrivKey,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 		{
@@ -64,7 +64,7 @@ func Test_NewSigner(t *testing.T) {
 				privKey:     testPrivKey,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 		{
@@ -81,7 +81,7 @@ func Test_NewSigner(t *testing.T) {
 				privKey:     testPrivKey2,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 		{
@@ -99,7 +99,7 @@ func Test_NewSigner(t *testing.T) {
 				privKey:     testPrivKey,
 				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
 				keyId:       testKeyId,
-				keyType:     wrapping.KeyType_ED25519,
+				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
 	}
@@ -134,7 +134,7 @@ func Test_SignVerify(t *testing.T) {
 	testCtx := context.Background()
 	testPubKey, testPrivKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
-	testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey), wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(testKeyPurpose), wrapping.WithKeyType(wrapping.KeyType_ED25519))
+	testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey), wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(testKeyPurpose), wrapping.WithKeyType(wrapping.KeyType_Ed25519))
 	require.NoError(t, err)
 	testVerifier, err := NewVerifier(testCtx, WithPubKey(testPubKey))
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func Test_SignVerify(t *testing.T) {
 			signer: testSigner,
 			msg:    testPt,
 			sig: func() *wrapping.SigInfo {
-				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_ED25519))
+				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_Ed25519))
 				return si
 			}(),
 			verifier: testVerifier,
@@ -168,7 +168,7 @@ func Test_SignVerify(t *testing.T) {
 			}(),
 			msg: testPt,
 			sig: func() *wrapping.SigInfo {
-				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_ED25519))
+				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_Ed25519))
 				return si
 			}(),
 			wantErr:         true,
@@ -254,7 +254,7 @@ func Test_SignVerify(t *testing.T) {
 			}(),
 			msg: testPt,
 			sig: func() *wrapping.SigInfo {
-				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_ED25519))
+				si := TestSigInfo(t, testPrivKey, testPt, wrapping.WithKeyId(testKeyId), wrapping.WithKeyPurposes(wrapping.KeyPurpose_Sign), wrapping.WithKeyType(wrapping.KeyType_Ed25519))
 				return si
 			}(),
 			wantErrIs:       wrapping.ErrInvalidParameter,

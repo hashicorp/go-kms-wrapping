@@ -25,7 +25,7 @@ func TestSigInfo(t *testing.T, privKey ed25519.PrivateKey, msg []byte, opt ...wr
 	return &wrapping.SigInfo{
 		Signature: sig,
 		KeyInfo: &wrapping.KeyInfo{
-			KeyType:     wrapping.KeyType_ED25519,
+			KeyType:     wrapping.KeyType_Ed25519,
 			KeyId:       opts.WithKeyId,
 			KeyPurposes: opts.WithKeyPurposes,
 		},

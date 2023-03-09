@@ -40,7 +40,7 @@ func NewSigner(ctx context.Context, opt ...wrapping.Option) (*Signer, error) {
 		privKey:     opts.WithPrivKey,
 		keyId:       opts.WithKeyId,
 		keyPurposes: opts.WithKeyPurposes,
-		keyType:     wrapping.KeyType_ED25519,
+		keyType:     wrapping.KeyType_Ed25519,
 	}, nil
 }
 
@@ -114,7 +114,7 @@ func (s *Signer) Sign(tx context.Context, msg []byte, _ ...wrapping.Option) (*wr
 	return &wrapping.SigInfo{
 		Signature: sig,
 		KeyInfo: &wrapping.KeyInfo{
-			KeyType:     wrapping.KeyType_ED25519,
+			KeyType:     wrapping.KeyType_Ed25519,
 			KeyId:       s.keyId,
 			KeyPurposes: s.keyPurposes,
 		},
