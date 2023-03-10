@@ -98,9 +98,10 @@ func HmacSha256(ctx context.Context, data []byte, cipher wrapping.Wrapper, opt .
 		si := &wrapping.SigInfo{
 			Signature: hmac,
 			KeyInfo: &wrapping.KeyInfo{
-				KeyId: keyId,
+				KeyId:       keyId,
+				KeyPurposes: []wrapping.KeyPurpose{wrapping.KeyPurpose_Sign},
 			},
-			HmacType: wrapping.HmacType_SHA256.Enum(),
+			HmacType: wrapping.HmacType_Sha256.Enum(),
 		}
 		enc, err := proto.Marshal(si)
 		if err != nil {

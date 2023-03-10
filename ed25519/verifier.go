@@ -41,7 +41,7 @@ func NewVerifier(ctx context.Context, opt ...wrapping.Option) (*Verifier, error)
 		pubKey:      opts.WithPubKey,
 		keyId:       opts.WithKeyId,
 		keyPurposes: opts.WithKeyPurposes,
-		keyType:     wrapping.KeyType_ED25519,
+		keyType:     wrapping.KeyType_Ed25519,
 	}, nil
 }
 

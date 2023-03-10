@@ -167,8 +167,9 @@ func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...Opt
 			Ciphertext: env.Ciphertext,
 			Iv:         env.Iv,
 			KeyInfo: &KeyInfo{
-				KeyId:      keyId,
-				WrappedKey: ct,
+				KeyId:       keyId,
+				WrappedKey:  ct,
+				KeyPurposes: []KeyPurpose{KeyPurpose_Encrypt},
 			},
 		}, nil
 
@@ -186,7 +187,8 @@ func (t *TestWrapper) Encrypt(ctx context.Context, plaintext []byte, opts ...Opt
 		return &BlobInfo{
 			Ciphertext: ct,
 			KeyInfo: &KeyInfo{
-				KeyId: keyId,
+				KeyId:       keyId,
+				KeyPurposes: []KeyPurpose{KeyPurpose_Encrypt},
 			},
 		}, nil
 	}
