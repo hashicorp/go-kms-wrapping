@@ -134,8 +134,13 @@ func getDefaultOptions() options {
 // WithPrivKey provides a common way to pass in a private key.  This local
 // option will override a ConfigMap provide option.
 func WithPrivKey(k ed25519.PrivateKey) wrapping.Option {
+	const op = "ed25519.WithPrivKey"
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
+			switch {
+			case len(k) != ed25519.PrivateKeySize:
+				return fmt.Errorf("%s: expected private key with %d bytes and got %d: %w", op, ed25519.PrivateKeySize, len(k), wrapping.ErrInvalidParameter)
+			}
 			o.WithPrivKey = k
 			return nil
 		})
@@ -145,8 +150,13 @@ func WithPrivKey(k ed25519.PrivateKey) wrapping.Option {
 // WithPubKey provides a common way to pass in a public key. This local
 // option will override a ConfigMap provide option.
 func WithPubKey(k ed25519.PublicKey) wrapping.Option {
+	const op = "ed25519.WithPublicKey"
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
+			switch {
+			case len(k) != ed25519.PublicKeySize:
+				return fmt.Errorf("%s: expected public key with %d bytes and got %d: %w", op, ed25519.PublicKeySize, len(k), wrapping.ErrInvalidParameter)
+			}
 			o.WithPubKey = k
 			return nil
 		})

@@ -89,6 +89,25 @@ func Test_NewVerifier(t *testing.T) {
 				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
+		{
+			name:   "invalid-pub-key",
+			pubKey: testPubKey,
+			opt: []wrapping.Option{
+				WithPubKey([]byte("invalid-pub-key")),
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+				wrapping.WithKeyType(wrapping.KeyType_Ed25519),
+			},
+			want: &Verifier{
+				pubKey:      testPubKey,
+				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
+				keyId:       testKeyId,
+				keyType:     wrapping.KeyType_Ed25519,
+			},
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "expected public key with 32 bytes and got 15",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -180,6 +199,22 @@ func TestVerifier_SetConfig(t *testing.T) {
 				require.NoError(t, err)
 				return testSigner
 			}(),
+		},
+		{
+			name: "invalid-pub-key",
+			opt: []wrapping.Option{
+				WithPubKey([]byte("invalid-pub-key")),
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+			},
+			verifier: func() *Verifier {
+				testVerifier, err := NewVerifier(testCtx, WithPubKey(testPubKey))
+				require.NoError(t, err)
+				return testVerifier
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "expected public key with 32 bytes and got 15",
 		},
 		{
 			name: "missing-pub-key",
