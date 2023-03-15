@@ -105,6 +105,24 @@ func Test_NewSigner(t *testing.T) {
 				keyType:     wrapping.KeyType_Ed25519,
 			},
 		},
+		{
+			name: "invalid-private-key",
+			opt: []wrapping.Option{
+				WithPrivKey([]byte("invalid-priv-key")),
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+				wrapping.WithKeyType(wrapping.KeyType_Ed25519),
+			},
+			wantSigner: &Signer{
+				privKey:     testPrivKey,
+				keyPurposes: []wrapping.KeyPurpose{testKeyPurpose},
+				keyId:       testKeyId,
+				keyType:     wrapping.KeyType_Ed25519,
+			},
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "expected private key with 64 bytes and got 16",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -345,6 +363,22 @@ func TestSigner_SetConfig(t *testing.T) {
 				require.NoError(t, err)
 				return testSigner
 			}(),
+		},
+		{
+			name: "invalid-priv-key",
+			opt: []wrapping.Option{
+				WithPrivKey([]byte("invalid-priv-key")),
+				wrapping.WithKeyId(testKeyId),
+				wrapping.WithKeyPurposes(testKeyPurpose),
+			},
+			signer: func() *Signer {
+				testSigner, err := NewSigner(testCtx, WithPrivKey(testPrivKey))
+				require.NoError(t, err)
+				return testSigner
+			}(),
+			wantErr:         true,
+			wantErrIs:       wrapping.ErrInvalidParameter,
+			wantErrContains: "expected private key with 64 bytes and got 16",
 		},
 		{
 			name: "missing-priv-key",
