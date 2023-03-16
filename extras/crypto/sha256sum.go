@@ -42,7 +42,7 @@ func Sha256Sum(ctx context.Context, r io.Reader, opt ...wrapping.Option) ([]byte
 }
 
 // Sha256SumWriter provides multi-writer which will be used to write to a
-// hash and produce a sum.  It implements io.Writer and optionally io.Closer
+// hash and produce a sum.  It implements io.WriterCloser and io.StringWriter.
 type Sha256SumWriter struct {
 	hash hash.Hash
 	tee  io.Writer

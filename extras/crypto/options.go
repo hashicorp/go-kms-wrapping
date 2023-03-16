@@ -137,6 +137,7 @@ func WithInfo(info []byte) wrapping.Option {
 	}
 }
 
+// WithHexEncoding allows an optional request to use hex encoding.
 func WithHexEncoding(withHexEncoding bool) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
