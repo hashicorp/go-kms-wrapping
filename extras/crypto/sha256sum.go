@@ -14,24 +14,31 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
-// Sha256Sum computes SHA256 message digest (compatible/comparable with GNU
-// sha256sum)
-func Sha256Sum(ctx context.Context, r io.Reader) (string, error) {
+// Sha256Sum computes SHA256 message digest. Options supported: WithHexEncoding
+// (which is compatible/comparable with GNU sha256sum's output)
+func Sha256Sum(ctx context.Context, r io.Reader, opt ...wrapping.Option) ([]byte, error) {
 	const op = "crypto.Sha256Sum"
 	switch {
 	case isNil(r):
-		return "", fmt.Errorf("%s: missing reader: %w", op, wrapping.ErrInvalidParameter)
+		return nil, fmt.Errorf("%s: missing reader: %w", op, wrapping.ErrInvalidParameter)
 	}
 
 	hasher := sha256.New()
 
 	if _, err := io.Copy(hasher, r); err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
 	hash := hasher.Sum(nil)
-	encodedHex := hex.EncodeToString(hash[:])
-	return encodedHex, nil
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	if opts.WithHexEncoding {
+		encodedHex := hex.EncodeToString(hash[:])
+		return []byte(encodedHex), nil
+	}
+	return hash, nil
 }
 
 // Sha256SumWriter provides multi-writer which will be used to write to a

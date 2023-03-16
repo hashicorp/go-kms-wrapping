@@ -32,15 +32,27 @@ func TestSha256Sum(t *testing.T) {
 	tests := []struct {
 		name            string
 		r               io.Reader
-		wantSum         string
+		opt             []wrapping.Option
+		wantSum         []byte
 		wantErr         bool
 		wantErrIs       error
 		wantErrContains string
 	}{
 		{
+			name: "string",
+			r:    strings.NewReader(testString),
+			wantSum: func() []byte {
+				hasher := sha256.New()
+				_, err := hasher.Write([]byte(testString))
+				require.NoError(t, err)
+				return hasher.Sum(nil)
+			}(),
+		},
+		{
 			name:    "string",
 			r:       strings.NewReader(testString),
-			wantSum: testSum,
+			opt:     []wrapping.Option{crypto.WithHexEncoding(true)},
+			wantSum: []byte(testSum),
 		},
 		{
 			name: "file",
@@ -58,7 +70,8 @@ func TestSha256Sum(t *testing.T) {
 				require.NoError(t, err)
 				return f
 			}(),
-			wantSum: testSum,
+			opt:     []wrapping.Option{crypto.WithHexEncoding(true)},
+			wantSum: []byte(testSum),
 		},
 		{
 			name:            "missing-reader",
@@ -82,7 +95,7 @@ func TestSha256Sum(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			sum, err := crypto.Sha256Sum(testCtx, tc.r)
+			sum, err := crypto.Sha256Sum(testCtx, tc.r, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				assert.Empty(sum)
