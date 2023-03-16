@@ -47,6 +47,7 @@ type options struct {
 	withMarshaledSigInfo bool
 	withSalt             []byte
 	withInfo             []byte
+	WithHexEncoding      bool
 }
 
 func getDefaultOptions() options {
@@ -131,6 +132,16 @@ func WithInfo(info []byte) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withInfo = info
+			return nil
+		})
+	}
+}
+
+// WithHexEncoding allows an optional request to use hex encoding.
+func WithHexEncoding(withHexEncoding bool) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.WithHexEncoding = withHexEncoding
 			return nil
 		})
 	}
