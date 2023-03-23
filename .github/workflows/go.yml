@@ -145,3 +145,48 @@ jobs:
       - name: Tests
         working-directory: ./wrappers/transit
         run: go test ./...
+
+  buf:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.15.1"
+      - uses: bufbuild/buf-lint-action@v1
+      - uses: bufbuild/buf-breaking-action@v1
+        with:
+          # The 'main' branch of the GitHub repository that defines the module.
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
+      - name: running make proto
+        run: |
+          make proto
+      - name: check for changes
+        run: |
+          git diff --exit-code
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+
+  # if merged -> then lint, build and finally push a commit to the buf registry
+  buf_if_merged:
+    if: github.event.pull_request.merged == true
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: "1.15.1"
+      - uses: bufbuild/buf-lint-action@v1
+      - uses: bufbuild/buf-breaking-action@v1
+        with:
+          # The 'main' branch of the GitHub repository that defines the module.
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
+      - uses: bufbuild/buf-push-action@v1
+        with:
+          buf_token: ${{ secrets.BUF_TOKEN }}
