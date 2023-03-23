@@ -89,7 +89,7 @@ func (w *Sha256SumWriter) WriteString(s string) (int, error) {
 // Close checks to see if the Sha256SumWriter implements the optional io.Closer
 // and if so, then Close() is called; otherwise this is a noop
 func (w *Sha256SumWriter) Close() error {
-	const op = "crypto.(Sha256SumWriter).WriteString"
+	const op = "crypto.(Sha256SumWriter).Close"
 	var i interface{} = w.w
 	if v, ok := i.(io.Closer); ok {
 		if err := v.Close(); err != nil {
