@@ -165,26 +165,6 @@ func TestSha256SumWriter_Sum(t *testing.T) {
 				return []byte(hex.EncodeToString(h[:]))
 			}(),
 		},
-		{
-			name: "success-with-closer",
-			data: testBytes,
-			sumWriter: func() *crypto.Sha256SumWriter {
-				c := closer{
-					b: strings.Builder{},
-				}
-				w, err := crypto.NewSha256SumWriter(testCtx, &c)
-				require.NoError(t, err)
-				return w
-			}(),
-			wantSum: func() []byte {
-				hasher := sha256.New()
-				_, err := hasher.Write(testBytes)
-				require.NoError(t, err)
-				_, err = hasher.Write(testBytes)
-				require.NoError(t, err)
-				return hasher.Sum(nil)
-			}(),
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -210,16 +190,46 @@ func TestSha256SumWriter_Sum(t *testing.T) {
 			require.NoError(tc.sumWriter.Close())
 		})
 	}
+
+	t.Run("success-with-closer", func(t *testing.T) {
+		c := closer{
+			b:      strings.Builder{},
+			closed: false,
+		}
+		w, err := crypto.NewSha256SumWriter(testCtx, &c)
+		require.NoError(t, err)
+
+		hasher := sha256.New()
+		_, err = hasher.Write(testBytes)
+		require.NoError(t, err)
+		_, err = hasher.Write(testBytes)
+		require.NoError(t, err)
+		wantSum := hasher.Sum(nil)
+
+		assert, require := assert.New(t), require.New(t)
+		_, err = w.Write(testBytes)
+		require.NoError(err)
+		_, err = w.WriteString(string(testBytes))
+		require.NoError(err)
+		sum, err := w.Sum(testCtx)
+		require.NoError(err)
+		assert.Equal(wantSum, sum)
+		require.NoError(w.Close())
+
+		require.True(c.closed)
+	})
 }
 
 type closer struct {
-	b strings.Builder
+	b      strings.Builder
+	closed bool
 }
 
 func (w *closer) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (*closer) Close() error {
+func (w *closer) Close() error {
+	w.closed = true
 	return nil
 }

@@ -46,6 +46,7 @@ func Sha256Sum(ctx context.Context, r io.Reader, opt ...wrapping.Option) ([]byte
 type Sha256SumWriter struct {
 	hash hash.Hash
 	tee  io.Writer
+	w    io.Writer
 }
 
 // NewSha256SumWriter creates a new Sha256SumWriter
@@ -60,6 +61,7 @@ func NewSha256SumWriter(ctx context.Context, w io.Writer) (*Sha256SumWriter, err
 	return &Sha256SumWriter{
 		hash: h,
 		tee:  tee,
+		w:    w,
 	}, nil
 }
 
@@ -88,7 +90,7 @@ func (w *Sha256SumWriter) WriteString(s string) (int, error) {
 // and if so, then Close() is called; otherwise this is a noop
 func (w *Sha256SumWriter) Close() error {
 	const op = "crypto.(Sha256SumWriter).WriteString"
-	var i interface{} = w.tee
+	var i interface{} = w.w
 	if v, ok := i.(io.Closer); ok {
 		if err := v.Close(); err != nil {
 			return fmt.Errorf("%s: %w", op, err)
