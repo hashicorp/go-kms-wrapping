@@ -77,7 +77,7 @@ func NewWrapper() *Wrapper {
 // * Environment variable
 // * Passed in config map
 // * Managed Service Identity for instance
-func (v *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func (v *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 		if !v.keyNotRequired {
 			// Test the client connection using provided key ID
-			keyInfo, err := client.GetKey(context.Background(), v.keyName, "", nil)
+			keyInfo, err := client.GetKey(ctx, v.keyName, "", nil)
 			if err != nil {
 				return nil, fmt.Errorf("error fetching Azure Key Vault wrapper key information: %w", err)
 			}
