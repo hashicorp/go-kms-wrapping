@@ -57,13 +57,11 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		return nil, err
 	}
 
-	allowEnv := !opts.withDisallowEnvVars
-
 	// Check and set KeyId
 	switch {
-	case os.Getenv(EnvAliCloudKmsWrapperKeyId) != "" && allowEnv:
+	case os.Getenv(EnvAliCloudKmsWrapperKeyId) != "" && !opts.withDisallowEnvVars:
 		k.keyId = os.Getenv(EnvAliCloudKmsWrapperKeyId)
-	case os.Getenv(EnvVaultAliCloudKmsSealKeyId) != "" && allowEnv:
+	case os.Getenv(EnvVaultAliCloudKmsSealKeyId) != "" && !opts.withDisallowEnvVars:
 		k.keyId = os.Getenv(EnvVaultAliCloudKmsSealKeyId)
 	case opts.WithKeyId != "":
 		k.keyId = opts.WithKeyId
@@ -74,7 +72,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	region := ""
 	if k.client == nil {
 		// Check and set region.
-		if allowEnv {
+		if !opts.withDisallowEnvVars {
 			region = os.Getenv("ALICLOUD_REGION")
 		}
 		if region == "" {
@@ -84,7 +82,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		// A domain isn't required, but it can be used to override the endpoint
 		// returned by the region. An example value for a domain would be:
 		// "kms.us-east-1.aliyuncs.com".
-		if allowEnv {
+		if !opts.withDisallowEnvVars {
 			k.domain = os.Getenv("ALICLOUD_DOMAIN")
 		}
 		if k.domain == "" {

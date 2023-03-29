@@ -88,17 +88,28 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withKeyNotRequired bool
-	withUserAgent      string
-	withCredentials    string
-	withProject        string
-	withRegion         string
-	withKeyRing        string
-	withCryptoKey      string
+	withDisallowEnvVars bool
+	withKeyNotRequired  bool
+	withUserAgent       string
+	withCredentials     string
+	withProject         string
+	withRegion          string
+	withKeyRing         string
+	withCryptoKey       string
 }
 
 func getDefaultOptions() options {
 	return options{}
+}
+
+// WithDisallowEnvVars provides a way to disable using env vars
+func WithDisallowEnvVars(with bool) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withDisallowEnvVars = with
+			return nil
+		})
+	}
 }
 
 // WithKeyNotRequired provides a way to not require a key at config time
