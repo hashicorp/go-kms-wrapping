@@ -64,6 +64,12 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withKeyRing = v
 			case "crypto_key":
 				opts.withCryptoKey = v
+			case "disallow_env_vars":
+				disallowEnvVars, err := strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.withDisallowEnvVars = disallowEnvVars
 			}
 		}
 	}
