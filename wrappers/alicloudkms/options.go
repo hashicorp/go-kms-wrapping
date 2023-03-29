@@ -80,16 +80,27 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withRegion       string
-	withDomain       string
-	withAccessKey    string
-	withSecretKey    string
-	withAccessSecret string
+	withRegion          string
+	withDomain          string
+	withAccessKey       string
+	withSecretKey       string
+	withAccessSecret    string
+	withDisallowEnvVars bool
 }
 
 func getDefaultOptions() options {
 	return options{
 		withRegion: "cn-beijing",
+	}
+}
+
+// WithDisallowEnvVars provides a way to disable using env vars
+func WithDisallowEnvVars(with bool) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withDisallowEnvVars = with
+			return nil
+		})
 	}
 }
 
