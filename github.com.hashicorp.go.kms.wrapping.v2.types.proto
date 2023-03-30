@@ -101,6 +101,8 @@ message KeyInfo {
 
 // Options holds options common to all wrappers
 message Options {
+  bool with_disallow_env_vars = 1;
+
   // The key ID being specified
   string with_key_id = 10;
 
