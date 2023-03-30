@@ -68,6 +68,12 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed parsing "+KmsConfigAuthTypeApiKey+" parameter: %w", err)
 				}
+			case "disallow_env_vars":
+				disallowEnvVars, err := strconv.ParseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.withDisallowEnvVars = disallowEnvVars
 			}
 		}
 	}
@@ -95,10 +101,21 @@ type options struct {
 	withCryptoEndpoint     string
 	withManagementEndpoint string
 	withAuthTypeApiKey     bool
+	withDisallowEnvVars    bool
 }
 
 func getDefaultOptions() options {
 	return options{}
+}
+
+// WithDisallowEnvVars provides a way to disable using env vars
+func WithDisallowEnvVars(with bool) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withDisallowEnvVars = with
+			return nil
+		})
+	}
 }
 
 // WithCryptoEndpoint provides a way to chose the endpoint
