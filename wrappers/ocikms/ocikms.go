@@ -63,9 +63,9 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 	// Check and set KeyId
 	switch {
-	case os.Getenv(EnvOciKmsWrapperKeyId) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvOciKmsWrapperKeyId) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(EnvOciKmsWrapperKeyId)
-	case os.Getenv(EnvVaultOciKmsSealKeyId) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvVaultOciKmsSealKeyId) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(EnvVaultOciKmsSealKeyId)
 	case opts.WithKeyId != "":
 		k.keyId = opts.WithKeyId
@@ -74,9 +74,9 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 	// Check and set cryptoEndpoint
 	switch {
-	case os.Getenv(EnvOciKmsWrapperCryptoEndpoint) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvOciKmsWrapperCryptoEndpoint) != "" && !opts.Options.WithDisallowEnvVars:
 		k.cryptoEndpoint = os.Getenv(EnvOciKmsWrapperCryptoEndpoint)
-	case os.Getenv(EnvVaultOciKmsSealCryptoEndpoint) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvVaultOciKmsSealCryptoEndpoint) != "" && !opts.Options.WithDisallowEnvVars:
 		k.cryptoEndpoint = os.Getenv(EnvVaultOciKmsSealCryptoEndpoint)
 	case opts.withCryptoEndpoint != "":
 		k.cryptoEndpoint = opts.withCryptoEndpoint
@@ -86,9 +86,9 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 	// Check and set managementEndpoint
 	switch {
-	case os.Getenv(EnvOciKmsWrapperManagementEndpoint) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvOciKmsWrapperManagementEndpoint) != "" && !opts.Options.WithDisallowEnvVars:
 		k.managementEndpoint = os.Getenv(EnvOciKmsWrapperManagementEndpoint)
-	case os.Getenv(EnvVaultOciKmsSealManagementEndpoint) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvVaultOciKmsSealManagementEndpoint) != "" && !opts.Options.WithDisallowEnvVars:
 		k.managementEndpoint = os.Getenv(EnvVaultOciKmsSealManagementEndpoint)
 	case opts.withManagementEndpoint != "":
 		k.managementEndpoint = opts.withManagementEndpoint

@@ -98,14 +98,14 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	// it error out there if none is found. This is here to establish precedence on
 	// non-default input methods.
 	switch {
-	case os.Getenv(EnvGcpCkmsWrapperCredsPath) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvGcpCkmsWrapperCredsPath) != "" && !opts.Options.WithDisallowEnvVars:
 		s.credsPath = os.Getenv(EnvGcpCkmsWrapperCredsPath)
 	case opts.withCredentials != "":
 		s.credsPath = opts.withCredentials
 	}
 
 	switch {
-	case os.Getenv(EnvGcpCkmsWrapperProject) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvGcpCkmsWrapperProject) != "" && !opts.Options.WithDisallowEnvVars:
 		s.project = os.Getenv(EnvGcpCkmsWrapperProject)
 	case opts.withProject != "":
 		s.project = opts.withProject
@@ -114,7 +114,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(EnvGcpCkmsWrapperLocation) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvGcpCkmsWrapperLocation) != "" && !opts.Options.WithDisallowEnvVars:
 		s.location = os.Getenv(EnvGcpCkmsWrapperLocation)
 	case opts.withRegion != "":
 		s.location = opts.withRegion
@@ -123,7 +123,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(EnvGcpCkmsWrapperKeyRing) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvGcpCkmsWrapperKeyRing) != "" && !opts.Options.WithDisallowEnvVars:
 		s.keyRing = os.Getenv(EnvGcpCkmsWrapperKeyRing)
 	case os.Getenv(EnvVaultGcpCkmsSealKeyRing) != "":
 		s.keyRing = os.Getenv(EnvVaultGcpCkmsSealKeyRing)
@@ -134,7 +134,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(EnvGcpCkmsWrapperCryptoKey) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvGcpCkmsWrapperCryptoKey) != "" && !opts.Options.WithDisallowEnvVars:
 		s.cryptoKey = os.Getenv(EnvGcpCkmsWrapperCryptoKey)
 	case os.Getenv(EnvVaultGcpCkmsSealCryptoKey) != "":
 		s.cryptoKey = os.Getenv(EnvVaultGcpCkmsSealCryptoKey)

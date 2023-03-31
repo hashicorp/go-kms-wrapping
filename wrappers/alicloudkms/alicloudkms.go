@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"sync/atomic"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
@@ -59,9 +58,9 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 	// Check and set KeyId
 	switch {
-	case os.Getenv(EnvAliCloudKmsWrapperKeyId) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvAliCloudKmsWrapperKeyId) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(EnvAliCloudKmsWrapperKeyId)
-	case os.Getenv(EnvVaultAliCloudKmsSealKeyId) != "" && !opts.withDisallowEnvVars:
+	case os.Getenv(EnvVaultAliCloudKmsSealKeyId) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(EnvVaultAliCloudKmsSealKeyId)
 	case opts.WithKeyId != "":
 		k.keyId = opts.WithKeyId
@@ -72,7 +71,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	region := ""
 	if k.client == nil {
 		// Check and set region.
-		if !opts.withDisallowEnvVars {
+		if !opts.Options.WithDisallowEnvVars {
 			region = os.Getenv("ALICLOUD_REGION")
 		}
 		if region == "" {
@@ -82,7 +81,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		// A domain isn't required, but it can be used to override the endpoint
 		// returned by the region. An example value for a domain would be:
 		// "kms.us-east-1.aliyuncs.com".
-		if !opts.withDisallowEnvVars {
+		if !opts.Options.WithDisallowEnvVars {
 			k.domain = os.Getenv("ALICLOUD_DOMAIN")
 		}
 		if k.domain == "" {

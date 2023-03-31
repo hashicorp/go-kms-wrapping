@@ -5,7 +5,6 @@ package alicloudkms
 
 import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"strconv"
 )
 
 // getOpts iterates the inbound Options and returns a struct
@@ -57,12 +56,6 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withSecretKey = v
 			case "access_secret":
 				opts.withAccessSecret = v
-			case "disallow_env_vars":
-				disallowEnvVars, err := strconv.ParseBool(v)
-				if err != nil {
-					return nil, err
-				}
-				opts.withDisallowEnvVars = disallowEnvVars
 			}
 		}
 	}
@@ -87,27 +80,16 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withRegion          string
-	withDomain          string
-	withAccessKey       string
-	withSecretKey       string
-	withAccessSecret    string
-	withDisallowEnvVars bool
+	withRegion       string
+	withDomain       string
+	withAccessKey    string
+	withSecretKey    string
+	withAccessSecret string
 }
 
 func getDefaultOptions() options {
 	return options{
 		withRegion: "cn-beijing",
-	}
-}
-
-// WithDisallowEnvVars provides a way to disable using env vars
-func WithDisallowEnvVars(with bool) wrapping.Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) error {
-			o.withDisallowEnvVars = with
-			return nil
-		})
 	}
 }
 

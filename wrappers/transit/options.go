@@ -4,6 +4,7 @@
 package transit
 
 import (
+	"github.com/hashicorp/go-hclog"
 	"strconv"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -98,35 +99,24 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withDisallowEnvVars bool
-	withMountPath       string
-	withKeyName         string
-	withDisableRenewal  string
-	withNamespace       string
-	withAddress         string
-	withTlsCaCert       string
-	withTlsCaPath       string
-	withTlsClientCert   string
-	withTlsClientKey    string
-	withTlsServerName   string
-	withTlsSkipVerify   bool
-	withToken           string
+	withMountPath      string
+	withKeyName        string
+	withDisableRenewal string
+	withNamespace      string
+	withAddress        string
+	withTlsCaCert      string
+	withTlsCaPath      string
+	withTlsClientCert  string
+	withTlsClientKey   string
+	withTlsServerName  string
+	withTlsSkipVerify  bool
+	withToken          string
 
 	withLogger hclog.Logger
 }
 
 func getDefaultOptions() options {
 	return options{}
-}
-
-// WithDisallowEnvVars provides a way to disable using env vars
-func WithDisallowEnvVars(with bool) wrapping.Option {
-	return func() interface{} {
-		return OptionFunc(func(o *options) error {
-			o.withDisallowEnvVars = with
-			return nil
-		})
-	}
 }
 
 // WithMountPath provides a way to choose the mount path
