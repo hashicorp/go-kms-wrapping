@@ -134,3 +134,13 @@ func WithWrappedKeyEncoding(encoding KeyEncoding) Option {
 		})
 	}
 }
+
+// WithDisallowEnvVars provides a common way to configure ignoring environment variables
+func WithDisallowEnvVars(disallowEnvVars bool) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithDisallowEnvVars = disallowEnvVars
+			return nil
+		})
+	}
+}
