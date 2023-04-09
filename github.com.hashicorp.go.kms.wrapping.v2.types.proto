@@ -19,12 +19,15 @@ message WrapperConfig {
 // decryption in an envelope fashion
 message EnvelopeInfo {
   // Ciphertext is the ciphertext from the envelope
+  // @gotags: class:"public"
   bytes ciphertext = 1;
 
   // Key is the key used in the envelope
+  // @gotags: class:"secret"
   bytes key = 2;
 
   // IV is the initialization value used during encryption in the envelope
+  // @gotags: class:"secret"
   bytes iv = 3;
 }
 
@@ -32,12 +35,15 @@ message EnvelopeInfo {
 // information about the key used to encrypt it
 message BlobInfo {
   // Ciphertext is the encrypted bytes
+  // @gotags: class:"public"
   bytes ciphertext = 1;
 
   // IV is the initialization value used during encryption
+  // @gotags: class:"secret"
   bytes iv = 2;
 
   // HMAC is the bytes of the HMAC, if any
+  // @gotags: class:"public"
   bytes hmac = 3;
 
   // Wrapped can be used by the client to indicate whether Ciphertext actually
@@ -48,6 +54,7 @@ message BlobInfo {
 
   // Plaintext can be used to allow the same struct to be used to pass data
   // along before and after (un)wrapping.
+  // @gotags: class:"secret"
   bytes plaintext = 7;
 
   // KeyInfo contains information about the key that was used to create this value
@@ -55,6 +62,7 @@ message BlobInfo {
 
   // ValuePath can be used by the client to store information about where the
   // value came from. Deprecated in favor of client_data.
+  // @gotags: class:"public"
   string value_path = 6 [deprecated = true];
 
   // ClientData can be used by the client to store extra information, for
@@ -74,11 +82,14 @@ message KeyInfo {
   // This is an opaque ID used by the wrapper to identify the specific key to
   // use as defined by the wrapper. This could be a version, key label, or
   // something else. (optional)
+  // @gotags: class:"public"
   string key_id = 3;
+  // @gotags: class:"public"
   string hmac_key_id = 4;
 
   // These value are used when generating our own data encryption keys
   // and encrypting them using the wrapper (optional)
+  // @gotags: class:"secret"
   bytes wrapped_key = 5;
 
   // Mechanism specific flags (optional)
@@ -91,6 +102,7 @@ message KeyInfo {
 
   // plaintext key used when generating our own data encryption
   // keys (optional)
+  // @gotags: class:"secret"
   bytes key = 9;
   // encoding of the key (optional)
   KeyEncoding key_encoding = 10;
@@ -102,11 +114,14 @@ message KeyInfo {
 // Options holds options common to all wrappers
 message Options {
   // The key ID being specified
+  // @gotags: class:"public"
   string with_key_id = 10;
 
   // The AAD bytes, if any
+  // @gotags: class:"secret"
   bytes with_aad = 20;
 
+  // @gotags: class:"secret"
   bytes with_iv = 12;
 
   // Wrapper-specific configuration to pass along
@@ -119,6 +134,7 @@ message Options {
   KeyType with_key_type = 50;
 
   // optional bytes of entropy
+  // @gotags: class:"secret"
   bytes with_random_bytes = 60;
 
   // encoding of the key
@@ -133,6 +149,7 @@ message SigInfo {
   KeyInfo key_info = 10;
 
   // Signature contains the bytes of the signature
+  // @gotags: class:"public"
   bytes signature = 20;
 
   // HmacType (optional) defines the hmac algorithm used
