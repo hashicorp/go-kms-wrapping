@@ -95,6 +95,13 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts)
 		assert.Equal(KeyEncoding_Bytes, opts.WithWrappedKeyEncoding)
 	})
+	t.Run("WithDisallowEnvVars", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithDisallowEnvVars(true))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.True(opts.WithDisallowEnvVars)
+	})
 }
 
 func testOptionWithError(t *testing.T) Option {
