@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/hashicorp/go-hclog v1.4.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230315135303-7bedb33a2280
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1
 	github.com/hashicorp/vault/api v1.9.0
 	github.com/stretchr/testify v1.8.2
 )
