@@ -660,7 +660,6 @@ type Options struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-
 	WithDisallowEnvVars bool `protobuf:"varint,90,opt,name=with_disallow_env_vars,json=withDisallowEnvVars,proto3" json:"with_disallow_env_vars,omitempty"`
 	// The key ID being specified
 	WithKeyId string `protobuf:"bytes,10,opt,name=with_key_id,json=withKeyId,proto3" json:"with_key_id,omitempty"`
