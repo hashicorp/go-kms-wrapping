@@ -3,7 +3,7 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/ocikms/v2
 go 1.20
 
 require (
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228185604-529de2006180
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1
 	github.com/oracle/oci-go-sdk/v60 v60.0.0
 	golang.org/x/net v0.7.0
 )

@@ -25,6 +25,8 @@ github.com/hashicorp/go-hclog v1.4.0 h1:ctuWFGrhFha8BnnzxqeRGidlEcQkDyL5u8J8t5eA
 github.com/hashicorp/go-hclog v1.4.0/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230315135303-7bedb33a2280 h1:z6DejONsrp3SxXZQ9znFX0g7zf903zndM1NAvr27Sl8=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230315135303-7bedb33a2280/go.mod h1:VuJDBrF0EOt8JswgdKlvQbRpKu7KBKzmv6++A2vPW7c=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1 h1:BdP4AzOMgNfjy9kopYXbRU4yoOj4RAM0+gY0wceABpo=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1/go.mod h1:VuJDBrF0EOt8JswgdKlvQbRpKu7KBKzmv6++A2vPW7c=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/go-multierror v1.1.1 h1:H5DkEtf6CXdFp0N0Em5UCwQpXMWke8IA0+lD48awMYo=
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=

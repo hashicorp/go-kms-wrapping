@@ -54,6 +54,8 @@ github.com/googleapis/gax-go/v2 v2.7.0 h1:IcsPKeInNvYi7eqSaDjiZqDDKu5rsmunY0Y1Yu
 github.com/googleapis/gax-go/v2 v2.7.0/go.mod h1:TEop28CZZQ2y+c0VxMUmu1lV+fQx57QpBWsYpwqHJx8=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228100945-740d2999c798 h1:22yjMhn+kJ7u8RaP5qcYEn02zHWnIg1/JxE4BL8JLtQ=
 github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228100945-740d2999c798/go.mod h1:iRHxwFG8L24HhemSuvDYtuwVkjkl+OkTLvQ5bmqzAqE=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1 h1:BdP4AzOMgNfjy9kopYXbRU4yoOj4RAM0+gY0wceABpo=
+github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1/go.mod h1:VuJDBrF0EOt8JswgdKlvQbRpKu7KBKzmv6++A2vPW7c=
 github.com/hashicorp/go-uuid v1.0.3 h1:2gKiV6YVmrJ1i2CKKa9obLvRieoRGviZFL26PcT/Co8=
 github.com/hashicorp/go-uuid v1.0.3/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/bN7x4byOro=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

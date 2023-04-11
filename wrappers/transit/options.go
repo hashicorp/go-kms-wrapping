@@ -4,9 +4,9 @@
 package transit
 
 import (
+	"github.com/hashicorp/go-hclog"
 	"strconv"
 
-	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
 
