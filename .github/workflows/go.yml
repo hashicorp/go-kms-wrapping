@@ -167,7 +167,7 @@ jobs:
           go-version-file: go.mod    
       - name: install go-inject-tag dependency
         run: |
-          go install github.com/favadi/protoc-go-inject-tag
+          go install github.com/favadi/protoc-go-inject-tag@v1.4.0
       - name: running make proto
         run: |
           make proto

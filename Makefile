@@ -12,5 +12,5 @@ proto:
 
 .PHONY: tools
 tools: 
-	go install github.com/favadi/protoc-go-inject-tag
+	go install github.com/favadi/protoc-go-inject-tag@v1.4.0
 	go install github.com/bufbuild/buf/cmd/buf@v1.15.1
