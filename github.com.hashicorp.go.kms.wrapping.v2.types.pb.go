@@ -325,11 +325,14 @@ type EnvelopeInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Ciphertext is the ciphertext from the envelope
-	Ciphertext []byte `protobuf:"bytes,1,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	// @gotags: class:"public"
+	Ciphertext []byte `protobuf:"bytes,1,opt,name=ciphertext,proto3" json:"ciphertext,omitempty" class:"public"`
 	// Key is the key used in the envelope
-	Key []byte `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// @gotags: class:"secret"
+	Key []byte `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty" class:"secret"`
 	// IV is the initialization value used during encryption in the envelope
-	Iv []byte `protobuf:"bytes,3,opt,name=iv,proto3" json:"iv,omitempty"`
+	// @gotags: class:"secret"
+	Iv []byte `protobuf:"bytes,3,opt,name=iv,proto3" json:"iv,omitempty" class:"secret"`
 }
 
 func (x *EnvelopeInfo) Reset() {
@@ -393,11 +396,14 @@ type BlobInfo struct {
 	unknownFields protoimpl.UnknownFields
 
 	// Ciphertext is the encrypted bytes
-	Ciphertext []byte `protobuf:"bytes,1,opt,name=ciphertext,proto3" json:"ciphertext,omitempty"`
+	// @gotags: class:"public"
+	Ciphertext []byte `protobuf:"bytes,1,opt,name=ciphertext,proto3" json:"ciphertext,omitempty" class:"public"`
 	// IV is the initialization value used during encryption
-	Iv []byte `protobuf:"bytes,2,opt,name=iv,proto3" json:"iv,omitempty"`
+	// @gotags: class:"secret"
+	Iv []byte `protobuf:"bytes,2,opt,name=iv,proto3" json:"iv,omitempty" class:"secret"`
 	// HMAC is the bytes of the HMAC, if any
-	Hmac []byte `protobuf:"bytes,3,opt,name=hmac,proto3" json:"hmac,omitempty"`
+	// @gotags: class:"public"
+	Hmac []byte `protobuf:"bytes,3,opt,name=hmac,proto3" json:"hmac,omitempty" class:"public"`
 	// Wrapped can be used by the client to indicate whether Ciphertext actually
 	// contains wrapped data or not. This can be useful if you want to reuse the
 	// same struct to pass data along before and after wrapping. Deprecated in
@@ -407,14 +413,16 @@ type BlobInfo struct {
 	Wrapped bool `protobuf:"varint,4,opt,name=wrapped,proto3" json:"wrapped,omitempty"`
 	// Plaintext can be used to allow the same struct to be used to pass data
 	// along before and after (un)wrapping.
-	Plaintext []byte `protobuf:"bytes,7,opt,name=plaintext,proto3" json:"plaintext,omitempty"`
+	// @gotags: class:"secret"
+	Plaintext []byte `protobuf:"bytes,7,opt,name=plaintext,proto3" json:"plaintext,omitempty" class:"secret"`
 	// KeyInfo contains information about the key that was used to create this value
 	KeyInfo *KeyInfo `protobuf:"bytes,5,opt,name=key_info,json=keyInfo,proto3" json:"key_info,omitempty"`
 	// ValuePath can be used by the client to store information about where the
 	// value came from. Deprecated in favor of client_data.
+	// @gotags: class:"public"
 	//
 	// Deprecated: Marked as deprecated in github.com.hashicorp.go.kms.wrapping.v2.types.proto.
-	ValuePath string `protobuf:"bytes,6,opt,name=value_path,json=valuePath,proto3" json:"value_path,omitempty"`
+	ValuePath string `protobuf:"bytes,6,opt,name=value_path,json=valuePath,proto3" json:"value_path,omitempty" class:"public"`
 	// ClientData can be used by the client to store extra information, for
 	// instance, the location/provenance of where an encrypted value came from
 	// (useful for associating AAD to the encrypted value).
@@ -525,11 +533,14 @@ type KeyInfo struct {
 	// This is an opaque ID used by the wrapper to identify the specific key to
 	// use as defined by the wrapper. This could be a version, key label, or
 	// something else. (optional)
-	KeyId     string `protobuf:"bytes,3,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	HmacKeyId string `protobuf:"bytes,4,opt,name=hmac_key_id,json=hmacKeyId,proto3" json:"hmac_key_id,omitempty"`
+	// @gotags: class:"public"
+	KeyId string `protobuf:"bytes,3,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty" class:"public"`
+	// @gotags: class:"public"
+	HmacKeyId string `protobuf:"bytes,4,opt,name=hmac_key_id,json=hmacKeyId,proto3" json:"hmac_key_id,omitempty" class:"public"`
 	// These value are used when generating our own data encryption keys
 	// and encrypting them using the wrapper (optional)
-	WrappedKey []byte `protobuf:"bytes,5,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty"`
+	// @gotags: class:"secret"
+	WrappedKey []byte `protobuf:"bytes,5,opt,name=wrapped_key,json=wrappedKey,proto3" json:"wrapped_key,omitempty" class:"secret"`
 	// Mechanism specific flags (optional)
 	Flags uint64 `protobuf:"varint,6,opt,name=flags,proto3" json:"flags,omitempty"`
 	// The key type (optional)
@@ -538,7 +549,8 @@ type KeyInfo struct {
 	KeyPurposes []KeyPurpose `protobuf:"varint,8,rep,packed,name=key_purposes,json=keyPurposes,proto3,enum=github.com.hashicorp.go.kms.wrapping.v2.types.KeyPurpose" json:"key_purposes,omitempty"`
 	// plaintext key used when generating our own data encryption
 	// keys (optional)
-	Key []byte `protobuf:"bytes,9,opt,name=key,proto3" json:"key,omitempty"`
+	// @gotags: class:"secret"
+	Key []byte `protobuf:"bytes,9,opt,name=key,proto3" json:"key,omitempty" class:"secret"`
 	// encoding of the key (optional)
 	KeyEncoding KeyEncoding `protobuf:"varint,10,opt,name=key_encoding,json=keyEncoding,proto3,enum=github.com.hashicorp.go.kms.wrapping.v2.types.KeyEncoding" json:"key_encoding,omitempty"`
 	// encoding of the wrapped_key (optional)
@@ -662,10 +674,13 @@ type Options struct {
 
 	WithDisallowEnvVars bool `protobuf:"varint,90,opt,name=with_disallow_env_vars,json=withDisallowEnvVars,proto3" json:"with_disallow_env_vars,omitempty"`
 	// The key ID being specified
-	WithKeyId string `protobuf:"bytes,10,opt,name=with_key_id,json=withKeyId,proto3" json:"with_key_id,omitempty"`
+	// @gotags: class:"public"
+	WithKeyId string `protobuf:"bytes,10,opt,name=with_key_id,json=withKeyId,proto3" json:"with_key_id,omitempty" class:"public"`
 	// The AAD bytes, if any
-	WithAad []byte `protobuf:"bytes,20,opt,name=with_aad,json=withAad,proto3" json:"with_aad,omitempty"`
-	WithIv  []byte `protobuf:"bytes,12,opt,name=with_iv,json=withIv,proto3" json:"with_iv,omitempty"`
+	// @gotags: class:"secret"
+	WithAad []byte `protobuf:"bytes,20,opt,name=with_aad,json=withAad,proto3" json:"with_aad,omitempty" class:"secret"`
+	// @gotags: class:"secret"
+	WithIv []byte `protobuf:"bytes,12,opt,name=with_iv,json=withIv,proto3" json:"with_iv,omitempty" class:"secret"`
 	// Wrapper-specific configuration to pass along
 	WithConfigMap map[string]string `protobuf:"bytes,30,rep,name=with_config_map,json=withConfigMap,proto3" json:"with_config_map,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// The purposes of the key being specified
@@ -673,7 +688,8 @@ type Options struct {
 	// The type of the key being specified
 	WithKeyType KeyType `protobuf:"varint,50,opt,name=with_key_type,json=withKeyType,proto3,enum=github.com.hashicorp.go.kms.wrapping.v2.types.KeyType" json:"with_key_type,omitempty"`
 	// optional bytes of entropy
-	WithRandomBytes []byte `protobuf:"bytes,60,opt,name=with_random_bytes,json=withRandomBytes,proto3" json:"with_random_bytes,omitempty"`
+	// @gotags: class:"secret"
+	WithRandomBytes []byte `protobuf:"bytes,60,opt,name=with_random_bytes,json=withRandomBytes,proto3" json:"with_random_bytes,omitempty" class:"secret"`
 	// encoding of the key
 	WithKeyEncoding KeyEncoding `protobuf:"varint,70,opt,name=with_key_encoding,json=withKeyEncoding,proto3,enum=github.com.hashicorp.go.kms.wrapping.v2.types.KeyEncoding" json:"with_key_encoding,omitempty"`
 	// encoding of the wrapped_key
@@ -791,7 +807,8 @@ type SigInfo struct {
 	// KeyInfo contains information about the key that was used to create this value
 	KeyInfo *KeyInfo `protobuf:"bytes,10,opt,name=key_info,json=keyInfo,proto3" json:"key_info,omitempty"`
 	// Signature contains the bytes of the signature
-	Signature []byte `protobuf:"bytes,20,opt,name=signature,proto3" json:"signature,omitempty"`
+	// @gotags: class:"public"
+	Signature []byte `protobuf:"bytes,20,opt,name=signature,proto3" json:"signature,omitempty" class:"public"`
 	// HmacType (optional) defines the hmac algorithm used
 	HmacType *HmacType `protobuf:"varint,30,opt,name=hmac_type,json=hmacType,proto3,enum=github.com.hashicorp.go.kms.wrapping.v2.types.HmacType,oneof" json:"hmac_type,omitempty"`
 }

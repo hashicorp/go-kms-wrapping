@@ -161,6 +161,13 @@ jobs:
         with:
           # The 'main' branch of the GitHub repository that defines the module.
           against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: go.mod    
+      - name: install go-inject-tag dependency
+        run: |
+          go install github.com/favadi/protoc-go-inject-tag@v1.4.0
       - name: running make proto
         run: |
           make proto
