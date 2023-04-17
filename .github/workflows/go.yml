@@ -179,7 +179,6 @@ jobs:
 
   # if merged -> then lint, build and finally push a commit to the buf registry
   buf_if_merged:
-    if: github.event.pull_request.merged == true
     strategy:
       matrix:
         platform: [ubuntu-latest]
@@ -197,3 +196,4 @@ jobs:
       - uses: bufbuild/buf-push-action@v1
         with:
           buf_token: ${{ secrets.BUF_TOKEN }}
+          draft: ${{ github.ref_name != 'main'}}
