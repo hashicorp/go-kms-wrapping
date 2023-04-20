@@ -4,6 +4,7 @@
 package crypto_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -192,7 +193,7 @@ func TestSha256SumWriter_Sum(t *testing.T) {
 	}
 
 	t.Run("success-with-closer", func(t *testing.T) {
-		c := closer{
+		c := writeCloser{
 			b:      strings.Builder{},
 			closed: false,
 		}
@@ -220,16 +221,131 @@ func TestSha256SumWriter_Sum(t *testing.T) {
 	})
 }
 
-type closer struct {
+type writeCloser struct {
 	b      strings.Builder
 	closed bool
 }
 
-func (w *closer) Write(b []byte) (int, error) {
+func (w *writeCloser) Write(b []byte) (int, error) {
 	return w.b.Write(b)
 }
 
-func (w *closer) Close() error {
+func (w *writeCloser) Close() error {
+	w.closed = true
+	return nil
+}
+
+func TestSha256SumReader_Sum(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	testBytes := []byte("test-bytes")
+	tests := []struct {
+		name            string
+		data            []byte
+		sumReader       *crypto.Sha256SumReader
+		opt             []wrapping.Option
+		wantSum         []byte
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name: "success",
+			data: testBytes,
+			sumReader: func() *crypto.Sha256SumReader {
+				b := bytes.NewBuffer(testBytes)
+				w, err := crypto.NewSha256SumReader(testCtx, b)
+				require.NoError(t, err)
+				return w
+			}(),
+			wantSum: func() []byte {
+				hasher := sha256.New()
+				_, err := hasher.Write(testBytes)
+				require.NoError(t, err)
+				return hasher.Sum(nil)
+			}(),
+		},
+		{
+			name: "success-with-hex-encoding",
+			data: testBytes,
+			sumReader: func() *crypto.Sha256SumReader {
+				b := bytes.NewBuffer(testBytes)
+				w, err := crypto.NewSha256SumReader(testCtx, b)
+				require.NoError(t, err)
+				return w
+			}(),
+			opt: []wrapping.Option{crypto.WithHexEncoding(true)},
+			wantSum: func() []byte {
+				hasher := sha256.New()
+				_, err := hasher.Write(testBytes)
+				require.NoError(t, err)
+				h := hasher.Sum(nil)
+				return []byte(hex.EncodeToString(h[:]))
+			}(),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+			buf := make([]byte, len(tc.data))
+			_, err := tc.sumReader.Read(buf)
+			require.NoError(err)
+			require.Equal(buf, tc.data)
+			sum, err := tc.sumReader.Sum(testCtx, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				assert.Empty(sum)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+			assert.Equal(tc.wantSum, sum)
+			require.NoError(tc.sumReader.Close())
+		})
+	}
+
+	t.Run("success-with-closer", func(t *testing.T) {
+		c := readCloser{
+			b:      bytes.NewBuffer(testBytes),
+			closed: false,
+		}
+		w, err := crypto.NewSha256SumReader(testCtx, &c)
+		require.NoError(t, err)
+
+		hasher := sha256.New()
+		_, err = hasher.Write(testBytes)
+		require.NoError(t, err)
+		wantSum := hasher.Sum(nil)
+
+		assert, require := assert.New(t), require.New(t)
+		buf := make([]byte, len(testBytes))
+		_, err = w.Read(buf)
+		require.NoError(err)
+		require.Equal(buf, testBytes)
+		sum, err := w.Sum(testCtx)
+		require.NoError(err)
+		assert.Equal(wantSum, sum)
+		require.NoError(w.Close())
+
+		require.True(c.closed)
+	})
+}
+
+type readCloser struct {
+	b      *bytes.Buffer
+	closed bool
+}
+
+func (w *readCloser) Read(b []byte) (int, error) {
+	return w.b.Read(b)
+}
+
+func (w *readCloser) Close() error {
 	w.closed = true
 	return nil
 }
