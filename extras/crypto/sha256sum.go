@@ -115,3 +115,67 @@ func (w *Sha256SumWriter) Sum(_ context.Context, opt ...wrapping.Option) ([]byte
 		return h, nil
 	}
 }
+
+// Sha256SumReader provides an io.Reader which can be used to calculate a sum
+// while reading a file. It implements io.ReaderCloser.
+type Sha256SumReader struct {
+	hash hash.Hash
+	tee  io.Reader
+	r    io.Reader
+}
+
+// NewSha256SumReader creates a new Sha256Reader.
+func NewSha256SumReader(_ context.Context, r io.Reader) (*Sha256SumReader, error) {
+	const op = "crypto.NewSha256SumReader"
+	switch {
+	case isNil(r):
+		return nil, fmt.Errorf("%s: missing reader: %w", op, wrapping.ErrInvalidParameter)
+	}
+	h := sha256.New()
+	tee := io.TeeReader(r, h)
+	return &Sha256SumReader{
+		hash: h,
+		tee:  tee,
+		r:    r,
+	}, nil
+}
+
+func (r *Sha256SumReader) Read(b []byte) (int, error) {
+	const op = "crypto.(Sha256SumReader).Read"
+	n, err := r.tee.Read(b)
+	if err != nil {
+		return n, fmt.Errorf("%s: %w", op, err)
+	}
+	return n, nil
+}
+
+// Close checks to see if the Sha256SumReader's io.Reader implements the
+// optional io.Closer and if so, then Close() is called; otherwise this is a
+// noop
+func (r *Sha256SumReader) Close() error {
+	const op = "crypto.(Sha256SumReader).Close"
+	var i interface{} = r.r
+	if v, ok := i.(io.Closer); ok {
+		if err := v.Close(); err != nil {
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	}
+	return nil
+}
+
+// Sum will sum the hash.  Options supported: WithHexEncoding
+func (r *Sha256SumReader) Sum(_ context.Context, opt ...wrapping.Option) ([]byte, error) {
+	const op = "crypto.(Sha256SumReader).Sum"
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	h := r.hash.Sum(nil)
+	switch {
+	case opts.WithHexEncoding:
+		encodedHex := hex.EncodeToString(h[:])
+		return []byte(encodedHex), nil
+	default:
+		return h, nil
+	}
+}
