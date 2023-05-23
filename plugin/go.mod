@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/hashicorp/go-hclog v1.4.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228100945-740d2999c798
-	github.com/hashicorp/go-plugin v1.4.8
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9
+	github.com/hashicorp/go-plugin v1.4.9
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/grpc v1.53.0
