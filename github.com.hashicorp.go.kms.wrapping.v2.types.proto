@@ -143,6 +143,9 @@ message Options {
   KeyEncoding with_wrapped_key_encoding = 80;
 
   bool with_disallow_env_vars = 90;
+
+  // WithNoHmac specifies that an HMAC is not necessary for the mechanism, even if marked as "required"
+  bool with_no_hmac = 100;
 }
 
 // SigInfo contains information about a cryptographic signature

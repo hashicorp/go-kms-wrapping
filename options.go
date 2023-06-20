@@ -144,3 +144,13 @@ func WithDisallowEnvVars(disallowEnvVars bool) Option {
 		})
 	}
 }
+
+// WithNoHMAC disables the requirement for an HMAC to be included with the mechanism.
+func WithNoHMAC() Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithNoHmac = true
+			return nil
+		})
+	}
+}
