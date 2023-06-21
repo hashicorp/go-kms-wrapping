@@ -144,3 +144,13 @@ func WithDisallowEnvVars(disallowEnvVars bool) Option {
 		})
 	}
 }
+
+// WithoutHMAC disables the requirement for an HMAC to be included with the mechanism.
+func WithoutHMAC() Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithoutHmac = true
+			return nil
+		})
+	}
+}
