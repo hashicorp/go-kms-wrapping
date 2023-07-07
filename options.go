@@ -5,6 +5,7 @@ package wrapping
 
 import (
 	"errors"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 // GetOpts iterates the inbound Options and returns a struct
@@ -143,4 +144,12 @@ func WithDisallowEnvVars(disallowEnvVars bool) Option {
 			return nil
 		})
 	}
+}
+
+func ParsePath(v string) (string, error) {
+	p, err := ParsePath(v)
+	if err != nil && err != parseutil.ErrNotAUrl {
+		return "", err
+	}
+	return p, nil
 }
