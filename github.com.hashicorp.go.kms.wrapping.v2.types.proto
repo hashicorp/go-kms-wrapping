@@ -69,6 +69,12 @@ message BlobInfo {
   // instance, the location/provenance of where an encrypted value came from
   // (useful for associating AAD to the encrypted value).
   google.protobuf.Struct client_data = 8;
+
+  // Generation can be used to track when the BlobInfo chain was generated.
+  uint64 generation = 9;
+
+  // NextBlobInfo can be used to chain additional encryptions of the value.
+  BlobInfo next_blob_info = 10;
 }
 
 // KeyInfo contains information regarding which Wrapper key was used to
