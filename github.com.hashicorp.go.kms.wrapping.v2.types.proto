@@ -202,3 +202,12 @@ enum KeyPurpose {
   Unwrap = 6;
   MAC = 7;
 }
+
+// MultiWrapValue can be used to keep track of different encryptions of a value.
+message MultiWrapValue {
+  // Generation is used to keep track of when the MultiWrapValue was generated.
+  uint64 generation = 1;
+
+  // Slots has a BlobInfo for each key used to encrypt the value.
+  repeated BlobInfo slots = 2;
+}
