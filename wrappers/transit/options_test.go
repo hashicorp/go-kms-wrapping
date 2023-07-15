@@ -212,7 +212,6 @@ func Test_GetOpts(t *testing.T) {
 		require.NoError(err)
 		testOpts, err := getOpts()
 		require.NoError(err)
-		testOpts.withTlsServerName = ""
 		assert.Equal(opts, testOpts)
 
 		with := hclog.New(&hclog.LoggerOptions{
@@ -222,6 +221,66 @@ func Test_GetOpts(t *testing.T) {
 		opts, err = getOpts(WithLogger(with))
 		require.NoError(err)
 		testOpts.withLogger = with
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithRoleName", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		// test default of 0
+		opts, err := getOpts()
+		require.NoError(err)
+		testOpts, err := getOpts()
+		require.NoError(err)
+		assert.Equal(opts, testOpts)
+
+		const with = "test-role-name"
+		opts, err = getOpts(WithRoleName(with))
+		require.NoError(err)
+		testOpts.withRoleName = with
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithKubernetesMountPath", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		// test default of 0
+		opts, err := getOpts()
+		require.NoError(err)
+		testOpts, err := getOpts()
+		require.NoError(err)
+		assert.Equal(opts, testOpts)
+
+		const with = "/auth/kube-auth/"
+		opts, err = getOpts(WithKubernetesMountPath(with))
+		require.NoError(err)
+		testOpts.withKubernetesMountPath = with
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithServiceAccountTokenEnv", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		// test default of 0
+		opts, err := getOpts()
+		require.NoError(err)
+		testOpts, err := getOpts()
+		require.NoError(err)
+		assert.Equal(opts, testOpts)
+
+		const with = "token-env-var"
+		opts, err = getOpts(WithServiceAccountTokenEnv(with))
+		require.NoError(err)
+		testOpts.withServiceAccountTokenEnv = with
+		assert.Equal(opts, testOpts)
+	})
+	t.Run("WithServiceAccountTokenPath", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		// test default of 0
+		opts, err := getOpts()
+		require.NoError(err)
+		testOpts, err := getOpts()
+		require.NoError(err)
+		assert.Equal(opts, testOpts)
+
+		const with = "/token/path/test"
+		opts, err = getOpts(WithServiceAccountTokenPath(with))
+		require.NoError(err)
+		testOpts.withServiceAccountTokenPath = with
 		assert.Equal(opts, testOpts)
 	})
 }

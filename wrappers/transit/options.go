@@ -73,6 +73,14 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				if err != nil {
 					return nil, err
 				}
+			case "role_name":
+				opts.withRoleName = v
+			case "kubernetes_mount_path":
+				opts.withKubernetesMountPath = v
+			case "service_account_token_env":
+				opts.withServiceAccountTokenEnv = v
+			case "service_account_token_path":
+				opts.withServiceAccountTokenPath = v
 			case "token":
 				opts.withToken = v
 			}
@@ -99,18 +107,22 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withMountPath      string
-	withKeyName        string
-	withDisableRenewal string
-	withNamespace      string
-	withAddress        string
-	withTlsCaCert      string
-	withTlsCaPath      string
-	withTlsClientCert  string
-	withTlsClientKey   string
-	withTlsServerName  string
-	withTlsSkipVerify  bool
-	withToken          string
+	withMountPath               string
+	withKeyName                 string
+	withDisableRenewal          string
+	withNamespace               string
+	withAddress                 string
+	withTlsCaCert               string
+	withTlsCaPath               string
+	withTlsClientCert           string
+	withTlsClientKey            string
+	withTlsServerName           string
+	withTlsSkipVerify           bool
+	withToken                   string
+	withRoleName                string
+	withKubernetesMountPath     string
+	withServiceAccountTokenEnv  string
+	withServiceAccountTokenPath string
 
 	withLogger hclog.Logger
 }
@@ -244,6 +256,52 @@ func WithLogger(with hclog.Logger) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withLogger = with
+			return nil
+		})
+	}
+}
+
+// WithKubernetesMountPath in case of kubernetes auth is enabled in a different mount path
+// in case not defined the default is: kubernetes
+func WithKubernetesMountPath(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withKubernetesMountPath = with
+			return nil
+		})
+	}
+}
+
+// WithRoleName provides a way to set the vault role name (for kubernetes auth)
+// this role must bind to a kubernetes service account
+func WithRoleName(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withRoleName = with
+			return nil
+		})
+	}
+}
+
+// WithServiceAccountTokenEnv (Optional) provides a way to choose the service account token env
+// if both WithServiceAccountTokenEnv and WithServiceAccountTokenPath are set, the path will be used
+// if none of them are provided default points to the path /var/run/secrets/kubernetes.io/serviceaccount/token
+func WithServiceAccountTokenEnv(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withServiceAccountTokenEnv = with
+			return nil
+		})
+	}
+}
+
+// WithServiceAccountTokenPath (Optional) provides a way to choose the service account token path
+// if both WithServiceAccountTokenEnv and WithServiceAccountTokenPath are set, the path will be used
+// if none of them are provided default points to the path /var/run/secrets/kubernetes.io/serviceaccount/token
+func WithServiceAccountTokenPath(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withServiceAccountTokenPath = with
 			return nil
 		})
 	}

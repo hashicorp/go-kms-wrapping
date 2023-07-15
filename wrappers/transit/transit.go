@@ -17,7 +17,7 @@ import (
 // engine
 type Wrapper struct {
 	logger       hclog.Logger
-	client       transitClientEncryptor
+	client       TransitClientEncryptor
 	currentKeyId *atomic.Value
 }
 
@@ -110,6 +110,6 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, _ ...wrappin
 }
 
 // GetClient returns the transit Wrapper's transitClientEncryptor
-func (s *Wrapper) GetClient() transitClientEncryptor {
+func (s *Wrapper) GetClient() TransitClientEncryptor {
 	return s.client
 }

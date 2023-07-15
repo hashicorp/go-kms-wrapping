@@ -121,8 +121,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "success-with-env-mount",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvTransitWrapperMountPath, testWithMountPath))
-				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperMountPath) })
+				require.NoError(t, os.Setenv(envTransitWrapperMountPath, testWithMountPath))
+				t.Cleanup(func() { os.Unsetenv(envTransitWrapperMountPath) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
@@ -134,8 +134,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "success-with-env-mount-seal",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvVaultTransitSealMountPath, testWithMountPath))
-				t.Cleanup(func() { os.Unsetenv(EnvVaultTransitSealMountPath) })
+				require.NoError(t, os.Setenv(envVaultTransitSealMountPath, testWithMountPath))
+				t.Cleanup(func() { os.Unsetenv(envVaultTransitSealMountPath) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
@@ -158,8 +158,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "success-with-env-key-name",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvTransitWrapperKeyName, testWithKeyName))
-				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperKeyName) })
+				require.NoError(t, os.Setenv(envTransitWrapperKeyName, testWithKeyName))
+				t.Cleanup(func() { os.Unsetenv(envTransitWrapperKeyName) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
@@ -170,8 +170,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "success-with-env-key-name-seal",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvVaultTransitSealKeyName, testWithKeyName))
-				t.Cleanup(func() { os.Unsetenv(EnvVaultTransitSealKeyName) })
+				require.NoError(t, os.Setenv(envVaultTransitSealKeyName, testWithKeyName))
+				t.Cleanup(func() { os.Unsetenv(envVaultTransitSealKeyName) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
@@ -183,8 +183,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "success-with-env-disable-renewal",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvTransitWrapperDisableRenewal, testWithDisableRenewal))
-				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperDisableRenewal) })
+				require.NoError(t, os.Setenv(envTransitWrapperDisableRenewal, testWithDisableRenewal))
+				t.Cleanup(func() { os.Unsetenv(envTransitWrapperDisableRenewal) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
@@ -197,8 +197,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "success-with-env-disable-renewal-seal",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvVaultTransitSealDisableRenewal, testWithDisableRenewal))
-				t.Cleanup(func() { os.Unsetenv(EnvVaultTransitSealDisableRenewal) })
+				require.NoError(t, os.Setenv(envVaultTransitSealDisableRenewal, testWithDisableRenewal))
+				t.Cleanup(func() { os.Unsetenv(envVaultTransitSealDisableRenewal) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
@@ -211,8 +211,8 @@ func TestSetConfig(t *testing.T) {
 		{
 			name: "error-invalid-env-disable-renewal",
 			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(EnvTransitWrapperDisableRenewal, "invalid-disable-renewal"))
-				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperDisableRenewal) })
+				require.NoError(t, os.Setenv(envTransitWrapperDisableRenewal, "invalid-disable-renewal"))
+				t.Cleanup(func() { os.Unsetenv(envTransitWrapperDisableRenewal) })
 			},
 			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
