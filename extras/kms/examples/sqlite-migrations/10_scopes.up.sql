@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 create table scope (
     private_id text not null primary key,

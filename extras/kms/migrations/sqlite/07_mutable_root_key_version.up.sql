@@ -1,5 +1,5 @@
 -- Copyright (c) HashiCorp, Inc.
--- SPDX-License-Identifier: MPL-2.0
+-- SPDX-License-Identifier: BUSL-1.1
 
 -- we need to make the root_key_version_id column mutable in order to support
 -- rewrapping the data key version.
