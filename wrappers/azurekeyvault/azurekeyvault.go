@@ -5,12 +5,17 @@ package azurekeyvault
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"golang.org/x/net/http2"
+	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.1/keyvault"
 	"github.com/Azure/go-autorest/autorest"
@@ -321,8 +326,41 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 		}
 	}
 
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	customTransport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           dialer.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			MinVersion:    tls.VersionTLS12,
+			Renegotiation: tls.RenegotiateFreelyAsClient,
+		},
+	}
+	if http2Transport, err := http2.ConfigureTransports(customTransport); err == nil {
+		// if the connection has been idle for 10 seconds, send a ping frame for a health check
+		http2Transport.ReadIdleTimeout = 10 * time.Second
+		// if there's no response to the ping within 2 seconds, close the connection
+		http2Transport.PingTimeout = 2 * time.Second
+	}
+
 	client := keyvault.New()
 	client.Authorizer = authorizer
+	client.SendDecorators = append(client.SendDecorators, func(s autorest.Sender) autorest.Sender {
+		if ar, ok := s.(autorest.Client); ok {
+			ar.Sender = &http.Client{
+				Transport: customTransport,
+			}
+			return ar
+		}
+		return s
+	})
 	return &client, nil
 }
 
