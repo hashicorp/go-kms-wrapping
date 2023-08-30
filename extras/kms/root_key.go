@@ -16,6 +16,11 @@ type rootKey struct {
 	ScopeId string `json:"scope_id,omitempty" gorm:"default:null"`
 	// CreateTime from the db
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+
+	// tableNamePrefix defines the prefix to use before the table name and
+	// allows us to support custom prefixes as well as multi KMSs within a
+	// single schema.
+	tableNamePrefix string `gorm:"-"`
 }
 
 // newRootKey creates a new in memory root key. No optionsare currently
@@ -31,15 +36,19 @@ func newRootKey(scopeId string, _ ...Option) (*rootKey, error) {
 	return c, nil
 }
 
-// TableName returns the tablename
-func (k *rootKey) TableName() string { return "kms_root_key" }
+// TableName returns the table name
+func (k *rootKey) TableName() string {
+	const tableName = "root_key"
+	return fmt.Sprintf("%s_%s", k.tableNamePrefix, tableName)
+}
 
 // Clone creates a clone of the RootKeyVersion
 func (k *rootKey) Clone() *rootKey {
 	return &rootKey{
-		PrivateId:  k.PrivateId,
-		ScopeId:    k.ScopeId,
-		CreateTime: k.CreateTime,
+		PrivateId:       k.PrivateId,
+		ScopeId:         k.ScopeId,
+		CreateTime:      k.CreateTime,
+		tableNamePrefix: k.tableNamePrefix,
 	}
 }
 

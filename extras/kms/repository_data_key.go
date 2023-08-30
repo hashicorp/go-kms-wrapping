@@ -26,11 +26,11 @@ func (r *repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrap
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(reader dbw.Reader, w dbw.Writer) error {
-			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+			if err := updateKeyCollectionVersion(ctx, w, r.tableNamePrefix); err != nil {
 				return err
 			}
 			var err error
-			if returnedDk, returnedDv, err = createDataKeyTx(ctx, reader, w, rkvWrapper, purpose, key); err != nil {
+			if returnedDk, returnedDv, err = createDataKeyTx(ctx, reader, w, rkvWrapper, r.tableNamePrefix, purpose, key); err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
 			return nil
@@ -45,7 +45,7 @@ func (r *repository) CreateDataKey(ctx context.Context, rkvWrapper wrapping.Wrap
 // createDataKeyTx inserts into the db (via dbw.Writer) and returns the new data key
 // and data key version. This function encapsulates all the work required within
 // a dbw.TxHandler and allows this capability to be shared within this repository
-func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper wrapping.Wrapper, purpose KeyPurpose, key []byte) (*dataKey, *dataKeyVersion, error) {
+func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper wrapping.Wrapper, tableNamePrefix string, purpose KeyPurpose, key []byte) (*dataKey, *dataKeyVersion, error) {
 	const op = "kms.createDataKeyTx"
 	if rkvWrapper == nil {
 		return nil, nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
@@ -55,6 +55,9 @@ func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper
 	}
 	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
+	}
+	if tableNamePrefix == "" {
+		return nil, nil, fmt.Errorf("%s: missing table name prefix: %w", op, ErrInvalidParameter)
 	}
 	rootKeyVersionId, err := rkvWrapper.KeyId(ctx)
 	if err != nil {
@@ -66,17 +69,20 @@ func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper
 	case !strings.HasPrefix(rootKeyVersionId, rootKeyVersionPrefix):
 		return nil, nil, fmt.Errorf("%s: root key version id %q doesn't start with prefix %q: %w", op, rootKeyVersionId, rootKeyVersionPrefix, ErrInvalidParameter)
 	}
-	rv := rootKeyVersion{}
+	rv := rootKeyVersion{tableNamePrefix: tableNamePrefix}
 	rv.PrivateId = rootKeyVersionId
-	err = r.LookupBy(ctx, &rv)
+	err = r.LookupBy(ctx, &rv, dbw.WithTable(rv.TableName()))
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: unable to lookup root key version %q: %w", op, rootKeyVersionId, err)
 	}
 
 	dk := dataKey{
-		Purpose: purpose,
+		Purpose:         purpose,
+		tableNamePrefix: tableNamePrefix,
 	}
-	dv := dataKeyVersion{}
+	dv := dataKeyVersion{
+		tableNamePrefix: tableNamePrefix,
+	}
 	id, err := newDataKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
@@ -97,11 +103,11 @@ func createDataKeyTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rkvWrapper
 	}
 
 	// no oplog entries for keys
-	if err := create(ctx, w, &dk); err != nil {
+	if err := create(ctx, w, &dk, dbw.WithTable(dk.TableName())); err != nil {
 		return nil, nil, fmt.Errorf("%s: keys create: %w", op, err)
 	}
 	// no oplog entries for key versions
-	if err := create(ctx, w, &dv); err != nil {
+	if err := create(ctx, w, &dv, dbw.WithTable(dv.TableName())); err != nil {
 		return nil, nil, fmt.Errorf("%s: key versions create: %w", op, err)
 	}
 
@@ -115,9 +121,11 @@ func (r *repository) LookupDataKey(ctx context.Context, privateId string, _ ...O
 	if privateId == "" {
 		return nil, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := dataKey{}
+	k := dataKey{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	k.PrivateId = privateId
-	if err := r.reader.LookupBy(ctx, &k); err != nil {
+	if err := r.reader.LookupBy(ctx, &k, dbw.WithTable(k.TableName())); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
@@ -134,9 +142,11 @@ func (r *repository) DeleteDataKey(ctx context.Context, privateId string, opt ..
 	if privateId == "" {
 		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := dataKey{}
+	k := dataKey{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	k.PrivateId = privateId
-	if err := r.reader.LookupBy(ctx, &k); err != nil {
+	if err := r.reader.LookupBy(ctx, &k, dbw.WithTable(k.TableName())); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
@@ -151,12 +161,12 @@ func (r *repository) DeleteDataKey(ctx context.Context, privateId string, opt ..
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) (err error) {
-			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+			if err := updateKeyCollectionVersion(ctx, w, r.tableNamePrefix); err != nil {
 				return err
 			}
 			dk := k.Clone()
 			// no oplog entries for root keys
-			rowsDeleted, err = w.Delete(ctx, dk)
+			rowsDeleted, err = w.Delete(ctx, dk, dbw.WithTable(dk.TableName()))
 			if err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
@@ -191,6 +201,12 @@ func (r *repository) ListDataKeys(ctx context.Context, opt ...Option) ([]*dataKe
 	if opts.withPurpose != KeyPurposeUnknown {
 		where += " and purpose = ?"
 		whereArgs = append(whereArgs, opts.withPurpose)
+	}
+	{
+		dk := dataKey{
+			tableNamePrefix: r.tableNamePrefix,
+		}
+		opt = append(opt, withTableName(dk.TableName()))
 	}
 	err := r.list(ctx, &keys, where, whereArgs, opt...)
 	if err != nil {

@@ -24,28 +24,48 @@ type Option func(*options)
 
 // options = how options are represented
 type options struct {
-	withLimit          int
-	withKeyVersionId   string
-	withOrderByVersion orderBy
-	withRetryCnt       uint
-	withErrorsMatching func(error) bool
-	withPurpose        KeyPurpose
-	withTx             *dbw.RW
-	withRandomReader   io.Reader
-	withReader         dbw.Reader
-	withWriter         dbw.Writer
-	withScopeIds       []string
-	withRewrap         bool
-	withRootKeyId      string
+	withTableNamePrefix string
+	withLimit           int
+	withKeyVersionId    string
+	withOrderByVersion  orderBy
+	withRetryCnt        uint
+	withErrorsMatching  func(error) bool
+	withPurpose         KeyPurpose
+	withTx              *dbw.RW
+	withRandomReader    io.Reader
+	withReader          dbw.Reader
+	withWriter          dbw.Writer
+	withScopeIds        []string
+	withRewrap          bool
+	withRootKeyId       string
+	withTableName       string // not an exported option
 }
 
 var noOpErrorMatchingFn = func(error) bool { return false }
 
 func getDefaultOptions() options {
 	return options{
-		withErrorsMatching: noOpErrorMatchingFn,
-		withRetryCnt:       stdRetryCnt,
-		withRandomReader:   rand.Reader,
+		withTableNamePrefix: DefaultTableNamePrefix,
+		withErrorsMatching:  noOpErrorMatchingFn,
+		withRetryCnt:        stdRetryCnt,
+		withRandomReader:    rand.Reader,
+	}
+}
+
+// intentionally not exported
+func withTableName(name string) Option {
+	return func(o *options) {
+		o.withTableName = name
+	}
+}
+
+// WithTableNamePrefix specifying a prefix that should be used for schema table
+// names.  If not specified, the DefaultTableNamePrefix will be used. This
+// optional allows us to support custom prefixes as well as multi KMSs within a
+// single schema.
+func WithTableNamePrefix(prefix string) Option {
+	return func(o *options) {
+		o.withTableNamePrefix = prefix
 	}
 }
 

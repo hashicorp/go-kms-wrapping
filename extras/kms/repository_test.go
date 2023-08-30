@@ -330,8 +330,8 @@ func TestRepository_createKeysTx(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
-			keys, err := createKeysTx(context.Background(), tc.rw, tc.rw, tc.rootWrapper, tc.rand, tc.scopeId, tc.purpose...)
+			testDeleteWhere(t, db, func() interface{} { i := rootKey{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
+			keys, err := createKeysTx(context.Background(), tc.rw, tc.rw, tc.rootWrapper, tc.rand, DefaultTableNamePrefix, tc.scopeId, tc.purpose...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {

@@ -14,6 +14,15 @@ import (
 // Test_GetOpts provides unit tests for GetOpts and all the options
 func Test_GetOpts(t *testing.T) {
 	t.Parallel()
+	t.Run("WithTableNamePrefix", func(t *testing.T) {
+		assert := assert.New(t)
+		opts := getOpts(WithTableNamePrefix("test"))
+		testOpts := getDefaultOptions()
+		testOpts.withTableNamePrefix = "test"
+		testOpts.withErrorsMatching = nil
+		opts.withErrorsMatching = nil
+		assert.Equal(opts, testOpts)
+	})
 	t.Run("WithLimit", func(t *testing.T) {
 		assert := assert.New(t)
 		// test default of 0
