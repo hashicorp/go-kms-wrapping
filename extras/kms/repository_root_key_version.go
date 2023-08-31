@@ -22,9 +22,11 @@ func (r *repository) LookupRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	k := rootKeyVersion{}
+	k := rootKeyVersion{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	k.PrivateId = rootKeyVersionId
-	if err := r.reader.LookupBy(ctx, &k); err != nil {
+	if err := r.reader.LookupBy(ctx, &k, dbw.WithTable(k.TableName())); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%s: failed for %q: %w", op, rootKeyVersionId, ErrRecordNotFound)
 		}
@@ -50,7 +52,9 @@ func (r *repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if len(key) == 0 {
 		return nil, fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
 	}
-	kv := rootKeyVersion{}
+	kv := rootKeyVersion{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	id, err := newRootKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -71,11 +75,11 @@ func (r *repository) CreateRootKeyVersion(ctx context.Context, keyWrapper wrappi
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) error {
-			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+			if err := updateKeyCollectionVersion(ctx, w, r.tableNamePrefix); err != nil {
 				return err
 			}
 			returnedKey = kv.Clone()
-			if err := create(ctx, w, returnedKey); err != nil {
+			if err := create(ctx, w, returnedKey, dbw.WithTable(kv.TableName())); err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
 			return nil
@@ -99,9 +103,11 @@ func (r *repository) DeleteRootKeyVersion(ctx context.Context, rootKeyVersionId 
 	if rootKeyVersionId == "" {
 		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := rootKeyVersion{}
+	k := rootKeyVersion{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	k.PrivateId = rootKeyVersionId
-	if err := r.reader.LookupBy(ctx, &k); err != nil {
+	if err := r.reader.LookupBy(ctx, &k, dbw.WithTable(k.TableName())); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, rootKeyVersionId, ErrRecordNotFound)
 		}
@@ -117,12 +123,12 @@ func (r *repository) DeleteRootKeyVersion(ctx context.Context, rootKeyVersionId 
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) (err error) {
-			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+			if err := updateKeyCollectionVersion(ctx, w, r.tableNamePrefix); err != nil {
 				return err
 			}
 			dk := k.Clone()
 			// no oplog entries for root key version
-			rowsDeleted, err = w.Delete(ctx, dk)
+			rowsDeleted, err = w.Delete(ctx, dk, dbw.WithTable(dk.TableName()))
 			if err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
@@ -149,8 +155,11 @@ func (r *repository) LatestRootKeyVersion(ctx context.Context, keyWrapper wrappi
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
+	rkv := rootKeyVersion{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	var foundKeys []*rootKeyVersion
-	if err := r.reader.SearchWhere(ctx, &foundKeys, "root_key_id = ?", []interface{}{rootKeyId}, dbw.WithLimit(1), dbw.WithOrder("version desc")); err != nil {
+	if err := r.reader.SearchWhere(ctx, &foundKeys, "root_key_id = ?", []interface{}{rootKeyId}, dbw.WithLimit(1), dbw.WithOrder("version desc"), dbw.WithTable(rkv.TableName())); err != nil {
 		return nil, fmt.Errorf("%s: failed for %q: %w", op, rootKeyId, err)
 	}
 	if len(foundKeys) == 0 {
@@ -172,6 +181,12 @@ func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
+	{
+		rkv := rootKeyVersion{
+			tableNamePrefix: r.tableNamePrefix,
+		}
+		opt = append(opt, withTableName(rkv.TableName()))
+	}
 	var versions []*rootKeyVersion
 	err := r.list(ctx, &versions, "root_key_id = ?", []interface{}{rootKeyId}, opt...)
 	if err != nil {
@@ -191,8 +206,8 @@ func (r *repository) ListRootKeyVersions(ctx context.Context, keyWrapper wrappin
 // allows this capability to be shared with other repositories or just called
 // within a transaction.  To be clear, this repository function doesn't include
 // its own transaction and is intended to be used within a transaction provided
-// by the caller.
-func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rootWrapper wrapping.Wrapper, rootKeyId string, _ ...Option) error {
+// by the caller.  Supported options: WithTableNamePrefix
+func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.Writer, rootWrapper wrapping.Wrapper, rootKeyId string, opt ...Option) error {
 	const (
 		op           = "kms.rewrapRootKeyVersionsTx"
 		keyFieldName = "CtKey"
@@ -209,7 +224,7 @@ func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 	if rootKeyId == "" {
 		return fmt.Errorf("%s: missing root key id: %w", op, ErrInvalidParameter)
 	}
-	r, err := newRepository(reader, writer)
+	r, err := newRepository(reader, writer, opt...)
 	if err != nil {
 		return fmt.Errorf("%s: unable to create repo: %w", op, err)
 	}
@@ -218,11 +233,13 @@ func rewrapRootKeyVersionsTx(ctx context.Context, reader dbw.Reader, writer dbw.
 	if err != nil {
 		return fmt.Errorf("%s: unable to list root key versions: %w", op, err)
 	}
+	opts := getOpts(opt...)
 	for _, kv := range rkvs {
 		if err := kv.Encrypt(ctx, rootWrapper); err != nil {
 			return fmt.Errorf("%s: failed to rewrap root key version: %w", op, err)
 		}
-		rowsAffected, err := writer.Update(ctx, kv, []string{keyFieldName}, nil, dbw.WithVersion(&kv.Version))
+		kv.tableNamePrefix = opts.withTableNamePrefix
+		rowsAffected, err := writer.Update(ctx, kv, []string{keyFieldName}, nil, dbw.WithVersion(&kv.Version), dbw.WithTable(kv.TableName()))
 		if err != nil {
 			return fmt.Errorf("%s: failed to update root key version: %w", op, err)
 		}
@@ -257,7 +274,9 @@ func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper 
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to generate key: %w", op, err)
 	}
-	rkv := rootKeyVersion{}
+	rkv := rootKeyVersion{
+		tableNamePrefix: opts.withTableNamePrefix,
+	}
 	id, err := newRootKeyVersionId()
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -268,7 +287,7 @@ func rotateRootKeyVersionTx(ctx context.Context, writer dbw.Writer, rootWrapper 
 	if err := rkv.Encrypt(ctx, rootWrapper); err != nil {
 		return nil, fmt.Errorf("%s: unable to encrypt new root key version: %w", op, err)
 	}
-	if err := create(ctx, writer, &rkv); err != nil {
+	if err := create(ctx, writer, &rkv, dbw.WithTable(rkv.TableName())); err != nil {
 		return nil, fmt.Errorf("%s: unable to create root key version: %w", op, err)
 	}
 	return &rkv, nil

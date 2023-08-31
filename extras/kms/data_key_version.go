@@ -31,6 +31,11 @@ type dataKeyVersion struct {
 	Version uint32 `json:"version,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+
+	// tableNamePrefix defines the prefix to use before the table name and
+	// allows us to support custom prefixes as well as multi KMSs within a
+	// single schema.
+	tableNamePrefix string `gorm:"-"`
 }
 
 // newDataKeyVersion creates a new in memory data key version. No options
@@ -63,6 +68,7 @@ func (k *dataKeyVersion) Clone() *dataKeyVersion {
 		RootKeyVersionId: k.RootKeyVersionId,
 		Version:          k.Version,
 		CreateTime:       k.CreateTime,
+		tableNamePrefix:  k.tableNamePrefix,
 	}
 	clone.Key = make([]byte, len(k.Key))
 	copy(clone.Key, k.Key)
@@ -95,8 +101,11 @@ func (k *dataKeyVersion) vetForWrite(ctx context.Context, opType dbw.OpType) err
 	return nil
 }
 
-// TableName returns the tablename
-func (k *dataKeyVersion) TableName() string { return "kms_data_key_version" }
+// TableName returns the table name
+func (k *dataKeyVersion) TableName() string {
+	const tableName = "data_key_version"
+	return fmt.Sprintf("%s_%s", k.tableNamePrefix, tableName)
+}
 
 // Encrypt will encrypt the data key version's key
 func (k *dataKeyVersion) Encrypt(ctx context.Context, cipher wrapping.Wrapper) error {

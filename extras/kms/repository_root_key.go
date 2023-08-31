@@ -25,11 +25,11 @@ func (r *repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) error {
-			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+			if err := updateKeyCollectionVersion(ctx, w, r.tableNamePrefix); err != nil {
 				return err
 			}
 			var err error
-			if returnedRk, returnedKv, err = createRootKeyTx(ctx, w, keyWrapper, scopeId, key); err != nil {
+			if returnedRk, returnedKv, err = createRootKeyTx(ctx, w, keyWrapper, scopeId, key, r.tableNamePrefix); err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
 			return nil
@@ -44,7 +44,7 @@ func (r *repository) CreateRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 // createRootKeyTx inserts into the db (via dbw.Writer) and returns the new root key
 // and root key version. This function encapsulates all the work required within
 // a dbw.TxHandler
-func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte) (*rootKey, *rootKeyVersion, error) {
+func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrapper, scopeId string, key []byte, tableNamePrefix string) (*rootKey, *rootKeyVersion, error) {
 	const op = "kms.createRootKeyTx"
 	if scopeId == "" {
 		return nil, nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
@@ -55,8 +55,11 @@ func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrap
 	if len(key) == 0 {
 		return nil, nil, fmt.Errorf("%s: missing key: %w", op, ErrInvalidParameter)
 	}
-	rk := rootKey{}
-	kv := rootKeyVersion{}
+	if tableNamePrefix == "" {
+		return nil, nil, fmt.Errorf("%s: missing table name prefix: %w", op, ErrInvalidParameter)
+	}
+	rk := rootKey{tableNamePrefix: tableNamePrefix}
+	kv := rootKeyVersion{tableNamePrefix: tableNamePrefix}
 	id, err := newRootKeyId()
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
@@ -75,10 +78,10 @@ func createRootKeyTx(ctx context.Context, w dbw.Writer, keyWrapper wrapping.Wrap
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	if err := create(ctx, w, &rk); err != nil {
+	if err := create(ctx, w, &rk, dbw.WithTable(rk.TableName())); err != nil {
 		return nil, nil, fmt.Errorf("%s: root keys: %w", op, err)
 	}
-	if err := create(ctx, w, &kv); err != nil {
+	if err := create(ctx, w, &kv, dbw.WithTable(kv.TableName())); err != nil {
 		return nil, nil, fmt.Errorf("%s: key versions: %w", op, err)
 	}
 
@@ -95,9 +98,11 @@ func (r *repository) LookupRootKey(ctx context.Context, keyWrapper wrapping.Wrap
 	if keyWrapper == nil {
 		return nil, fmt.Errorf("%s: missing key wrapper: %w", op, ErrInvalidParameter)
 	}
-	k := rootKey{}
+	k := rootKey{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	k.PrivateId = privateId
-	if err := r.reader.LookupBy(ctx, &k); err != nil {
+	if err := r.reader.LookupBy(ctx, &k, dbw.WithTable(k.TableName())); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
@@ -114,9 +119,11 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 	if privateId == "" {
 		return noRowsAffected, fmt.Errorf("%s: missing private id: %w", op, ErrInvalidParameter)
 	}
-	k := rootKey{}
+	k := rootKey{
+		tableNamePrefix: r.tableNamePrefix,
+	}
 	k.PrivateId = privateId
-	if err := r.reader.LookupBy(ctx, &k); err != nil {
+	if err := r.reader.LookupBy(ctx, &k, dbw.WithTable(k.TableName())); err != nil {
 		if errors.Is(err, dbw.ErrRecordNotFound) {
 			return noRowsAffected, fmt.Errorf("%s: failed for %q: %w", op, privateId, ErrRecordNotFound)
 		}
@@ -132,12 +139,12 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 		opts.withRetryCnt,
 		dbw.ExpBackoff{},
 		func(_ dbw.Reader, w dbw.Writer) (err error) {
-			if err := updateKeyCollectionVersion(ctx, w); err != nil {
+			if err := updateKeyCollectionVersion(ctx, w, r.tableNamePrefix); err != nil {
 				return err
 			}
 			dk := k.Clone()
 			// no oplog entries for root keys
-			rowsDeleted, err = w.Delete(ctx, dk)
+			rowsDeleted, err = w.Delete(ctx, dk, dbw.WithTable(dk.TableName()))
 			if err != nil {
 				return fmt.Errorf("%s: %w", op, err)
 			}
@@ -157,6 +164,12 @@ func (r *repository) DeleteRootKey(ctx context.Context, privateId string, opt ..
 // WithOrderByVersion, WithReader
 func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKey, error) {
 	const op = "kms.(repository).ListRootKeys"
+	{
+		rk := rootKey{
+			tableNamePrefix: r.tableNamePrefix,
+		}
+		opt = append(opt, withTableName(rk.TableName()))
+	}
 	var keys []*rootKey
 	err := r.list(ctx, &keys, "1=1", nil, opt...)
 	if err != nil {
@@ -165,15 +178,18 @@ func (r *repository) ListRootKeys(ctx context.Context, opt ...Option) ([]*rootKe
 	return keys, nil
 }
 
-// LookupRootKeyByScope will lookup the rootKey for a given scope id. Supported options: WithReader
+// LookupRootKeyByScope will lookup the rootKey for a given scope id. Supported
+// options: WithReader
 func (r *repository) LookupRootKeyByScope(ctx context.Context, scopeId string, opt ...Option) (*rootKey, error) {
 	const op = "kms.(repository).ScopeRootKey"
 	opts := getOpts(opt...)
 	if opts.withReader == nil {
 		opts.withReader = r.reader
 	}
-	var k rootKey
-	err := opts.withReader.LookupWhere(ctx, &k, "scope_id=?", []interface{}{scopeId})
+	k := rootKey{
+		tableNamePrefix: r.tableNamePrefix,
+	}
+	err := opts.withReader.LookupWhere(ctx, &k, "scope_id=?", []interface{}{scopeId}, dbw.WithTable(k.TableName()))
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

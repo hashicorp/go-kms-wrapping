@@ -28,7 +28,8 @@ func TestRootKey_ScopeId(t *testing.T) {
 	id, err := dbw.NewId(rootKeyPrefix)
 	require.NoError(err)
 	k.PrivateId = id
-	err = rw.Create(context.Background(), k)
+	k.tableNamePrefix = DefaultTableNamePrefix
+	err = rw.Create(context.Background(), k, dbw.WithTable(k.TableName()))
 	assert.Error(err)
 	assert.Contains(strings.ToLower(err.Error()), "unique")
 }
@@ -76,7 +77,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupBy(context.Background(), orig)
+			orig.tableNamePrefix = DefaultTableNamePrefix
+			err := rw.LookupBy(context.Background(), orig, dbw.WithTable(orig.TableName()))
 			require.NoError(err)
 
 			err = tc.update.Encrypt(context.Background(), wrapper)
@@ -86,7 +88,8 @@ func TestRootKeyVersion_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupBy(context.Background(), after)
+			after.tableNamePrefix = DefaultTableNamePrefix
+			err = rw.LookupBy(context.Background(), after, dbw.WithTable(after.TableName()))
 			require.NoError(err)
 
 			assert.Equal(orig, after)
@@ -139,7 +142,8 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 			orig := new.Clone()
-			err := rw.LookupBy(context.Background(), orig)
+			orig.tableNamePrefix = DefaultTableNamePrefix
+			err := rw.LookupBy(context.Background(), orig, dbw.WithTable(orig.TableName()))
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tc.update, tc.fieldMask, nil)
@@ -147,7 +151,8 @@ func TestRootKey_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupBy(context.Background(), after)
+			after.tableNamePrefix = DefaultTableNamePrefix
+			err = rw.LookupBy(context.Background(), after, dbw.WithTable(after.TableName()))
 			require.NoError(err)
 
 			assert.Equal(orig, after)
@@ -209,8 +214,9 @@ func TestDataKey_ImmutableFields(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			new.tableNamePrefix = DefaultTableNamePrefix
 			orig := new.Clone()
-			err := rw.LookupBy(context.Background(), orig)
+			err := rw.LookupBy(context.Background(), orig, dbw.WithTable(orig.TableName()))
 			require.NoError(err)
 
 			rowsUpdated, err := rw.Update(context.Background(), tc.update, tc.fieldMask, nil)
@@ -218,7 +224,7 @@ func TestDataKey_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupBy(context.Background(), after)
+			err = rw.LookupBy(context.Background(), after, dbw.WithTable(after.TableName()))
 			require.NoError(err)
 
 			assert.Equal(orig, after)
@@ -284,8 +290,9 @@ func TestDataKeyVersion_ImmutableFields(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
+			new.tableNamePrefix = DefaultTableNamePrefix
 			orig := new.Clone()
-			err := rw.LookupBy(context.Background(), orig)
+			err := rw.LookupBy(context.Background(), orig, dbw.WithTable(orig.TableName()))
 			require.NoError(err)
 
 			err = tc.update.Encrypt(context.Background(), wrapper)
@@ -295,7 +302,7 @@ func TestDataKeyVersion_ImmutableFields(t *testing.T) {
 			assert.Equal(0, rowsUpdated)
 
 			after := new.Clone()
-			err = rw.LookupBy(context.Background(), after)
+			err = rw.LookupBy(context.Background(), after, dbw.WithTable(after.TableName()))
 			require.NoError(err)
 
 			assert.Equal(orig, after)
@@ -316,9 +323,10 @@ func TestRootKey_Version(t *testing.T) {
 	assert.Equal(uint32(1), rkv1.Version)
 
 	found := &rootKeyVersion{
-		PrivateId: rkv1.PrivateId,
+		PrivateId:       rkv1.PrivateId,
+		tableNamePrefix: DefaultTableNamePrefix,
 	}
-	require.NoError(rw.LookupBy(testCtx, found))
+	require.NoError(rw.LookupBy(testCtx, found, dbw.WithTable(found.TableName())))
 	found.Decrypt(testCtx, wrapper)
 	assert.Equal(rkv1, found)
 
@@ -344,9 +352,10 @@ func TestDataKey_Version(t *testing.T) {
 		assert.Equal(uint32(1), dkv1.Version)
 
 		found := &dataKeyVersion{
-			PrivateId: dkv1.PrivateId,
+			PrivateId:       dkv1.PrivateId,
+			tableNamePrefix: DefaultTableNamePrefix,
 		}
-		require.NoError(rw.LookupBy(testCtx, found))
+		require.NoError(rw.LookupBy(testCtx, found, dbw.WithTable(found.TableName())))
 		found.Decrypt(testCtx, wrapper)
 		assert.Equal(dkv1, found)
 
@@ -358,9 +367,10 @@ func TestDataKey_Version(t *testing.T) {
 		assert.Equal(uint32(1), dkv1.Version)
 
 		found = &dataKeyVersion{
-			PrivateId: dkv3.PrivateId,
+			PrivateId:       dkv3.PrivateId,
+			tableNamePrefix: DefaultTableNamePrefix,
 		}
-		require.NoError(rw.LookupBy(testCtx, found))
+		require.NoError(rw.LookupBy(testCtx, found, dbw.WithTable(found.TableName())))
 		found.Decrypt(testCtx, wrapper)
 		assert.Equal(dkv3, found)
 	})

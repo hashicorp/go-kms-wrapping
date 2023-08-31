@@ -110,7 +110,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			k, err := tc.repo.CreateRootKeyVersion(context.Background(), tc.keyWrapper, tc.rootKeyId, tc.key, tc.opt...)
@@ -131,7 +131,7 @@ func TestRepository_CreateRootKeyVersion(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(k, foundKey)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -276,7 +276,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			deletedRows, err := tc.repo.DeleteRootKeyVersion(context.Background(), tc.key.PrivateId, tc.opt...)
@@ -297,7 +297,7 @@ func TestRepository_DeleteRootKeyVersion(t *testing.T) {
 			assert.Nil(foundKey)
 			assert.ErrorIs(err, ErrRecordNotFound)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -400,7 +400,7 @@ func TestRepository_LatestRootKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testDeleteWhere(t, db, func() interface{} { i := rootKeyVersion{}; return &i }(), "1=1")
+			testDeleteWhere(t, db, func() interface{} { i := rootKeyVersion{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 			testKeys := []*rootKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
 				k, _ := testRootKeyVersion(t, db, wrapper, rk.PrivateId)
@@ -526,7 +526,7 @@ func TestRepository_ListRootKeyVersions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testDeleteWhere(t, db, func() interface{} { i := rootKeyVersion{}; return &i }(), "1=1")
+			testDeleteWhere(t, db, func() interface{} { i := rootKeyVersion{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 			testRootKeyVersions := []*rootKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
 				k, _ := testRootKeyVersion(t, db, wrapper, rk.PrivateId)

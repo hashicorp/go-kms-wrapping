@@ -22,6 +22,11 @@ type dataKey struct {
 	Purpose KeyPurpose `json:"purpose,omitempty" gorm:"default:null"`
 	// CreateTime from the RDBMS
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+
+	// tableNamePrefix defines the prefix to use before the table name and
+	// allows us to support custom prefixes as well as multi KMSs within a
+	// single schema.
+	tableNamePrefix string `gorm:"-"`
 }
 
 // newDataKey creates a new in memory data key.  This key is used for wrapper
@@ -47,10 +52,11 @@ func newDataKey(rootKeyId string, purpose KeyPurpose, _ ...Option) (*dataKey, er
 // Clone creates a clone of the DataKey
 func (k *dataKey) Clone() *dataKey {
 	return &dataKey{
-		PrivateId:  k.PrivateId,
-		RootKeyId:  k.RootKeyId,
-		Purpose:    k.Purpose,
-		CreateTime: k.CreateTime,
+		PrivateId:       k.PrivateId,
+		RootKeyId:       k.RootKeyId,
+		Purpose:         k.Purpose,
+		CreateTime:      k.CreateTime,
+		tableNamePrefix: k.tableNamePrefix,
 	}
 }
 
@@ -77,8 +83,11 @@ func (k *dataKey) vetForWrite(ctx context.Context, opType dbw.OpType) error {
 	return nil
 }
 
-// TableName returns the tablename
-func (k *dataKey) TableName() string { return "kms_data_key" }
+// TableName returns the table name
+func (k *dataKey) TableName() string {
+	const tableName = "data_key"
+	return fmt.Sprintf("%s_%s", k.tableNamePrefix, tableName)
+}
 
 // GetPrivateId returns the key's private id
 func (k *dataKey) GetPrivateId() string { return k.PrivateId }
