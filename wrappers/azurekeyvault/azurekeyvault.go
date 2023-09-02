@@ -6,16 +6,18 @@ package azurekeyvault
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"golang.org/x/net/http2"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.1/keyvault"
 	"github.com/Azure/go-autorest/autorest"
@@ -164,7 +166,7 @@ func (v *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	v.baseURL = v.buildBaseURL()
 
 	if v.client == nil {
-		client, err := v.getKeyVaultClient()
+		client, err := v.getKeyVaultClient(nil)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing Azure Key Vault wrapper client: %w", err)
 		}
@@ -300,7 +302,7 @@ func (v *Wrapper) buildBaseURL() string {
 	return fmt.Sprintf("https://%s.%s/", v.vaultName, v.environment.KeyVaultDNSSuffix)
 }
 
-func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
+func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*keyvault.BaseClient, error) {
 	var authorizer autorest.Authorizer
 	var err error
 
@@ -341,6 +343,7 @@ func (v *Wrapper) getKeyVaultClient() (*keyvault.BaseClient, error) {
 		TLSClientConfig: &tls.Config{
 			MinVersion:    tls.VersionTLS12,
 			Renegotiation: tls.RenegotiateFreelyAsClient,
+			RootCAs:       withCertPool,
 		},
 	}
 	if http2Transport, err := http2.ConfigureTransports(customTransport); err == nil {
