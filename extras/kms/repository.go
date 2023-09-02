@@ -68,13 +68,13 @@ func newRepository(r dbw.Reader, w dbw.Writer, opt ...Option) (*repository, erro
 	if w == nil {
 		return nil, fmt.Errorf("%s: nil writer: %w", op, ErrInvalidParameter)
 	}
-	if _, err := validateSchema(context.Background(), r); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
 		// zero signals the defaults should be used.
 		opts.withLimit = defaultLimit
+	}
+	if _, err := validateSchema(context.Background(), r, opts.withTableNamePrefix); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &repository{
 		reader:          r,
@@ -88,13 +88,15 @@ func newRepository(r dbw.Reader, w dbw.Writer, opt ...Option) (*repository, erro
 // required migrations.Version
 func (r *repository) ValidateSchema(ctx context.Context) (string, error) {
 	const op = "kms.(repository).validateVersion"
-	return validateSchema(ctx, r.reader)
+	return validateSchema(ctx, r.reader, r.tableNamePrefix)
 }
 
-func validateSchema(ctx context.Context, r dbw.Reader) (string, error) {
+func validateSchema(ctx context.Context, r dbw.Reader, tableNamePrefix string) (string, error) {
 	const op = "kms.validateSchema"
-	var s schema
-	if err := r.LookupWhere(ctx, &s, "1=1", nil); err != nil {
+	s := schema{
+		tableNamePrefix: tableNamePrefix,
+	}
+	if err := r.LookupWhere(ctx, &s, "1=1", nil, dbw.WithTable(s.TableName())); err != nil {
 		return "", fmt.Errorf("%s: unable to get version: %w", op, err)
 	}
 	if s.Version != migrations.Version {
