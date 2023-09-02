@@ -3,7 +3,10 @@
 
 package kms
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // schema represents the current schema in the database
 type schema struct {
@@ -13,7 +16,15 @@ type schema struct {
 	UpdateTime time.Time
 	// CreateTime is the create time of the initial version
 	CreateTime time.Time
+
+	// tableNamePrefix defines the prefix to use before the table name and
+	// allows us to support custom prefixes as well as multi KMSs within a
+	// single schema.
+	tableNamePrefix string `gorm:"-"`
 }
 
-// TableName defines the table name for the Version type
-func (v *schema) TableName() string { return "kms_schema_version" }
+// TableName returns the table name
+func (k *schema) TableName() string {
+	const tableName = "schema_version"
+	return fmt.Sprintf("%s_%s", k.tableNamePrefix, tableName)
+}
