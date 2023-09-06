@@ -331,7 +331,11 @@ func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client
 		http2Transport.PingTimeout = 2 * time.Second
 	}
 
-	client, err := azkeys.NewClient(v.baseURL, cred, nil)
+	clientOpts := &azkeys.ClientOptions{
+		ClientOptions: azcore.ClientOptions{Transport: &http.Client{Transport: customTransport}},
+	}
+
+	client, err := azkeys.NewClient(v.baseURL, cred, clientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create keyvault client %w", err)
 	}
