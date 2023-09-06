@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/go-hclog v1.4.0
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230228100945-740d2999c798
 	github.com/stretchr/testify v1.8.2
-	golang.org/x/net v0.6.0
+	golang.org/x/net v0.7.0
 )
 
 require (
