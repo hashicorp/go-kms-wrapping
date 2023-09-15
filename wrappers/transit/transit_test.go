@@ -17,6 +17,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	testWithMountPath      = "transit/"
+	testWithAddress        = "http://localhost:8200"
+	testWithKeyName        = "example-key"
+	testWithDisableRenewal = "true"
+	testWithNamespace      = "ns1/"
+	testWithToken          = "vault-plaintext-root-token"
+
+	envVaultNamespace = "VAULT_NAMESPACE"
+)
+
 type testTransitClient struct {
 	keyID string
 	wrap  wrapping.Wrapper
@@ -86,20 +97,23 @@ func TestTransitWrapper_Lifecycle(t *testing.T) {
 	if kid != keyId {
 		t.Fatalf("key id does not match: expected %s, got %s", keyId, kid)
 	}
+
+	// Test keyId prefix (can't use the option/SetConfig however )
+	s.keyIdPrefix = "test/"
+	_, err = s.Encrypt(context.Background(), input)
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+	kid, err = s.KeyId(context.Background())
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+	if kid != "test/"+keyId {
+		t.Fatalf("key id does not match: expected %s, got %s", keyId, kid)
+	}
 }
 
 func TestSetConfig(t *testing.T) {
-	const (
-		testWithMountPath      = "transit/"
-		testWithAddress        = "http://localhost:8200"
-		testWithKeyName        = "example-key"
-		testWithDisableRenewal = "true"
-		testWithNamespace      = "ns1/"
-		testWithToken          = "vault-plaintext-root-token"
-
-		envVaultNamespace = "VAULT_NAMESPACE"
-	)
-
 	tests := []struct {
 		name            string
 		opts            []wrapping.Option
@@ -292,6 +306,7 @@ func TestSetConfig(t *testing.T) {
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
 				WithNamespace(testWithNamespace),
+				WithKeyIdPrefix("test/"),
 			},
 		},
 	}
