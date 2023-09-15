@@ -19,6 +19,7 @@ type Wrapper struct {
 	logger       hclog.Logger
 	client       transitClientEncryptor
 	currentKeyId *atomic.Value
+	keyIdPrefix  string
 }
 
 var _ wrapping.Wrapper = (*Wrapper)(nil)
@@ -46,6 +47,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		return nil, err
 	}
 	s.client = client
+	s.keyIdPrefix = opts.withKeyIdPrefix
 
 	// Send a value to test the wrapper and to set the current key id
 	if _, err := s.Encrypt(context.Background(), []byte("a")); err != nil {
@@ -88,7 +90,7 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, _ ...wrapping.Opt
 	if len(splitKey) != 3 {
 		return nil, errors.New("invalid ciphertext returned")
 	}
-	keyId := splitKey[1]
+	keyId := s.keyIdPrefix + splitKey[1]
 	s.currentKeyId.Store(keyId)
 
 	ret := &wrapping.BlobInfo{

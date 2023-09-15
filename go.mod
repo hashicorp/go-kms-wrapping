@@ -3,7 +3,6 @@ module github.com/hashicorp/go-kms-wrapping/v2
 go 1.20
 
 require (
-	github.com/favadi/protoc-go-inject-tag v1.4.0
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/mr-tron/base58 v1.2.0
 	github.com/stretchr/testify v1.8.2
