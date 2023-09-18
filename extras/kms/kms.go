@@ -16,7 +16,6 @@ import (
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
-	"github.com/hashicorp/go-multierror"
 )
 
 // cachePurpose defines an enum for wrapper cache purposes
@@ -376,7 +375,7 @@ func (k *Kms) CreateKeys(ctx context.Context, scopeId string, purposes []KeyPurp
 	if _, err := createKeysTx(ctx, r, w, rootWrapper, opts.withRandomReader, k.tableNamePrefix, scopeId, purposes...); err != nil {
 		if localTx != nil {
 			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
-				err = multierror.Append(err, rollBackErr)
+				err = errors.Join(err, rollBackErr)
 			}
 		}
 		return fmt.Errorf("%s: %w", op, err)
@@ -547,7 +546,7 @@ func (k *Kms) RotateKeys(ctx context.Context, scopeId string, opt ...Option) err
 	}(); err != nil {
 		if localTx != nil {
 			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
-				err = multierror.Append(err, rollBackErr)
+				err = errors.Join(err, rollBackErr)
 			}
 		}
 		return fmt.Errorf("%s: %w", op, err)
@@ -622,7 +621,7 @@ func (k *Kms) RewrapKeys(ctx context.Context, scopeId string, opt ...Option) err
 	}(); err != nil {
 		if localTx != nil {
 			if rollBackErr := localTx.Rollback(ctx); rollBackErr != nil {
-				err = multierror.Append(err, rollBackErr)
+				err = errors.Join(err, rollBackErr)
 			}
 		}
 		return fmt.Errorf("%s: %w", op, err)
