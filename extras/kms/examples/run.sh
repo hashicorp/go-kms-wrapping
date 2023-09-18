@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
+export VAULT_ADDR=http://127.0.0.1:8200
 VAULT_RETRIES=5
 echo "Vault is starting..."
 until vault status > /dev/null 2>&1 || [ "$VAULT_RETRIES" -eq 0 ]; do
@@ -14,7 +15,6 @@ echo "Authenticating to vault..."
 vault login token=vault-plaintext-root-token
 
 echo "Initialize transit..."
-vault secrets enable transit
 echo "Adding examplekey..."
 vault write -f transit/keys/examplekey
 
