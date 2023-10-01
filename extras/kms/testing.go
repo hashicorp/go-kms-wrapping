@@ -225,6 +225,5 @@ func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause stri
 	switch i.(type) {
 	case *rootKey, *rootKeyVersion, *dataKey, *dataKeyVersion:
 		require.NoError(err, updateKeyCollectionVersion(ctx, dbw.New(conn), DefaultTableNamePrefix))
-
 	}
 }
