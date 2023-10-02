@@ -1,4 +1,4 @@
-PHONY: tools
+.PHONY: tools
 tools:
 	go generate -tags tools tools/tools.go
 
