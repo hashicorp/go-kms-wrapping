@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1499
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.9-0.20230410183110-7294f508d8d1
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
 )
 
 require (
@@ -13,6 +13,6 @@ require (
 	github.com/json-iterator/go v1.1.9 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 )
