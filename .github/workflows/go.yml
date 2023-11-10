@@ -32,7 +32,7 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
 
-      - name: WASM Build
+      - name: JS/WASM Build
         run: GOOS=js GOARCH=wasm find . -name go.mod -execdir go build ./... \;
 
       - name: Test
