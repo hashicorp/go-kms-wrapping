@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"syscall"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	gp "github.com/hashicorp/go-plugin"
@@ -39,7 +38,7 @@ func ServePlugin(wrapper wrapping.Wrapper, opt ...Option) error {
 	}
 
 	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, syscall.SIGHUP)
+	signal.Notify(signalCh, sighup)
 	go func() {
 		for {
 			<-signalCh

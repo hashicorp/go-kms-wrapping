@@ -32,6 +32,9 @@ jobs:
       - name: Build
         run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
 
+      - name: WASM Build
+        run: GOOS=js GOARCH=wasm find . -name go.mod -execdir go build ./... \;
+
       - name: Test
         # exclude the transit plugin since it's tested with the plugin-transit
         # job, which requires a vault container to be running
@@ -164,7 +167,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version-file: go.mod    
+          go-version-file: go.mod
       - name: install go-inject-tag dependency
         run: |
           go install github.com/favadi/protoc-go-inject-tag@v1.4.0
