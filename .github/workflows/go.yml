@@ -30,15 +30,15 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
 
       - name: Build
-        run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
+        run: find . -name go.mod -execdir sh -c 'pwd && CGO_ENABLED=0 go build ./... || exit 1' sh {} +
 
       - name: JS/WASM Build
-        run: GOOS=js GOARCH=wasm find . -name go.mod -execdir go build ./... \;
+        run: find . -name go.mod -execdir sh -c 'pwd && GOOS=js GOARCH=wasm CGO_CENABLED=0 go build ./... || exit 1' sh {} +
 
       - name: Test
         # exclude the transit plugin since it's tested with the plugin-transit
         # job, which requires a vault container to be running
-        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir go test ./... \;
+        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir sh -c 'pwd && go test ./... || exit 1' sh {} +
 
   sqlite:
     strategy:
