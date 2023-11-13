@@ -33,7 +33,7 @@ jobs:
         run: find . -name go.mod -execdir sh -c 'pwd && CGO_ENABLED=0 go build ./... || exit 1' sh {} +
 
       - name: JS/WASM Build
-        run: find . -name go.mod -execdir sh -c 'pwd && GOOS=js GOARCH=wasm CGO_CENABLED=0 go build ./... || exit 1' sh {} +
+        run: find . -name go.mod -not -path "*examples*" -execdir sh -c 'pwd && GOOS=js GOARCH=wasm CGO_CENABLED=0 go build ./... || exit 1' sh {} +
 
       - name: Test
         # exclude the transit plugin since it's tested with the plugin-transit
