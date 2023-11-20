@@ -179,6 +179,7 @@ jobs:
 
   # if merged -> then lint, build and finally push a commit to the buf registry
   buf_if_merged:
+    if: ${{ github.ref_name == 'main'}}
     strategy:
       matrix:
         platform: [ubuntu-latest]
