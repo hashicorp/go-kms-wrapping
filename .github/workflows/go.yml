@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ["1.20", "1.19", "1.18", "1.17"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
@@ -30,17 +30,20 @@ jobs:
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
 
       - name: Build
-        run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
+        run: find . -name go.mod -execdir sh -c 'pwd && CGO_ENABLED=0 go build ./... || exit 1' sh {} +
+
+      - name: JS/WASM Build
+        run: find . -name go.mod -not -path "*examples*" -execdir sh -c 'pwd && GOOS=js GOARCH=wasm CGO_CENABLED=0 go build ./... || exit 1' sh {} +
 
       - name: Test
         # exclude the transit plugin since it's tested with the plugin-transit
         # job, which requires a vault container to be running
-        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir go test ./... \;
+        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir sh -c 'go test ./... || exit 1' sh {} +
 
   sqlite:
     strategy:
       matrix:
-        go: ["1.20", "1.19", "1.18"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
@@ -74,7 +77,7 @@ jobs:
             "postgres:11",
             "postgres:10",
           ]
-        go: ["1.20", "1.19", "1.18"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 
@@ -116,7 +119,7 @@ jobs:
   plugin-transit:
     strategy:
       matrix:
-        go: ["1.20", "1.19", "1.18", "1.17"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 
@@ -164,7 +167,7 @@ jobs:
       - name: Set up Go 1.x
         uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version-file: go.mod    
+          go-version-file: go.mod
       - name: install go-inject-tag dependency
         run: |
           go install github.com/favadi/protoc-go-inject-tag@v1.4.0
