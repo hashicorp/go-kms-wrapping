@@ -20,6 +20,80 @@ const (
 	gcpckmsTestCryptoKey  = "vault-test-key"
 )
 
+// TestGcpKeyIdAfterConfig will test the result of calling the wrapper's KeyId()
+// after it's configured with various options
+func TestGcpKeyIdAfterConfig(t *testing.T) {
+	t.Parallel()
+	// Now test for cases where CKMS values are provided
+	checkAndSetEnvVars(t)
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		opts        []wrapping.Option
+		expectKeyId bool
+	}{
+
+		{
+			name: "expected-key-id",
+			opts: []wrapping.Option{
+				wrapping.WithConfigMap(map[string]string{"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")}),
+			},
+			expectKeyId: true,
+		},
+		{
+			name: "unexpected-key-id",
+			opts: []wrapping.Option{
+				wrapping.WithConfigMap(map[string]string{"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")}),
+				WithKeyNotRequired(true),
+			},
+			expectKeyId: false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewWrapper()
+			_, err := s.SetConfig(ctx, tc.opts...)
+			if err != nil {
+				t.Fatalf("error setting seal config: %v", err)
+			}
+			id, err := s.KeyId(ctx)
+			if err != nil {
+				t.Fatalf("unexpected error getting key id: %v", err)
+			}
+			switch {
+			case tc.expectKeyId:
+				if id == "" {
+					t.Fatalf("expected an id")
+				}
+				// Test KeyId after Encrypt call
+				input := []byte("foo")
+				swi, err := s.Encrypt(context.Background(), input)
+				if err != nil {
+					t.Fatalf("err: %s", err.Error())
+				}
+				if swi.KeyInfo.KeyId != id {
+					t.Fatalf("expected %s got: %s", id, swi.KeyInfo.KeyId)
+				}
+				postEncryptKeyId, err := s.KeyId(ctx)
+				if err != nil {
+					t.Fatalf("err: %s", err.Error())
+				}
+				if swi.KeyInfo.KeyId != postEncryptKeyId {
+					t.Fatalf("expected key info id %s to equal key id %s", swi.KeyInfo.KeyId, postEncryptKeyId)
+				}
+
+			default:
+				if id != "" {
+					t.Fatalf("unexpected id was: %s", id)
+				}
+			}
+		})
+	}
+
+}
+
 func TestGcpCkmsSeal(t *testing.T) {
 	// Do an error check before env vars are set
 	s := NewWrapper()
@@ -63,6 +137,15 @@ func TestGcpCkmsSeal_Lifecycle(t *testing.T) {
 	swi, err := s.Encrypt(context.Background(), input)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
+	}
+
+	// assert the wrappers key id matches the key id used for encryption
+	keyId, err := s.KeyId(context.Background())
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+	if swi.KeyInfo.KeyId != keyId {
+		t.Fatalf("expected %s got: %s", keyId, swi.KeyInfo.KeyId)
 	}
 
 	pt, err := s.Decrypt(context.Background(), swi)
