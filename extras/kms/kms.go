@@ -122,13 +122,6 @@ func (k *Kms) addKey(ctx context.Context, cPurpose cachePurpose, kPurpose KeyPur
 
 	opts := getOpts(opt...)
 
-	keyVersionId, err := wrapper.KeyId(ctx)
-	if err != nil {
-		return fmt.Errorf("%s: error reading wrapper key ID: %w", op, err)
-	}
-	if keyVersionId == missingId {
-		return fmt.Errorf("%s: wrapper has no key version ID: %w", op, ErrInvalidParameter)
-	}
 	switch cPurpose {
 	case externalWrapperCache:
 		k.externalWrapperCache.Store(kPurpose, wrapper)
