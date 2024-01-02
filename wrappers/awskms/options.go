@@ -66,7 +66,7 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 			case "endpoint":
 				opts.withEndpoint = v
 			case "access_key":
-				opts.withAccessKey = v
+				opts.withAccessKey = wrapping.QuietParsePath(v)
 			case "secret_key":
 				opts.withSecretKey = v
 			case "session_token":

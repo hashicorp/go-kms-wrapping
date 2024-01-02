@@ -93,7 +93,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(EnvVaultAwsKmsSealKeyId) != "" && !opts.withDisallowEnvVars:
 		k.keyId = os.Getenv(EnvVaultAwsKmsSealKeyId)
 	case opts.WithKeyId != "":
-		k.keyId = opts.WithKeyId
+		k.keyId = wrapping.QuietParsePath(opts.WithKeyId)
 	case k.keyNotRequired:
 		// key not required to set config
 	default:
@@ -109,9 +109,9 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	// Check and set AWS access key, secret key, and session token
-	k.accessKey = opts.withAccessKey
-	k.secretKey = opts.withSecretKey
-	k.sessionToken = opts.withSessionToken
+	k.accessKey = wrapping.QuietParsePath(opts.withAccessKey)
+	k.secretKey = wrapping.QuietParsePath(opts.withSecretKey)
+	k.sessionToken = wrapping.QuietParsePath(opts.withSessionToken)
 	k.sharedCredsFilename = opts.withSharedCredsFilename
 	k.sharedCredsProfile = opts.withSharedCredsProfile
 	k.webIdentityTokenFile = opts.withWebIdentityTokenFile

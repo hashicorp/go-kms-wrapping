@@ -153,3 +153,11 @@ func ParsePath(v string) (string, error) {
 	}
 	return p, nil
 }
+
+func QuietParsePath(val string) string {
+	v, err := parseutil.ParsePath(val)
+	if err != nil {
+		return val
+	}
+	return v
+}

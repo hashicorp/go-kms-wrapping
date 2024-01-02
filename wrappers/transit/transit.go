@@ -47,6 +47,9 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 	s.client = client
 
+	/*if client.mountPath == "transit-1" {
+		return nil, errors.New("transit-1 unavailable")
+	}*/
 	// Send a value to test the wrapper and to set the current key id
 	if _, err := s.Encrypt(context.Background(), []byte("a")); err != nil {
 		client.Close()

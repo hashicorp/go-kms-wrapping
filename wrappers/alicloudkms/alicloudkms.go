@@ -63,7 +63,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(EnvVaultAliCloudKmsSealKeyId) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(EnvVaultAliCloudKmsSealKeyId)
 	case opts.WithKeyId != "":
-		k.keyId = opts.WithKeyId
+		k.keyId = wrapping.QuietParsePath(opts.WithKeyId)
 	default:
 		return nil, fmt.Errorf("key id not found (env or config) for alicloud kms wrapper configuration")
 	}
