@@ -16,7 +16,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/hashicorp/go-dbw"
 	"github.com/hashicorp/go-hclog"
-	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
+	"github.com/openbao/go-kms-wrapping/extras/kms/v2/migrations"
 	"gorm.io/driver/sqlite"
 )
 

@@ -4,7 +4,7 @@
 /*
 
 This package contains only aliases to the types and functions in
-github.com/hashicorp/go-kms-wrapping/v2/aead. The purpose is to make it a bit
+github.com/openbao/go-kms-wrapping/v2/aead. The purpose is to make it a bit
 more intuitive for users of the library to make use of the AEAD wrapper since it
 has a different import path.
 

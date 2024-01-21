@@ -19,8 +19,8 @@ import (
 	source "github.com/golang-migrate/migrate/v4/source"
 	"github.com/golang-migrate/migrate/v4/source/httpfs"
 	"github.com/hashicorp/go-dbw"
-	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/openbao/go-kms-wrapping/extras/kms/v2/migrations"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
 

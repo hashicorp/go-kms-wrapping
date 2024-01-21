@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/extras/structwrapping"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/go-kms-wrapping/v2/extras/structwrapping"
 )
 
 // rootKeyVersion represents a version of a RootKey

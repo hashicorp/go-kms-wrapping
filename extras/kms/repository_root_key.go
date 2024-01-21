@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 
 // CreateRootKey inserts into the repository and returns the new root key and

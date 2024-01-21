@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 
 // CreateDataKeyVersion inserts into the repository and returns the new key

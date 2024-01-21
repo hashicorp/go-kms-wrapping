@@ -1,10 +1,10 @@
-module github.com/hashicorp/go-kms-wrapping/v2/examples/plugin-cli
+module github.com/openbao/go-kms-wrapping/v2/examples/plugin-cli
 
 go 1.20
 
 require (
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.14
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.11
 	github.com/hashicorp/go-secure-stdlib/pluginutil/v2 v2.0.6
 )
@@ -20,7 +20,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect

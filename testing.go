@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hashicorp/go-kms-wrapping/v2/internal/xor"
+	"github.com/openbao/go-kms-wrapping/v2/internal/xor"
 )
 
 // TestWrapper is a wrapper that can be used for tests

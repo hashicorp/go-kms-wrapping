@@ -1,18 +1,22 @@
-module github.com/hashicorp/go-kms-wrapping/extras/kms/examples/v2
+module github.com/openbao/go-kms-wrapping/extras/kms/examples/v2
 
 go 1.20
 
-replace github.com/hashicorp/go-kms-wrapping/plugin/v2 => ../../../plugin
+replace github.com/openbao/go-kms-wrapping/v2 => ../../../
 
-replace github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 => ../../../wrappers/transit
+replace github.com/openbao/go-kms-wrapping/extras/kms/v2 => ../
+
+replace github.com/openbao/go-kms-wrapping/plugin/v2 => ../../../plugin
+
+replace github.com/openbao/go-kms-wrapping/wrappers/transit/v2 => ../../../wrappers/transit
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/hashicorp/go-dbw v0.1.1-0.20231011231112-ed00db42814c
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/extras/kms/v2 v2.0.0-20231027204625-466117c39bed
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
-	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.8
+	github.com/openbao/go-kms-wrapping/extras/kms/v2 v2.0.0-20231027204625-466117c39bed
+	github.com/openbao/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.0.8
 	github.com/hashicorp/go-secure-stdlib/configutil/v2 v2.0.11
 	gorm.io/driver/sqlite v1.5.4
 )
@@ -33,7 +37,7 @@ require (
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.0.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect

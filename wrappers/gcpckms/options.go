@@ -6,7 +6,7 @@ package gcpckms
 import (
 	"strconv"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 
 // getOpts iterates the inbound Options and returns a struct

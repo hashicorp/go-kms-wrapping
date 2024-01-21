@@ -1,8 +1,10 @@
-module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
+module github.com/openbao/go-kms-wrapping/wrappers/aead/v2
 
 go 1.20
 
-require github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+replace github.com/openbao/go-kms-wrapping/v2 => ../../
+
+require github.com/openbao/go-kms-wrapping/v2 v2.0.14
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

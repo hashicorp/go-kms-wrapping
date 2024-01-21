@@ -1,14 +1,14 @@
-module github.com/hashicorp/go-kms-wrapping/examples/cli/plugins/mains/transit
+module github.com/openbao/go-kms-wrapping/examples/cli/plugins/mains/transit
 
 go 1.20
 
-replace github.com/hashicorp/go-kms-wrapping/plugin/v2 => ../../../../../plugin
+replace github.com/openbao/go-kms-wrapping/plugin/v2 => ../../../../../plugin
 
-replace github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 => ../../../../../wrappers/transit
+replace github.com/openbao/go-kms-wrapping/wrappers/transit/v2 => ../../../../../wrappers/transit
 
 require (
-	github.com/hashicorp/go-kms-wrapping/plugin/v2 v2.0.5
-	github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 v2.0.8
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.0.5
+	github.com/openbao/go-kms-wrapping/wrappers/transit/v2 v2.0.8
 )
 
 require (
@@ -20,7 +20,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14 // indirect
+	github.com/openbao/go-kms-wrapping/v2 v2.0.14 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.5.2 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
