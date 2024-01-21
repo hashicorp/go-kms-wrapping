@@ -2,6 +2,10 @@ module github.com/hashicorp/go-kms-wrapping/extras/kms/examples/v2
 
 go 1.20
 
+replace github.com/hashicorp/go-kms-wrapping/plugin/v2 => ../../../plugin
+
+replace github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2 => ../../../wrappers/transit
+
 require (
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/hashicorp/go-dbw v0.1.1-0.20231011231112-ed00db42814c
@@ -24,6 +28,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -43,7 +48,6 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/vault/api v1.9.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
@@ -71,6 +75,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/run v1.1.0 // indirect
+	github.com/openbao/openbao/api v0.0.0-20231222185543-009633ab13d1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -90,7 +95,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/grpc v1.59.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
-	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/postgres v1.5.2 // indirect
 	gorm.io/gorm v1.25.4 // indirect

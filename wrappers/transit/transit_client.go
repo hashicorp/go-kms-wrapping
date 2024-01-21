@@ -13,7 +13,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/vault/api"
+	"github.com/openbao/openbao/api"
 )
 
 const (
