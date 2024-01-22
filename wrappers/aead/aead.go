@@ -6,8 +6,8 @@ package aead
 import (
 	"io"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	baseaead "github.com/hashicorp/go-kms-wrapping/v2/aead"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	baseaead "github.com/openbao/go-kms-wrapping/v2/aead"
 )
 
 type (

@@ -12,7 +12,7 @@ import (
 	"io"
 	"sync"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 
 // Sha256Sum computes SHA256 message digest. Options supported: WithHexEncoding

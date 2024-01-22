@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 
 // LookupRootKeyVersion will look up a root key version in the repository. If

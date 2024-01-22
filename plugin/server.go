@@ -6,7 +6,7 @@ package plugin
 import (
 	context "context"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )

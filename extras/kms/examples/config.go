@@ -12,9 +12,9 @@ import (
 	"io"
 	"os"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/aead"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/go-kms-wrapping/v2/aead"
+	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 	"github.com/hashicorp/go-secure-stdlib/configutil/v2"
 )
 

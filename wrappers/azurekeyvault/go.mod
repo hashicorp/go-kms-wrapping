@@ -1,6 +1,8 @@
-module github.com/hashicorp/go-kms-wrapping/wrappers/azurekeyvault/v2
+module github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2
 
 go 1.20
+
+replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.9.0
@@ -9,7 +11,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.14
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.18.0
 )

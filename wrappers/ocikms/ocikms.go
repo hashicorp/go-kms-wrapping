@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/oracle/oci-go-sdk/v60/common"
 	"github.com/oracle/oci-go-sdk/v60/common/auth"
 	"github.com/oracle/oci-go-sdk/v60/keymanagement"

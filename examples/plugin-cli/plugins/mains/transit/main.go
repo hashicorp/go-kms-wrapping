@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	gkwp "github.com/hashicorp/go-kms-wrapping/plugin/v2"
-	"github.com/hashicorp/go-kms-wrapping/wrappers/transit/v2"
+	gkwp "github.com/openbao/go-kms-wrapping/plugin/v2"
+	"github.com/openbao/go-kms-wrapping/wrappers/transit/v2"
 )
 
 func main() {

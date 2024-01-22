@@ -13,9 +13,9 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/go-dbw"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/aead"
-	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/go-kms-wrapping/v2/aead"
+	"github.com/openbao/go-kms-wrapping/v2/extras/multi"
 	"github.com/hashicorp/go-multierror"
 )
 

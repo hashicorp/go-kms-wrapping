@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"testing"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/stretchr/testify/require"
 )

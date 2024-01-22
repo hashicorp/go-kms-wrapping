@@ -1,12 +1,15 @@
-module github.com/hashicorp/go-kms-wrapping/plugin/v2
+module github.com/openbao/go-kms-wrapping/plugin/v2
 
 go 1.20
 
+replace github.com/openbao/go-kms-wrapping/v2 => ../
+
 require (
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.15
 	github.com/hashicorp/go-plugin v1.5.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
+	github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0

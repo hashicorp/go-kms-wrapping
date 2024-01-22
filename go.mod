@@ -1,4 +1,4 @@
-module github.com/hashicorp/go-kms-wrapping/v2
+module github.com/openbao/go-kms-wrapping/v2
 
 go 1.20
 

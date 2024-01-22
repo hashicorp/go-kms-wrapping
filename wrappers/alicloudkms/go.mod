@@ -1,10 +1,12 @@
-module github.com/hashicorp/go-kms-wrapping/wrappers/alicloudkms/v2
+module github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2
 
 go 1.20
 
+replace github.com/openbao/go-kms-wrapping/v2 => ../../
+
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1499
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.14
 )
 
 require (

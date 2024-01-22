@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/azure"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
 

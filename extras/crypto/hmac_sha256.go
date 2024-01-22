@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"io"
 
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/mr-tron/base58"
 	"golang.org/x/crypto/blake2b"
 	"google.golang.org/protobuf/proto"

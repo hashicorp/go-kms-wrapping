@@ -11,7 +11,7 @@ import (
 
 	cloudkms "cloud.google.com/go/kms/apiv1"
 	"cloud.google.com/go/kms/apiv1/kmspb"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	context "golang.org/x/net/context"
 	"google.golang.org/api/option"
 )

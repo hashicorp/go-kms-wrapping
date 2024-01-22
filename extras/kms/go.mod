@@ -1,16 +1,18 @@
-module github.com/hashicorp/go-kms-wrapping/extras/kms/v2
+module github.com/openbao/go-kms-wrapping/extras/kms/v2
 
 go 1.20
+
+replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/google/go-cmp v0.6.0
 	github.com/hashicorp/go-dbw v0.1.1-0.20231011231112-ed00db42814c
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-uuid v1.0.3
+	github.com/openbao/go-kms-wrapping/v2 v2.0.14
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.31.0
 	mvdan.cc/gofumpt v0.5.0

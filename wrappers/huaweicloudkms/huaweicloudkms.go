@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/hashicorp/go-cleanhttp"
-	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/huaweicloud/golangsdk"
 	huaweisdk "github.com/huaweicloud/golangsdk/openstack"
 	kmsKeys "github.com/huaweicloud/golangsdk/openstack/kms/v1/keys"
