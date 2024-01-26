@@ -20,10 +20,9 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
-	"github.com/Azure/go-autorest/autorest/azure"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -34,6 +33,15 @@ const (
 
 	EnvAzureKeyVaultWrapperKeyName = "AZUREKEYVAULT_WRAPPER_KEY_NAME"
 	EnvVaultAzureKeyVaultKeyName   = "VAULT_AZUREKEYVAULT_KEY_NAME"
+
+	azurePublicCloudEnvName = "AZUREPUBLICCLOUD"
+	azureChinaCloudEnvName  = "AZURECHINACLOUD"
+	azureUSGovCloudEnvName  = "AZUREUSGOVERNMENTCLOUD"
+
+	// From https://devblogs.microsoft.com/azure-sdk/guidance-for-applications-using-the-key-vault-libraries/
+	azurePublicCloudKeyVaultDNSSuffix = "vault.azure.net"
+	azureChinaCloudKeyVaultDNSSuffix  = "vault.azure.cn"
+	azureUSGovCloudKeyVaultDNSSuffix  = "vault.usgovcloudapi.net"
 )
 
 // Wrapper is an Wrapper that uses Azure Key Vault
@@ -42,15 +50,17 @@ const (
 // and AES key and wrap the key using Key Vault and store it with the
 // data
 type Wrapper struct {
-	tenantID     string
-	clientID     string
-	clientSecret string
-	vaultName    string
-	keyName      string
+	tenantID          string
+	clientID          string
+	clientSecret      string
+	vaultName         string
+	keyName           string
+	keyVaultDNSSuffix string
+	keyVaultEndpoint  string
 
 	currentKeyId *atomic.Value
 
-	environment    azure.Environment
+	cloudConfig    cloud.Configuration
 	resource       string
 	client         *azkeys.Client
 	logger         hclog.Logger
@@ -115,10 +125,10 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 		envName = opts.withEnvironment
 	}
 	if envName == "" {
-		v.environment = azure.PublicCloud
+		v.cloudConfig = cloud.AzurePublic
 	} else {
 		var err error
-		v.environment, err = azure.EnvironmentFromName(envName)
+		v.cloudConfig, err = cloudConfigFromName(envName)
 		if err != nil {
 			return nil, err
 		}
@@ -131,12 +141,12 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	if azResource == "" {
 		azResource = opts.withResource
 		if azResource == "" {
-			azResource = v.environment.KeyVaultDNSSuffix
+			azResource, err = keyVaultDNSSuffixFromName(envName)
 		}
 	}
-	v.environment.KeyVaultDNSSuffix = azResource
+	v.keyVaultDNSSuffix = azResource
 	v.resource = "https://" + azResource + "/"
-	v.environment.KeyVaultEndpoint = v.resource
+	v.keyVaultEndpoint = v.resource
 
 	switch {
 	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "" && !opts.withDisallowEnvVars:
@@ -180,7 +190,11 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 			if keyInfo.Key == nil {
 				return nil, errors.New("no key information returned")
 			}
-			v.currentKeyId.Store(ParseKeyVersion(to.String((*string)(keyInfo.Key.KID))))
+			keyID := ""
+			if (*string)(keyInfo.Key.KID) != nil {
+				keyID = *(*string)(keyInfo.Key.KID)
+			}
+			v.currentKeyId.Store(ParseKeyVersion(keyID))
 		}
 
 		v.client = client
@@ -189,7 +203,7 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	// Map that holds non-sensitive configuration info
 	wrapConfig := new(wrapping.WrapperConfig)
 	wrapConfig.Metadata = make(map[string]string)
-	wrapConfig.Metadata["environment"] = v.environment.Name
+	wrapConfig.Metadata["environment"] = strings.ToUpper(envName)
 	wrapConfig.Metadata["vault_name"] = v.vaultName
 	wrapConfig.Metadata["key_name"] = v.keyName
 	wrapConfig.Metadata["resource"] = v.resource
@@ -284,23 +298,28 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 }
 
 func (v *Wrapper) buildBaseURL() string {
-	return fmt.Sprintf("https://%s.%s/", v.vaultName, v.environment.KeyVaultDNSSuffix)
+	return fmt.Sprintf("https://%s.%s/", v.vaultName, v.keyVaultDNSSuffix)
 }
 
 func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client, error) {
 	var err error
 	var cred azcore.TokenCredential
+	clientCloudOpts := azcore.ClientOptions{Cloud: v.cloudConfig}
 
 	switch {
 	// Use client secret if provided
 	case v.tenantID != "" && v.clientID != "" && v.clientSecret != "":
-		cred, err = azidentity.NewClientSecretCredential(v.tenantID, v.clientID, v.clientSecret, nil)
+		options := &azidentity.ClientSecretCredentialOptions{
+			ClientOptions: clientCloudOpts,
+		}
+		cred, err = azidentity.NewClientSecretCredential(v.tenantID, v.clientID, v.clientSecret, options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get client secret credentials %w", err)
 		}
 	// By default let Azure select existing credentials
 	default:
-		cred, err = azidentity.NewDefaultAzureCredential(nil)
+		options := &azidentity.DefaultAzureCredentialOptions{ClientOptions: clientCloudOpts}
+		cred, err = azidentity.NewDefaultAzureCredential(options)
 		if err != nil {
 			return nil, fmt.Errorf("failed to acquire managed identity credentials %w", err)
 		}
@@ -364,4 +383,32 @@ func (v *Wrapper) BaseURL() string {
 func ParseKeyVersion(kid string) string {
 	keyVersionParts := strings.Split(kid, "/")
 	return keyVersionParts[len(keyVersionParts)-1]
+}
+
+func cloudConfigFromName(name string) (cloud.Configuration, error) {
+	configs := map[string]cloud.Configuration{
+		azureChinaCloudEnvName:  cloud.AzureChina,
+		azurePublicCloudEnvName: cloud.AzurePublic,
+		azureUSGovCloudEnvName:  cloud.AzureGovernment,
+	}
+	name = strings.ToUpper(name)
+	c, ok := configs[name]
+	if !ok {
+		return c, fmt.Errorf("err: no cloud configuration matching the name %q", name)
+	}
+	return c, nil
+}
+
+func keyVaultDNSSuffixFromName(envName string) (string, error) {
+	urls := map[string]string{
+		azureChinaCloudEnvName:  azureChinaCloudKeyVaultDNSSuffix,
+		azurePublicCloudEnvName: azurePublicCloudKeyVaultDNSSuffix,
+		azureUSGovCloudEnvName:  azureUSGovCloudKeyVaultDNSSuffix,
+	}
+	envName = strings.ToUpper(envName)
+	c, ok := urls[envName]
+	if !ok {
+		return c, fmt.Errorf("err: no cloud configuration matching the name %q", envName)
+	}
+	return c, nil
 }

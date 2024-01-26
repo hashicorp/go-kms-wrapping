@@ -71,7 +71,7 @@ func TestAzureKeyVault_IgnoreEnv(t *testing.T) {
 	require.Equal(t, config["tenant_id"], s.tenantID)
 	require.Equal(t, config["client_id"], s.clientID)
 	require.Equal(t, config["client_secret"], s.clientSecret)
-	require.Equal(t, config["environment"], s.environment.Name)
+	require.Equal(t, config["environment"], azure.PublicCloud.Name)
 	require.Equal(t, "https://"+config["resource"]+"/", s.resource)
 	require.Equal(t, config["vault_name"], s.vaultName)
 	require.Equal(t, config["key_name"], s.keyName)
