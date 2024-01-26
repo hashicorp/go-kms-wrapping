@@ -142,6 +142,9 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 		azResource = opts.withResource
 		if azResource == "" {
 			azResource, err = keyVaultDNSSuffixFromName(envName)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	v.keyVaultDNSSuffix = azResource
@@ -408,7 +411,7 @@ func keyVaultDNSSuffixFromName(envName string) (string, error) {
 	envName = strings.ToUpper(envName)
 	c, ok := urls[envName]
 	if !ok {
-		return c, fmt.Errorf("err: no cloud configuration matching the name %q", envName)
+		return c, fmt.Errorf("err: no keyVaultDNSSuffix matching the name %q", envName)
 	}
 	return c, nil
 }
