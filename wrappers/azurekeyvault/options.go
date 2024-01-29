@@ -113,3 +113,103 @@ type options struct {
 func getDefaultOptions() options {
 	return options{}
 }
+
+// WithDisallowEnvVars provides a way to disable using env vars
+func WithDisallowEnvVars(with bool) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withDisallowEnvVars = with
+			return nil
+		})
+	}
+}
+
+// WithKeyNotRequired provides a way to not require a key at config time
+func WithKeyNotRequired(with bool) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withKeyNotRequired = with
+			return nil
+		})
+	}
+}
+
+// WithTenantId provides a way to chose the tenant ID
+func WithTenantId(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withTenantId = with
+			return nil
+		})
+	}
+}
+
+// WithClientId provides a way to chose the client ID
+func WithClientId(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withClientId = with
+			return nil
+		})
+	}
+}
+
+// WithClientSecret provides a way to chose the client secret
+func WithClientSecret(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withClientSecret = with
+			return nil
+		})
+	}
+}
+
+// WithEnvironment provides a way to chose the environment
+func WithEnvironment(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withEnvironment = with
+			return nil
+		})
+	}
+}
+
+// WithResource provides a way to chose the resource
+func WithResource(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withResource = with
+			return nil
+		})
+	}
+}
+
+// WithVaultName provides a way to chose the vault name
+func WithVaultName(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withVaultName = with
+			return nil
+		})
+	}
+}
+
+// WithKeyName provides a way to chose the key name
+func WithKeyName(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withKeyName = with
+			return nil
+		})
+	}
+}
+
+// WithLogger provides a way to pass in a logger
+func WithLogger(with hclog.Logger) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withLogger = with
+			return nil
+		})
+	}
+}
