@@ -128,7 +128,7 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 		v.cloudConfig = cloud.AzurePublic
 	} else {
 		var err error
-		v.cloudConfig, err = cloudConfigFromName(envName)
+		v.cloudConfig, _, err = cloudConfigAndKeyVaultDNSSuffixFromName(envName)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +141,7 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	if azResource == "" {
 		azResource = opts.withResource
 		if azResource == "" {
-			azResource, err = keyVaultDNSSuffixFromName(envName)
+			_, azResource, err = cloudConfigAndKeyVaultDNSSuffixFromName(envName)
 			if err != nil {
 				return nil, err
 			}
@@ -388,30 +388,15 @@ func ParseKeyVersion(kid string) string {
 	return keyVersionParts[len(keyVersionParts)-1]
 }
 
-func cloudConfigFromName(name string) (cloud.Configuration, error) {
-	configs := map[string]cloud.Configuration{
-		azureChinaCloudEnvName:  cloud.AzureChina,
-		azurePublicCloudEnvName: cloud.AzurePublic,
-		azureUSGovCloudEnvName:  cloud.AzureGovernment,
+func cloudConfigAndKeyVaultDNSSuffixFromName(name string) (cloud.Configuration, string, error) {
+	switch name {
+	case azureChinaCloudEnvName:
+		return cloud.AzureChina, azureChinaCloudKeyVaultDNSSuffix, nil
+	case azurePublicCloudEnvName:
+		return cloud.AzurePublic, azurePublicCloudKeyVaultDNSSuffix, nil
+	case azureUSGovCloudEnvName:
+		return cloud.AzureGovernment, azureUSGovCloudKeyVaultDNSSuffix, nil
+	default:
+		return cloud.Configuration{}, "", fmt.Errorf("err: no cloud configuration or keyVaultDNSSuffix matching the name %q", name)
 	}
-	name = strings.ToUpper(name)
-	c, ok := configs[name]
-	if !ok {
-		return c, fmt.Errorf("err: no cloud configuration matching the name %q", name)
-	}
-	return c, nil
-}
-
-func keyVaultDNSSuffixFromName(envName string) (string, error) {
-	urls := map[string]string{
-		azureChinaCloudEnvName:  azureChinaCloudKeyVaultDNSSuffix,
-		azurePublicCloudEnvName: azurePublicCloudKeyVaultDNSSuffix,
-		azureUSGovCloudEnvName:  azureUSGovCloudKeyVaultDNSSuffix,
-	}
-	envName = strings.ToUpper(envName)
-	c, ok := urls[envName]
-	if !ok {
-		return c, fmt.Errorf("err: no keyVaultDNSSuffix matching the name %q", envName)
-	}
-	return c, nil
 }
