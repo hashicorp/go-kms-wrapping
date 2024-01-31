@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/azure"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +60,7 @@ func TestAzureKeyVault_IgnoreEnv(t *testing.T) {
 		"tenant_id":         "a-tenant-id",
 		"client_id":         "a-client-id",
 		"client_secret":     "a-client-secret",
-		"environment":       azure.PublicCloud.Name,
+		"environment":       azurePublicCloudEnvName,
 		"resource":          "a-resource",
 		"vault_name":        "a-vault-name",
 		"key_name":          "a-key-name",
@@ -71,7 +70,7 @@ func TestAzureKeyVault_IgnoreEnv(t *testing.T) {
 	require.Equal(t, config["tenant_id"], s.tenantID)
 	require.Equal(t, config["client_id"], s.clientID)
 	require.Equal(t, config["client_secret"], s.clientSecret)
-	require.Equal(t, config["environment"], azure.PublicCloud.Name)
+	require.Equal(t, config["environment"], azurePublicCloudEnvName)
 	require.Equal(t, "https://"+config["resource"]+"/", s.resource)
 	require.Equal(t, config["vault_name"], s.vaultName)
 	require.Equal(t, config["key_name"], s.keyName)

@@ -56,7 +56,6 @@ type Wrapper struct {
 	vaultName         string
 	keyName           string
 	keyVaultDNSSuffix string
-	keyVaultEndpoint  string
 
 	currentKeyId *atomic.Value
 
@@ -149,7 +148,6 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	}
 	v.keyVaultDNSSuffix = azResource
 	v.resource = "https://" + azResource + "/"
-	v.keyVaultEndpoint = v.resource
 
 	switch {
 	case os.Getenv(EnvAzureKeyVaultWrapperVaultName) != "" && !opts.withDisallowEnvVars:
@@ -389,7 +387,7 @@ func ParseKeyVersion(kid string) string {
 }
 
 func cloudConfigAndKeyVaultDNSSuffixFromName(name string) (cloud.Configuration, string, error) {
-	switch name {
+	switch strings.ToUpper(name) {
 	case azureChinaCloudEnvName:
 		return cloud.AzureChina, azureChinaCloudKeyVaultDNSSuffix, nil
 	case azurePublicCloudEnvName:
