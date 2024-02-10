@@ -3,11 +3,11 @@
 
 syntax = "proto3";
 
-package github.com.hashicorp.go.kms.wrapping.plugin.v2;
+package github.com.openbao.go.kms.wrapping.plugin.v2;
 
-import "github.com.hashicorp.go.kms.wrapping.v2.types.proto";
+import "github.com.openbao.go.kms.wrapping.v2.types.proto";
 
-option go_package = "github.com/hashicorp/go-kms-wrapping/v2/plugin;plugin";
+option go_package = "github.com/openbao/go-kms-wrapping/v2/plugin;plugin";
 
 message TypeRequest {}
 
@@ -22,25 +22,25 @@ message KeyIdResponse {
 }
 
 message SetConfigRequest {
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message SetConfigResponse {
-  github.com.hashicorp.go.kms.wrapping.v2.types.WrapperConfig wrapper_config = 10;
+  github.com.openbao.go.kms.wrapping.v2.types.WrapperConfig wrapper_config = 10;
 }
 
 message EncryptRequest {
   bytes plaintext = 10;
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message EncryptResponse {
-  github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
+  github.com.openbao.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
 }
 
 message DecryptRequest {
-  github.com.hashicorp.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+  github.com.openbao.go.kms.wrapping.v2.types.BlobInfo ciphertext = 10;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 20;
 }
 
 message DecryptResponse {
@@ -66,12 +66,12 @@ service Wrapping {
 }
 
 message InitRequest {
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 20;
 }
 message InitResponse {}
 
 message FinalizeRequest {
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 20;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 20;
 }
 message FinalizeResponse {}
 
@@ -86,17 +86,17 @@ message KeyBytesResponse {
 }
 
 message SignRequest {
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 10;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 10;
   bytes msg = 20;
 }
 message SignResponse {
-  github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo sig_info = 10;
+  github.com.openbao.go.kms.wrapping.v2.types.SigInfo sig_info = 10;
 }
 
 message VerifyRequest {
-  github.com.hashicorp.go.kms.wrapping.v2.types.Options options = 10;
+  github.com.openbao.go.kms.wrapping.v2.types.Options options = 10;
   bytes msg = 20;
-  github.com.hashicorp.go.kms.wrapping.v2.types.SigInfo sig_info = 30;
+  github.com.openbao.go.kms.wrapping.v2.types.SigInfo sig_info = 30;
 }
 message VerifyResponse {
   bool verified = 10;

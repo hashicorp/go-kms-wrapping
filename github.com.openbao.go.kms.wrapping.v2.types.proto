@@ -3,11 +3,11 @@
 
 syntax = "proto3";
 
-package github.com.hashicorp.go.kms.wrapping.v2.types;
+package github.com.openbao.go.kms.wrapping.v2.types;
 
 import "google/protobuf/struct.proto";
 
-option go_package = "github.com/hashicorp/go-kms-wrapping/v2;wrapping";
+option go_package = "github.com/openbao/go-kms-wrapping/v2;wrapping";
 
 // WrapperConfig is the result of a call to SetConfig on a wrapper, returning
 // relevant information about the wrapper and its updated configuration

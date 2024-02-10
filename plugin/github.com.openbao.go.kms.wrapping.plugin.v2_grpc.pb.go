@@ -5,7 +5,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             (unknown)
-// source: plugin/github.com.hashicorp.go.kms.wrapping.plugin.v2.proto
+// source: plugin/github.com.openbao.go.kms.wrapping.plugin.v2.proto
 
 package plugin
 
@@ -22,15 +22,15 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Wrapping_Type_FullMethodName      = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Type"
-	Wrapping_KeyId_FullMethodName     = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/KeyId"
-	Wrapping_SetConfig_FullMethodName = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/SetConfig"
-	Wrapping_Encrypt_FullMethodName   = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Encrypt"
-	Wrapping_Decrypt_FullMethodName   = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Decrypt"
-	Wrapping_Init_FullMethodName      = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Init"
-	Wrapping_Finalize_FullMethodName  = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/Finalize"
-	Wrapping_HmacKeyId_FullMethodName = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/HmacKeyId"
-	Wrapping_KeyBytes_FullMethodName  = "/github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping/KeyBytes"
+	Wrapping_Type_FullMethodName      = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/Type"
+	Wrapping_KeyId_FullMethodName     = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/KeyId"
+	Wrapping_SetConfig_FullMethodName = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/SetConfig"
+	Wrapping_Encrypt_FullMethodName   = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/Encrypt"
+	Wrapping_Decrypt_FullMethodName   = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/Decrypt"
+	Wrapping_Init_FullMethodName      = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/Init"
+	Wrapping_Finalize_FullMethodName  = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/Finalize"
+	Wrapping_HmacKeyId_FullMethodName = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/HmacKeyId"
+	Wrapping_KeyBytes_FullMethodName  = "/github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping/KeyBytes"
 )
 
 // WrappingClient is the client API for Wrapping service.
@@ -369,7 +369,7 @@ func _Wrapping_KeyBytes_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Wrapping_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "github.com.hashicorp.go.kms.wrapping.plugin.v2.Wrapping",
+	ServiceName: "github.com.openbao.go.kms.wrapping.plugin.v2.Wrapping",
 	HandlerType: (*WrappingServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -410,5 +410,5 @@ var Wrapping_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "plugin/github.com.hashicorp.go.kms.wrapping.plugin.v2.proto",
+	Metadata: "plugin/github.com.openbao.go.kms.wrapping.plugin.v2.proto",
 }

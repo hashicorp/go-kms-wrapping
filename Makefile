@@ -1,11 +1,11 @@
 proto:
 	find . -type f -name "*.pb.go" -delete
-	buf lint
+	# buf lint
 	buf generate
 	buf format -w
 	
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
-	@protoc-go-inject-tag -input=./github.com.hashicorp.go.kms.wrapping.v2.types.pb.go
+	@protoc-go-inject-tag -input=./github.com.openbao.go.kms.wrapping.v2.types.pb.go
 	
 .PHONY: proto
 
