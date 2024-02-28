@@ -283,18 +283,27 @@ func (k *Wrapper) Client() kmsiface.KMSAPI {
 
 // GetAwsKmsClient returns an instance of the KMS client.
 func (k *Wrapper) GetAwsKmsClient() (*kms.KMS, error) {
-	credsConfig := &awsutil.CredentialsConfig{}
-
-	credsConfig.AccessKey = k.accessKey
-	credsConfig.SecretKey = k.secretKey
-	credsConfig.SessionToken = k.sessionToken
-	credsConfig.Filename = k.sharedCredsFilename
-	credsConfig.Profile = k.sharedCredsProfile
-	credsConfig.RoleARN = k.roleArn
-	credsConfig.RoleSessionName = k.roleSessionName
-	credsConfig.WebIdentityTokenFile = k.webIdentityTokenFile
-	credsConfig.Region = k.region
-	credsConfig.Logger = k.logger
+	credsConfig, err := awsutil.NewCredentialsConfig(
+		awsutil.WithLogger(k.logger),
+		awsutil.WithAccessKey(k.accessKey),
+		awsutil.WithSecretKey(k.secretKey),
+		awsutil.WithRoleArn(k.roleArn),
+		awsutil.WithRoleSessionName(k.roleSessionName),
+		awsutil.WithWebIdentityTokenFile(k.webIdentityTokenFile),
+		awsutil.WithRegion(k.region),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if k.sessionToken != "" {
+		credsConfig.SessionToken = k.sessionToken
+	}
+	if k.sharedCredsFilename != "" {
+		credsConfig.Filename = k.sharedCredsFilename
+	}
+	if k.sharedCredsProfile != "" {
+		credsConfig.Profile = k.sharedCredsProfile
+	}
 
 	credsConfig.HTTPClient = cleanhttp.DefaultClient()
 
