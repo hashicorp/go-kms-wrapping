@@ -1,10 +1,10 @@
 module github.com/openbao/go-kms-wrapping/wrappers/aead/v2
 
-go 1.20
+go 1.22.1
 
 replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
-require github.com/openbao/go-kms-wrapping/v2 v2.0.14
+require github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -17,3 +17,5 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+retract [v2.0.0, v2.0.8]

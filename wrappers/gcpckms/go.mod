@@ -1,12 +1,12 @@
 module github.com/openbao/go-kms-wrapping/wrappers/gcpckms/v2
 
-go 1.20
+go 1.22.1
 
 replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
 require (
 	cloud.google.com/go/kms v1.10.1
-	github.com/openbao/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
 	golang.org/x/net v0.17.0
 	google.golang.org/api v0.114.0
 )
@@ -30,3 +30,5 @@ require (
 	google.golang.org/grpc v1.56.3 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
+
+retract [v2.0.0, v2.0.10]

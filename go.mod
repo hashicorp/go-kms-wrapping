@@ -1,6 +1,6 @@
 module github.com/openbao/go-kms-wrapping/v2
 
-go 1.20
+go 1.22.1
 
 require (
 	github.com/hashicorp/go-uuid v1.0.3
@@ -19,3 +19,5 @@ require (
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+retract [v2.0.0, v2.0.15]

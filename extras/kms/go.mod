@@ -1,6 +1,6 @@
 module github.com/openbao/go-kms-wrapping/extras/kms/v2
 
-go 1.20
+go 1.22.1
 
 replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
 	github.com/hashicorp/go-uuid v1.0.3
-	github.com/openbao/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.31.0
 	mvdan.cc/gofumpt v0.5.0
@@ -54,3 +54,5 @@ require (
 	gorm.io/driver/sqlite v1.5.3 // indirect
 	gorm.io/gorm v1.25.4 // indirect
 )
+
+retract [v2.0.0, v2.0.15]

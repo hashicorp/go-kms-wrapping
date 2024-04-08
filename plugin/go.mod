@@ -1,12 +1,11 @@
 module github.com/openbao/go-kms-wrapping/plugin/v2
 
-go 1.20
+go 1.22.1
 
 replace github.com/openbao/go-kms-wrapping/v2 => ../
 
 require (
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.15
 	github.com/hashicorp/go-plugin v1.5.2
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2
 	github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
@@ -35,3 +34,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+retract [v2.0.0, v2.0.6]

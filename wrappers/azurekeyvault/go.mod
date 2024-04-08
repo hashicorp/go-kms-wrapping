@@ -1,6 +1,6 @@
 module github.com/openbao/go-kms-wrapping/wrappers/azurekeyvault/v2
 
-go 1.20
+go 1.22.1
 
 replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
@@ -11,7 +11,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/openbao/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/net v0.18.0
 )
@@ -44,3 +44,5 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+retract [v2.0.0, v2.0.10]

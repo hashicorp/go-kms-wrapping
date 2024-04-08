@@ -1,12 +1,12 @@
 module github.com/openbao/go-kms-wrapping/wrappers/alicloudkms/v2
 
-go 1.20
+go 1.22.1
 
 replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1499
-	github.com/openbao/go-kms-wrapping/v2 v2.0.14
+	github.com/openbao/go-kms-wrapping/v2 v2.0.0-00010101000000-000000000000
 )
 
 require (
@@ -18,3 +18,5 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 )
+
+retract [v2.0.0, v2.0.2]
