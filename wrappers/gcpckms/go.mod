@@ -5,7 +5,7 @@ go 1.20
 require (
 	cloud.google.com/go/kms v1.10.1
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
-	golang.org/x/net v0.17.0
+	golang.org/x/net v0.23.0
 	google.golang.org/api v0.114.0
 )
 
@@ -21,8 +21,8 @@ require (
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/oauth2 v0.7.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/grpc v1.56.3 // indirect
