@@ -225,15 +225,18 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 				return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
 			}
 			if opts.withKeyVersionId == "" {
+				fmt.Printf("%s: returning cached wrapper for scope: %s\n", op, scopeId)
 				return wrapper, nil
 			}
 			if keyIdVersionWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdVersionWrapper != nil {
+				fmt.Printf("%s: returning cached wrapper for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
 				return keyIdVersionWrapper, nil
 			}
 			// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 		}
 	}
 
+	fmt.Printf("%s: cache misss for scope: %s\n", op, scopeId)
 	// We don't have it cached, so we'll need to read from the database. Get the
 	// root for the scope as we'll need it to decrypt the value coming from the
 	// DB. We don't cache the roots as we expect that after a few calls the
@@ -246,6 +249,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, fmt.Errorf("%s: got nil root wrapper for scope %q: %w", op, scopeId, ErrInvalidParameter)
 	}
 
+	fmt.Printf("%s: loaded root key for scope: %s\n", op, scopeId)
 	if purpose == KeyPurposeRootKey {
 		return rootWrapper, nil
 	}
@@ -254,17 +258,20 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	if err != nil {
 		return nil, fmt.Errorf("%s: error loading %q for scope %q: %w", op, purpose, scopeId, err)
 	}
+	fmt.Printf("%s: loaded dek key for scope: %s purpose: %s\n", op, scopeId, purpose)
 	if err := k.addKey(ctx, scopeWrapperCache, purpose, wrapper, WithKeyVersionId(scopeId+string(purpose))); err != nil {
 		return nil, fmt.Errorf("%s: error adding key to cache: %w", op, err)
 	}
 
 	if opts.withKeyVersionId != "" {
 		if keyIdVersionWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdVersionWrapper != nil {
+			fmt.Printf("%s: returning wrapper for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
 			return keyIdVersionWrapper, nil
 		}
 		return nil, fmt.Errorf("%s: unable to find specified key version ID: %w", op, ErrKeyNotFound)
 	}
 
+	fmt.Printf("%s: returning wrapper for scope: %s\n", op, scopeId)
 	return wrapper, nil
 }
 
@@ -764,6 +771,7 @@ func (k *Kms) loadRoot(ctx context.Context, scopeId string, opt ...Option) (_ *m
 		return nil, "", fmt.Errorf("%s: no root key versions found for scope %q: %w", op, scopeId, ErrKeyNotFound)
 	}
 
+	fmt.Printf("%s: got %d key versions for scope: %s\n", op, len(rootKeyVersions), scopeId)
 	var pooled *multi.PooledWrapper
 	for i, keyVersion := range rootKeyVersions {
 		var err error
@@ -827,6 +835,7 @@ func (k *Kms) loadDek(ctx context.Context, scopeId string, purpose KeyPurpose, r
 	if len(keyVersions) == 0 {
 		return nil, fmt.Errorf("%s: no %q key versions found for scope %q: %w", op, purpose, scopeId, ErrKeyNotFound)
 	}
+	fmt.Printf("%s: got %d key versions for scope: %s\n", op, len(keyVersions), scopeId)
 
 	var pooled *multi.PooledWrapper
 	for i, keyVersion := range keyVersions {
