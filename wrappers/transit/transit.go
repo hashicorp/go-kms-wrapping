@@ -80,8 +80,8 @@ func (s *Wrapper) KeyId(_ context.Context) (string, error) {
 }
 
 // Encrypt is used to encrypt using Vault's Transit engine
-func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, _ ...wrapping.Option) (*wrapping.BlobInfo, error) {
-	ciphertext, err := s.client.Encrypt(plaintext)
+func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte, _ ...wrapping.Option) (*wrapping.BlobInfo, error) {
+	ciphertext, err := s.client.Encrypt(ctx, plaintext)
 	if err != nil {
 		return nil, err
 	}
@@ -103,8 +103,8 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, _ ...wrapping.Opt
 }
 
 // Decrypt is used to decrypt the ciphertext
-func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, _ ...wrapping.Option) ([]byte, error) {
-	plaintext, err := s.client.Decrypt(in.Ciphertext)
+func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, _ ...wrapping.Option) ([]byte, error) {
+	plaintext, err := s.client.Decrypt(ctx, in.Ciphertext)
 	if err != nil {
 		return nil, err
 	}
