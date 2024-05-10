@@ -42,8 +42,8 @@ func newTestTransitClient(keyID string) *testTransitClient {
 
 func (m *testTransitClient) Close() {}
 
-func (m *testTransitClient) Encrypt(plaintext []byte) ([]byte, error) {
-	v, err := m.wrap.Encrypt(context.Background(), plaintext, nil)
+func (m *testTransitClient) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {
+	v, err := m.wrap.Encrypt(ctx, plaintext, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (m *testTransitClient) Encrypt(plaintext []byte) ([]byte, error) {
 	return []byte(fmt.Sprintf("v1:%s:%s", m.keyID, string(v.Ciphertext))), nil
 }
 
-func (m *testTransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
+func (m *testTransitClient) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	splitKey := strings.Split(string(ciphertext), ":")
 	if len(splitKey) != 3 {
 		return nil, errors.New("invalid ciphertext returned")
@@ -60,7 +60,7 @@ func (m *testTransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
 	data := &wrapping.BlobInfo{
 		Ciphertext: []byte(splitKey[2]),
 	}
-	v, err := m.wrap.Decrypt(context.Background(), data, nil)
+	v, err := m.wrap.Decrypt(ctx, data, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -342,4 +342,52 @@ func TestSetConfig(t *testing.T) {
 			t.Log(pt)
 		})
 	}
+}
+
+func TestContextCancellation(t *testing.T) {
+	t.Parallel()
+	t.Run("Encrypt stops when the context is cancelled", func(t *testing.T) {
+		t.Parallel()
+		_, require := assert.New(t), require.New(t)
+		w := NewWrapper()
+		_, err := w.SetConfig(
+			context.Background(),
+			WithAddress(testWithAddress),
+			WithToken(testWithToken),
+			WithMountPath(testWithMountPath),
+			WithKeyName(testWithKeyName),
+			WithNamespace(testWithNamespace),
+			WithKeyIdPrefix("test/"),
+		)
+		require.NoError(err)
+		testPt := []byte("test-plaintext")
+		canceledCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err = w.Encrypt(canceledCtx, testPt)
+		require.Error(err)
+		require.ErrorIs(err, context.Canceled)
+	})
+	t.Run("Decrypt stops when the context is cancelled", func(t *testing.T) {
+		t.Parallel()
+		_, require := assert.New(t), require.New(t)
+		w := NewWrapper()
+		_, err := w.SetConfig(
+			context.Background(),
+			WithAddress(testWithAddress),
+			WithToken(testWithToken),
+			WithMountPath(testWithMountPath),
+			WithKeyName(testWithKeyName),
+			WithNamespace(testWithNamespace),
+			WithKeyIdPrefix("test/"),
+		)
+		require.NoError(err)
+		testPt := []byte("test-plaintext")
+		blob, err := w.Encrypt(context.Background(), testPt)
+		require.NoError(err)
+		canceledCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err = w.Decrypt(canceledCtx, blob)
+		require.Error(err)
+		require.ErrorIs(err, context.Canceled)
+	})
 }
