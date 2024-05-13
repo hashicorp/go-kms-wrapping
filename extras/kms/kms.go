@@ -98,6 +98,7 @@ func (k *Kms) clearCache(ctx context.Context, opt ...Option) error {
 		}
 		return nil
 	default:
+		// TODO: @tmessi is this safe?
 		k.scopedWrapperCache = sync.Map{}
 		return nil
 	}
@@ -209,15 +210,21 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
+	fmt.Printf("%s: getting collectionVersion for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
 	currVersion, err := currentCollectionVersion(ctx, k.repo.reader, k.tableNamePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to determine current version of the kms collection: %w", op, err)
 	}
 	switch {
 	case currVersion != atomic.LoadUint64(&k.collectionVersion):
+		// TODO: @tmessi should this case all be guarded by a mutex?
+		fmt.Printf("%s: collectionVersion not equal to stored collectionVersion for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
 		k.clearCache(ctx)
+		fmt.Printf("%s: cache cleared while processing scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
 		atomic.StoreUint64(&k.collectionVersion, currVersion)
 	default:
+		fmt.Printf("%s: collectionVersion equal to stored collectionVersion for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+		fmt.Printf("%s: loading cached wrapper scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
 		val, ok := k.scopedWrapperCache.Load(scopedPurpose(scopeId, purpose))
 		if ok {
 			wrapper, ok := val.(*multi.PooledWrapper)

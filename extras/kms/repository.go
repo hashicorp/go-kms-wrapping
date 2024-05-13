@@ -179,6 +179,7 @@ func currentCollectionVersion(ctx context.Context, r dbw.Reader, tableNamePrefix
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
+	// TODO: @tmessi should call defer rows.Close()
 	v := struct {
 		Version uint64
 	}{}
