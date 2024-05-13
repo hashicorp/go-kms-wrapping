@@ -210,7 +210,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
-	fmt.Printf("%s: getting collectionVersion for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+	fmt.Printf("%s: getting collectionVersion for scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
 	currVersion, err := currentCollectionVersion(ctx, k.repo.reader, k.tableNamePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to determine current version of the kms collection: %w", op, err)
@@ -218,13 +218,13 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 	switch {
 	case currVersion != atomic.LoadUint64(&k.collectionVersion):
 		// TODO: @tmessi should this case all be guarded by a mutex?
-		fmt.Printf("%s: collectionVersion not equal to stored collectionVersion for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+		fmt.Printf("%s: collectionVersion not equal to stored collectionVersion for scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
 		k.clearCache(ctx)
-		fmt.Printf("%s: cache cleared while processing scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+		fmt.Printf("%s: cache cleared while processing scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
 		atomic.StoreUint64(&k.collectionVersion, currVersion)
 	default:
-		fmt.Printf("%s: collectionVersion equal to stored collectionVersion for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
-		fmt.Printf("%s: loading cached wrapper scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+		fmt.Printf("%s: collectionVersion equal to stored collectionVersion for scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
+		fmt.Printf("%s: loading cached wrapper scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
 		val, ok := k.scopedWrapperCache.Load(scopedPurpose(scopeId, purpose))
 		if ok {
 			wrapper, ok := val.(*multi.PooledWrapper)
@@ -232,18 +232,18 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 				return nil, fmt.Errorf("%s: scoped wrapper is not a multi.PooledWrapper: %w", op, ErrInternal)
 			}
 			if opts.withKeyVersionId == "" {
-				fmt.Printf("%s: returning cached wrapper for scope: %s\n", op, scopeId)
+				fmt.Printf("%s: returning cached wrapper for scope: %s purpose: %s \n", op, scopeId, purpose)
 				return wrapper, nil
 			}
 			if keyIdVersionWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdVersionWrapper != nil {
-				fmt.Printf("%s: returning cached wrapper for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+				fmt.Printf("%s: returning cached wrapper for scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
 				return keyIdVersionWrapper, nil
 			}
 			// Fall through to refresh our multiwrapper for this scope/purpose from the DB
 		}
 	}
 
-	fmt.Printf("%s: cache misss for scope: %s\n", op, scopeId)
+	fmt.Printf("%s: cache misss for scope: %s purpose: %s\n", op, scopeId, purpose)
 	// We don't have it cached, so we'll need to read from the database. Get the
 	// root for the scope as we'll need it to decrypt the value coming from the
 	// DB. We don't cache the roots as we expect that after a few calls the
@@ -256,7 +256,7 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, fmt.Errorf("%s: got nil root wrapper for scope %q: %w", op, scopeId, ErrInvalidParameter)
 	}
 
-	fmt.Printf("%s: loaded root key for scope: %s\n", op, scopeId)
+	fmt.Printf("%s: loaded root key for scope: %s purpose: %s\n", op, scopeId, purpose)
 	if purpose == KeyPurposeRootKey {
 		return rootWrapper, nil
 	}
@@ -272,13 +272,13 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 
 	if opts.withKeyVersionId != "" {
 		if keyIdVersionWrapper := wrapper.WrapperForKeyId(opts.withKeyVersionId); keyIdVersionWrapper != nil {
-			fmt.Printf("%s: returning wrapper for scope: %s keyversionid: %s\n", op, scopeId, opts.withKeyVersionId)
+			fmt.Printf("%s: returning wrapper for scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
 			return keyIdVersionWrapper, nil
 		}
 		return nil, fmt.Errorf("%s: unable to find specified key version ID: %w", op, ErrKeyNotFound)
 	}
 
-	fmt.Printf("%s: returning wrapper for scope: %s\n", op, scopeId)
+	fmt.Printf("%s: returning wrapper for scope: %s purpose: %s\n", op, scopeId, purpose)
 	return wrapper, nil
 }
 
