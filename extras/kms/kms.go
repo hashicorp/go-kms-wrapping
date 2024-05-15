@@ -207,11 +207,16 @@ func (k *Kms) GetWrapper(ctx context.Context, scopeId string, purpose KeyPurpose
 		return nil, fmt.Errorf("%s: not a supported key purpose %q: %w", op, purpose, ErrInvalidParameter)
 	}
 	opts := getOpts(opt...)
+	reader := opts.withReader
+	if isNil(reader) {
+		reader = k.repo.reader
+	}
+
 	// Fast-path: we have a valid key at the scope/purpose. Verify the key with
 	// that ID is in the multiwrapper; if not, fall through to reload from the
 	// DB.
 	fmt.Printf("%s: getting collectionVersion for scope: %s purpose: %s keyversionid: %s\n", op, scopeId, purpose, opts.withKeyVersionId)
-	currVersion, err := currentCollectionVersion(ctx, k.repo.reader, k.tableNamePrefix)
+	currVersion, err := currentCollectionVersion(ctx, reader, k.tableNamePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to determine current version of the kms collection: %w", op, err)
 	}
