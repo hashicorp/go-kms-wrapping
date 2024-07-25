@@ -11,21 +11,15 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+
+	"github.com/openbao/openbao/api/v2"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster"
+	"github.com/openbao/openbao/sdk/v2/helper/testcluster/docker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	testWithMountPath      = "transit/"
-	testWithAddress        = "http://localhost:8200"
-	testWithKeyName        = "example-key"
-	testWithDisableRenewal = "true"
-	testWithNamespace      = "ns1/"
-	testWithToken          = "vault-plaintext-root-token"
-
-	envVaultNamespace = "VAULT_NAMESPACE"
 )
 
 type testTransitClient struct {
@@ -68,7 +62,29 @@ func (m *testTransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
 	return v, nil
 }
 
+func getTestCluster(t *testing.T) (*docker.DockerCluster, *docker.DockerClusterNode, *api.Client) {
+	opts := docker.DefaultOptions(t)
+	opts.ClusterOptions.NumCores = 1
+	cluster := docker.NewTestDockerCluster(t, opts)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	nodeIdx, err := testcluster.WaitForActiveNode(ctx, cluster)
+	require.NoError(t, err, "no cluster node became active in timeout window")
+
+	node := cluster.ClusterNodes[nodeIdx]
+	client := node.APIClient()
+
+	client.Sys().Mount("transit", &api.MountInput{
+		Type: "transit",
+	})
+
+	return cluster, node, client
+}
+
 func TestTransitWrapper_Lifecycle(t *testing.T) {
+	// Set up wrapper
 	s := NewWrapper()
 
 	keyId := "test-key"
@@ -114,6 +130,18 @@ func TestTransitWrapper_Lifecycle(t *testing.T) {
 }
 
 func TestSetConfig(t *testing.T) {
+	// Set up a shared Vault cluster with Transit.
+	cluster, _, client := getTestCluster(t)
+	defer cluster.Cleanup()
+
+	var testWithMountPath = "transit/"
+	var testWithAddress = client.Address()
+	var testWithKeyName = "example-key"
+	var testWithDisableRenewal = "true"
+	var testWithToken = client.Token()
+
+	os.Setenv("BAO_CACERT_BYTES", string(cluster.CACertPEM))
+
 	tests := []struct {
 		name            string
 		opts            []wrapping.Option
@@ -142,7 +170,6 @@ func TestSetConfig(t *testing.T) {
 				WithAddress(testWithAddress),
 				WithToken(testWithToken),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 		},
 		{
@@ -155,7 +182,6 @@ func TestSetConfig(t *testing.T) {
 				WithAddress(testWithAddress),
 				WithToken(testWithToken),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 		},
 		{
@@ -164,7 +190,6 @@ func TestSetConfig(t *testing.T) {
 				WithAddress(testWithAddress),
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
-				WithNamespace(testWithNamespace),
 			},
 			wantErr:         true,
 			wantErrContains: "key_name is required",
@@ -179,7 +204,7 @@ func TestSetConfig(t *testing.T) {
 				WithAddress(testWithAddress),
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
-				WithNamespace(testWithNamespace)},
+			},
 		},
 		{
 			name: "success-with-env-key-name-seal",
@@ -191,7 +216,6 @@ func TestSetConfig(t *testing.T) {
 				WithAddress(testWithAddress),
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
-				WithNamespace(testWithNamespace),
 			},
 		},
 		{
@@ -205,7 +229,6 @@ func TestSetConfig(t *testing.T) {
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 		},
 		{
@@ -219,7 +242,6 @@ func TestSetConfig(t *testing.T) {
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 		},
 		{
@@ -233,7 +255,6 @@ func TestSetConfig(t *testing.T) {
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 			wantErr:         true,
 			wantErrContains: "parsing \"invalid-disable-renewal\": invalid syntax",
@@ -242,20 +263,6 @@ func TestSetConfig(t *testing.T) {
 			name: "success-with-disable-renewal",
 			opts: []wrapping.Option{
 				WithDisableRenewal(testWithDisableRenewal),
-				WithAddress(testWithAddress),
-				WithToken(testWithToken),
-				WithMountPath(testWithMountPath),
-				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
-			},
-		},
-		{
-			name: "success-with-env-namespace",
-			setup: func(t *testing.T) {
-				require.NoError(t, os.Setenv(envVaultNamespace, testWithNamespace))
-				t.Cleanup(func() { os.Unsetenv(envVaultNamespace) })
-			},
-			opts: []wrapping.Option{
 				WithAddress(testWithAddress),
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
@@ -269,7 +276,6 @@ func TestSetConfig(t *testing.T) {
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 			wantErr:         true,
 			wantErrContains: "unsupported protocol scheme",
@@ -281,7 +287,6 @@ func TestSetConfig(t *testing.T) {
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 			wantErr:         true,
 			wantErrContains: "first path segment in URL cannot contain colon",
@@ -293,7 +298,6 @@ func TestSetConfig(t *testing.T) {
 				// WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 			},
 			wantErr:         true,
 			wantErrContains: "permission denied",
@@ -305,11 +309,11 @@ func TestSetConfig(t *testing.T) {
 				WithToken(testWithToken),
 				WithMountPath(testWithMountPath),
 				WithKeyName(testWithKeyName),
-				WithNamespace(testWithNamespace),
 				WithKeyIdPrefix("test/"),
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
