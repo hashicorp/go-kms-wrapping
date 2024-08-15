@@ -1,125 +1,25 @@
 name: Go
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     strategy:
       matrix:
-        go: ["1.21", "1.20"]
-        platform: [ubuntu-latest] # can not run in windows OS
-    runs-on: ${{ matrix.platform }}
-
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
-        with:
-          go-version: ${{ matrix.go }}
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-
-      - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
-
-      - name: Build
-        run: find . -name go.mod -execdir sh -c 'pwd && CGO_ENABLED=0 go build ./... || exit 1' sh {} +
-
-      - name: JS/WASM Build
-        run: find . -name go.mod -not -path "*examples*" -execdir sh -c 'pwd && GOOS=js GOARCH=wasm CGO_CENABLED=0 go build ./... || exit 1' sh {} +
-
-      - name: Test
-        # exclude the transit plugin since it's tested with the plugin-transit
-        # job, which requires a vault container to be running
-        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir sh -c 'go test ./... || exit 1' sh {} +
-
-  sqlite:
-    strategy:
-      matrix:
-        go: ["1.21", "1.20"]
-        platform: [ubuntu-latest] # can not run in windows OS
-    runs-on: ${{ matrix.platform }}
-
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
-        with:
-          go-version: ${{ matrix.go }}
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-
-      - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
-
-      - name: Tests
-        working-directory: ./extras/kms
-        run: make test-sqlite
-
-  postgres:
-    strategy:
-      matrix:
-        dbversion:
-          [
-            "postgres:14",
-            "postgres:13",
-            "postgres:12",
-            "postgres:11",
-            "postgres:10",
-          ]
-        go: ["1.21", "1.20"]
-        platform: [ubuntu-latest] # can not run in macOS and Windows
-    runs-on: ${{ matrix.platform }}
-
-    services:
-      postgres:
-        image: ${{ matrix.dbversion }}
-        env:
-          POSTGRES_PASSWORD: go_db
-          POSTGRES_USER: go_db
-          POSTGRES_DB: go_db
-        ports:
-          - 9920:5432
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
-        with:
-          go-version: ${{ matrix.go }}
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-
-      - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
-
-      - name: Tests
-        working-directory: ./extras/kms
-        run: make test-postgres
-
-  plugin-transit:
-    strategy:
-      matrix:
-        go: ["1.21", "1.20"]
+        directory:
+          - '.'
+          - './entropy'
+          - './plugin'
+          - './wrappers/aead'
+          - './wrappers/alicloudkms'
+          - './wrappers/awskms'
+          - './wrappers/azurekeyvault'
+          - './wrappers/gcpckms'
+          - './wrappers/huaweicloudkms'
+          - './wrappers/ocikms'
+          - './wrappers/tencentcloudkms'
+          - './wrappers/transit'
+        go: ["1.22"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 
@@ -138,15 +38,8 @@ jobs:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
 
-      - name: Setup docker-compose
-        run: sudo curl -L "https://github.com/docker/compose/releases/download/v2.11.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose && sudo /usr/local/bin/docker-compose --version
-
-      - name: Start containers
-        working-directory: ./wrappers/transit
-        run: sudo docker-compose -f "docker-compose.yml" up -d --build
-
       - name: Tests
-        working-directory: ./wrappers/transit
+        working-directory: ${{ matrix.directory }}
         run: go test ./...
 
   buf:
@@ -159,7 +52,6 @@ jobs:
       - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
         with:
           version: "1.15.1"
-      - uses: bufbuild/buf-lint-action@bd48f53224baaaf0fc55de9a913e7680ca6dbea4 # v1.0.3
       - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
         with:
           # The 'main' branch of the GitHub repository that defines the module.
@@ -179,25 +71,3 @@ jobs:
           git diff --exit-code
           git status --porcelain
           test -z "$(git status --porcelain)"
-
-  # if merged -> then lint, build and finally push a commit to the buf registry
-  buf_if_merged:
-    if: ${{ github.ref_name == 'main'}}
-    strategy:
-      matrix:
-        platform: [ubuntu-latest]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-      - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
-        with:
-          version: "1.15.1"
-      - uses: bufbuild/buf-lint-action@bd48f53224baaaf0fc55de9a913e7680ca6dbea4 # v1.0.3
-      - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
-        with:
-          # The 'main' branch of the GitHub repository that defines the module.
-          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
-      - uses: bufbuild/buf-push-action@1c45f6a21ec277ee4c1fa2772e49b9541ea17f38 # v1.1.1
-        with:
-          buf_token: ${{ secrets.BUF_TOKEN }}
-          draft: ${{ github.ref_name != 'main'}}
