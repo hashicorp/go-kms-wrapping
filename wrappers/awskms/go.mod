@@ -5,7 +5,7 @@ go 1.22.1
 replace github.com/openbao/go-kms-wrapping/v2 => ../../
 
 require (
-	github.com/aws/aws-sdk-go v1.44.210
+	github.com/aws/aws-sdk-go v1.55.5
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-secure-stdlib/awsutil v0.3.0
