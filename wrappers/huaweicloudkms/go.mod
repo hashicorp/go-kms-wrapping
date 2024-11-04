@@ -10,5 +10,5 @@ require (
 
 require (
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 )
