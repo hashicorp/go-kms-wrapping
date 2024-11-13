@@ -61,22 +61,6 @@ package is capable of encrypting to a specified wrapper and
 decrypting using one of several wrappers switched on key ID. This can allow
 easy key rotation for KMSes that do not natively support it.
 
-* The
-[`structwrapping`](https://github.com/hashicorp/go-kms-wrapping/tree/main/extras/structwrapping)
-package allows for structs to have members encrypted and decrypted in a single
-pass via a single wrapper. This can be used for workflows such as database
-library callback functions to easily encrypt/decrypt data as it goes to/from
-storage.
-
-* The [`kms`](https://github.com/hashicorp/go-kms-wrapping/tree/main/extras/kms)
-  package provides key management system features for wrappers
-  including scoped [KEKs](https://en.wikipedia.org/wiki/Glossary_of_cryptographic_keys)
-  and [DEKs](https://en.wikipedia.org/wiki/Glossary_of_cryptographic_keys) which
-  are wrapped with an external KMS when stored in sqlite or postgres. 
-
-* The [`crypto`](https://github.com/hashicorp/go-kms-wrapping/tree/main/extras/crypto) package provides additional operations like HMAC-SHA256 and a
-  derived reader from which keys can be read.
-
 ## Installation
 
 `go get github.com/hashicorp/go-kms-wrapping/v2`

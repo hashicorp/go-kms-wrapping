@@ -17,7 +17,7 @@ proto:
 	find . -type f -name "*.pb.go" -delete
 	buf generate
 	buf format -w
-	
+
 	# inject classification tags (see: https://github.com/hashicorp/go-eventlogger/tree/main/filters/encrypt)
 	@protoc-go-inject-tag -input=./github.com.openbao.go.kms.wrapping.v2.types.pb.go
 
@@ -25,3 +25,33 @@ proto:
 tools:
 	go install github.com/favadi/protoc-go-inject-tag@v1.4.0
 	go install github.com/bufbuild/buf/cmd/buf@v1.15.1
+
+.PHONY: tidy-all
+tidy-all:
+	cd entropy && go mod tidy
+	cd plugin && go mod tidy
+	cd wrappers/aead && go mod tidy
+	cd wrappers/alicloudkms && go mod tidy
+	cd wrappers/awskms && go mod tidy
+	cd wrappers/azurekeyvault && go mod tidy
+	cd wrappers/gcpckms && go mod tidy
+	cd wrappers/huaweicloudkms && go mod tidy
+	cd wrappers/ocikms && go mod tidy
+	cd wrappers/tencentcloudkms && go mod tidy
+	cd wrappers/transit && go mod tidy
+	go mod tidy
+
+.PHONY: generate-all
+generate-all:
+	cd entropy && GOARCH= GOOS= go generate ./...
+	cd plugin && GOARCH= GOOS= go generate ./...
+	cd wrappers/aead && GOARCH= GOOS= go generate ./...
+	cd wrappers/alicloudkms && GOARCH= GOOS= go generate ./...
+	cd wrappers/awskms && GOARCH= GOOS= go generate ./...
+	cd wrappers/azurekeyvault && GOARCH= GOOS= go generate ./...
+	cd wrappers/gcpckms && GOARCH= GOOS= go generate ./...
+	cd wrappers/huaweicloudkms && GOARCH= GOOS= go generate ./...
+	cd wrappers/ocikms && GOARCH= GOOS= go generate ./...
+	cd wrappers/tencentcloudkms && GOARCH= GOOS= go generate ./...
+	cd wrappers/transit && GOARCH= GOOS= go generate ./...
+	GOARCH= GOOS= go generate ./...
