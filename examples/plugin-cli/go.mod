@@ -8,7 +8,7 @@ replace github.com/openbao/go-kms-wrapping/plugin/v2 => ../../plugin
 
 require (
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/openbao/go-kms-wrapping/v2 v2.0.0-20240219184625-e8f4fba40bca
+	github.com/openbao/go-kms-wrapping/v2 v2.2.0
 	github.com/openbao/go-secure-stdlib/configutil/v2 v2.1.0-development20240408
 	github.com/openbao/go-secure-stdlib/pluginutil/v2 v2.1.0-development20240408
 )
@@ -42,7 +42,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/oklog/run v1.1.0 // indirect
-	github.com/openbao/go-kms-wrapping/plugin/v2 v2.0.0-20240219184625-e8f4fba40bca // indirect
+	github.com/openbao/go-kms-wrapping/plugin/v2 v2.1.0 // indirect
 	github.com/openbao/go-secure-stdlib/base62 v1.1.0-development20240408 // indirect
 	github.com/openbao/go-secure-stdlib/listenerutil v1.1.0-development20240408 // indirect
 	github.com/openbao/go-secure-stdlib/parseutil v1.1.0-development20240408 // indirect
