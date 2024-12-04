@@ -3,7 +3,7 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v2
 go 1.20
 
 require (
-	github.com/aws/aws-sdk-go v1.44.210
+	github.com/aws/aws-sdk-go v1.55.5
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.14
