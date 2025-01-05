@@ -21,14 +21,10 @@ import (
 // support the --use-transit flag which requires the caller to run:
 // "docker-compose up" before executing the example
 const rootKmsTransitHcl = `
-kms "transit" {
-	purpose            = "root"
-	address            = "http://localhost:8200"
-	token              = "vault-plaintext-root-token"
-	disable_renewal    = "false"  
-	key_name           = "examplekey"
-	mount_path         = "transit/"
-	namespace          = "ns1/"
+kms "azurekeyvault" {
+  purpose        = "recovery"
+  vault_name     = "boundary-97at"
+  key_name       = "recovery"
 }`
 
 func main() {
@@ -117,6 +113,8 @@ func builtinKmsPlugins() map[string]pluginutil.InmemCreationFunc {
 }
 
 // content is our static web server content.
+//
+//go:embed plugins/ass
 //go:embed plugins/assets
 var content embed.FS
 
