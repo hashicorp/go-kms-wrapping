@@ -31,6 +31,11 @@ type rootKeyVersion struct {
 	Version uint32 `json:"version,omitempty" gorm:"default:null"`
 	// CreateTime from the db
 	CreateTime time.Time `json:"create_time,omitempty" gorm:"default:current_timestamp"`
+
+	// tableNamePrefix defines the prefix to use before the table name and
+	// allows us to support custom prefixes as well as multi KMSs within a
+	// single schema.
+	tableNamePrefix string `gorm:"-"`
 }
 
 // newRootKeyVersion creates a new in memory root key. No options are currently
@@ -51,15 +56,19 @@ func newRootKeyVersion(rootKeyId string, key []byte, _ ...Option) (*rootKeyVersi
 	return k, nil
 }
 
-// TableName returns the tablename
-func (k *rootKeyVersion) TableName() string { return "kms_root_key_version" }
+// TableName returns the table name
+func (k *rootKeyVersion) TableName() string {
+	const tableName = "root_key_version"
+	return fmt.Sprintf("%s_%s", k.tableNamePrefix, tableName)
+}
 
 // Clone creates a clone of the RootKeyVersion
 func (k *rootKeyVersion) Clone() *rootKeyVersion {
 	clone := &rootKeyVersion{
-		PrivateId:  k.PrivateId,
-		RootKeyId:  k.RootKeyId,
-		CreateTime: k.CreateTime,
+		PrivateId:       k.PrivateId,
+		RootKeyId:       k.RootKeyId,
+		CreateTime:      k.CreateTime,
+		tableNamePrefix: k.tableNamePrefix,
 	}
 	clone.Key = make([]byte, len(k.Key))
 	copy(clone.Key, k.Key)

@@ -130,7 +130,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			rk, kv, err := tc.repo.CreateRootKey(context.Background(), tc.keyWrapper, tc.scopeId, tc.key, tc.opt...)
@@ -155,7 +155,7 @@ func TestRepository_CreateRootKey(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(kv, foundKeyVersion)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -298,7 +298,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			deletedRows, err := tc.repo.DeleteRootKey(context.Background(), tc.key.PrivateId, tc.opt...)
@@ -319,7 +319,7 @@ func TestRepository_DeleteRootKey(t *testing.T) {
 			assert.Nil(foundKey)
 			assert.ErrorIs(err, ErrRecordNotFound)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -393,7 +393,7 @@ func TestRepository_ListRootKeys(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+			testDeleteWhere(t, db, func() interface{} { i := rootKey{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 			for i := 0; i < tc.createCnt; i++ {
 				id, err := dbw.NewId(rootKeyPrefix)
 				require.NoError(err)

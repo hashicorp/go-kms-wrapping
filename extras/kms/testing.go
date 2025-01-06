@@ -29,13 +29,14 @@ func testRootKey(t *testing.T, conn *dbw.DB, scopeId string) *rootKey {
 	t.Helper()
 	require := require.New(t)
 	rw := dbw.New(conn)
-	testDeleteWhere(t, conn, &rootKey{}, "scope_id = ?", scopeId)
+	testDeleteWhere(t, conn, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "scope_id = ?", scopeId)
 	k, err := newRootKey(scopeId)
 	require.NoError(err)
 	id, err := newRootKeyId()
 	require.NoError(err)
 	k.PrivateId = id
-	err = create(context.Background(), rw, k)
+	k.tableNamePrefix = DefaultTableNamePrefix
+	err = create(context.Background(), rw, k, dbw.WithTable(k.TableName()))
 	require.NoError(err)
 	return k
 }
@@ -51,14 +52,15 @@ func testRootKeyVersion(t *testing.T, conn *dbw.DB, wrapper wrapping.Wrapper, ro
 	require.NoError(err)
 	k, err := newRootKeyVersion(rootId, key)
 	require.NoError(err)
+	k.tableNamePrefix = DefaultTableNamePrefix
 	id, err := newRootKeyVersionId()
 	require.NoError(err)
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), wrapper)
 	require.NoError(err)
-	err = create(context.Background(), rw, k)
+	err = create(context.Background(), rw, k, dbw.WithTable(k.TableName()))
 	require.NoError(err)
-	err = rw.LookupBy(context.Background(), k)
+	err = rw.LookupBy(context.Background(), k, dbw.WithTable(k.TableName()))
 	require.NoError(err)
 	rootKeyVersionWrapper.SetConfig(testCtx, wrapping.WithKeyId(k.PrivateId))
 	require.NoError(err)
@@ -69,7 +71,7 @@ func testRootKeyVersion(t *testing.T, conn *dbw.DB, wrapper wrapping.Wrapper, ro
 func testDataKey(t *testing.T, conn *dbw.DB, rootKeyId string, purpose KeyPurpose) *dataKey {
 	t.Helper()
 	require := require.New(t)
-	testDeleteWhere(t, conn, &dataKey{}, "root_key_id = ?", rootKeyId)
+	testDeleteWhere(t, conn, &dataKey{tableNamePrefix: DefaultTableNamePrefix}, "root_key_id = ?", rootKeyId)
 	rw := dbw.New(conn)
 	k, err := newDataKey(rootKeyId, purpose)
 	require.NoError(err)
@@ -77,7 +79,8 @@ func testDataKey(t *testing.T, conn *dbw.DB, rootKeyId string, purpose KeyPurpos
 	require.NoError(err)
 	k.PrivateId = id
 	k.RootKeyId = rootKeyId
-	err = create(context.Background(), rw, k)
+	k.tableNamePrefix = DefaultTableNamePrefix
+	err = create(context.Background(), rw, k, dbw.WithTable(k.TableName()))
 	require.NoError(err)
 	return k
 }
@@ -92,14 +95,15 @@ func testDataKeyVersion(t *testing.T, conn *dbw.DB, rootKeyVersionWrapper wrappi
 	require.NotEmpty(rootKeyVersionId)
 	k, err := newDataKeyVersion(dataKeyId, key, rootKeyVersionId)
 	require.NoError(err)
+	k.tableNamePrefix = DefaultTableNamePrefix
 	id, err := newDataKeyVersionId()
 	require.NoError(err)
 	k.PrivateId = id
 	err = k.Encrypt(context.Background(), rootKeyVersionWrapper)
 	require.NoError(err)
-	err = create(context.Background(), rw, k)
+	err = create(context.Background(), rw, k, dbw.WithTable(k.TableName()))
 	require.NoError(err)
-	err = rw.LookupBy(context.Background(), k)
+	err = rw.LookupBy(context.Background(), k, dbw.WithTable(k.TableName()))
 	require.NoError(err)
 	return k
 }
@@ -121,12 +125,12 @@ func TestDb(t *testing.T) (*dbw.DB, string) {
 
 // TestDeleteKeysForPurpose allows you to delete all the keys for a KeyPurpose for testing.
 func TestDeleteKeysForPurpose(t *testing.T, conn *dbw.DB, purpose KeyPurpose) {
-	testDeleteWhere(t, conn, func() interface{} { i := dataKey{}; return &i }(), fmt.Sprintf("purpose='%s'", purpose))
+	testDeleteWhere(t, conn, func() interface{} { i := dataKey{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), fmt.Sprintf("purpose='%s'", purpose))
 }
 
 // TestKmsDeleteAllKeys allows you to delete ALL the keys for testing.
 func TestKmsDeleteAllKeys(t *testing.T, conn *dbw.DB) {
-	testDeleteWhere(t, conn, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+	testDeleteWhere(t, conn, func() interface{} { i := rootKey{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 }
 
 func testMigrationFn(t *testing.T) func(ctx context.Context, db *sql.DB) error {
@@ -220,7 +224,6 @@ func testDeleteWhere(t *testing.T, conn *dbw.DB, i interface{}, whereClause stri
 
 	switch i.(type) {
 	case *rootKey, *rootKeyVersion, *dataKey, *dataKeyVersion:
-		require.NoError(err, updateKeyCollectionVersion(ctx, dbw.New(conn)))
-
+		require.NoError(err, updateKeyCollectionVersion(ctx, dbw.New(conn), DefaultTableNamePrefix))
 	}
 }

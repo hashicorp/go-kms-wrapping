@@ -9,10 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/services/keyvault/v7.1/keyvault"
 	"github.com/Azure/go-autorest/autorest/azure"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,9 +38,13 @@ func TestAzureKeyVault_SetConfig(t *testing.T) {
 }
 
 func TestAzureKeyVault_IgnoreEnv(t *testing.T) {
+	if os.Getenv("VAULT_ACC") == "" {
+		t.SkipNow()
+	}
+
+	expectedErr := `error fetching Azure Key Vault wrapper key information: Get "https://a-vault-name.a-resource/keys/a-key-name/?api-version=7.3": dial tcp: lookup a-vault-name.a-resource: no such host`
+
 	s := NewWrapper()
-	client := keyvault.New()
-	s.client = &client
 
 	// Setup environment values to ignore for the following values
 	for _, envVar := range []string{
@@ -65,7 +67,7 @@ func TestAzureKeyVault_IgnoreEnv(t *testing.T) {
 		"key_name":          "a-key-name",
 	}
 	_, err := s.SetConfig(context.Background(), wrapping.WithConfigMap(config))
-	assert.NoError(t, err)
+	require.Equal(t, expectedErr, err.Error())
 	require.Equal(t, config["tenant_id"], s.tenantID)
 	require.Equal(t, config["client_id"], s.clientID)
 	require.Equal(t, config["client_secret"], s.clientSecret)

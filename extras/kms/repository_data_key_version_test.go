@@ -159,7 +159,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			k, err := tc.repo.CreateDataKeyVersion(context.Background(), tc.keyWrapper, tc.dataKeyId, tc.key, tc.opt...)
@@ -179,7 +179,7 @@ func TestRepository_CreateDataKeyVersion(t *testing.T) {
 			assert.NoError(err)
 			assert.Equal(k, foundKey)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -322,7 +322,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			deletedRows, err := tc.repo.DeleteDataKeyVersion(context.Background(), tc.key.PrivateId, tc.opt...)
@@ -343,7 +343,7 @@ func TestRepository_DeleteDataKeyVersion(t *testing.T) {
 			assert.Nil(foundKey)
 			assert.ErrorIs(err, ErrRecordNotFound)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -451,7 +451,7 @@ func TestRepository_LatestDataKeyVersion(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{}; return &i }(), "1=1")
+			testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 			testKeys := []*dataKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
 				k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("test key"))
@@ -580,7 +580,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
-			testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{}; return &i }(), "1=1")
+			testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 			keyVersions := []*dataKeyVersion{}
 			for i := 0; i < tc.createCnt; i++ {
 				k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
@@ -605,7 +605,7 @@ func TestRepository_ListDataKeyVersions(t *testing.T) {
 	t.Run("order-by", func(t *testing.T) {
 		const createCnt = 10
 		assert, require := assert.New(t), require.New(t)
-		testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{}; return &i }(), "1=1")
+		testDeleteWhere(t, db, func() interface{} { i := dataKeyVersion{tableNamePrefix: DefaultTableNamePrefix}; return &i }(), "1=1")
 		keyVersions := []*dataKeyVersion{}
 		for i := 0; i < createCnt; i++ {
 			k := testDataKeyVersion(t, db, rkvWrapper, dk.PrivateId, []byte("data key"))
@@ -994,11 +994,11 @@ func Test_rotateDataKeyVersionTx(t *testing.T) {
 
 				// rotateDataKeyVersionTx doesn't increment the collection
 				// version, so we have to do it here
-				err = updateKeyCollectionVersion(testCtx, tc.writer)
+				err = updateKeyCollectionVersion(testCtx, tc.writer, DefaultTableNamePrefix)
 				require.NoError(err)
 			}
 
-			err = rotateDataKeyVersionTx(testCtx, tc.reader, tc.writer, tc.rootKeyVersionId, tc.rkvWrapper, tc.rootKeyId, tc.purpose, tc.opt...)
+			err = rotateDataKeyVersionTx(testCtx, tc.reader, tc.writer, DefaultTableNamePrefix, tc.rootKeyVersionId, tc.rkvWrapper, tc.rootKeyId, tc.purpose, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {
@@ -1178,7 +1178,7 @@ func Test_rewrapDataKeyVersionsTx(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			err := rewrapDataKeyVersionsTx(testCtx, tc.reader, tc.writer, tc.rkvWrapper, tc.rootKeyId, tc.opt...)
+			err := rewrapDataKeyVersionsTx(testCtx, tc.reader, tc.writer, DefaultTableNamePrefix, tc.rkvWrapper, tc.rootKeyId, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {

@@ -17,7 +17,6 @@ const (
 
 // KeyVersion is a key's version (the construct containing the key material)
 type KeyVersion struct {
-
 	// Id is the key version's id
 	Id string `json:"id"`
 
@@ -30,7 +29,6 @@ type KeyVersion struct {
 
 // Key is the permanent construct representing ephemeral key versions
 type Key struct {
-
 	// Id is the key's id
 	Id string `json:"id"`
 

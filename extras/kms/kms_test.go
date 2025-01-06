@@ -19,7 +19,6 @@ import (
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2"
 	"github.com/hashicorp/go-kms-wrapping/extras/kms/v2/migrations"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-kms-wrapping/v2/aead"
 	"github.com/hashicorp/go-kms-wrapping/v2/extras/multi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,27 +136,6 @@ func TestKms_AddExternalWrapper(t *testing.T) {
 			wantErr:         true,
 			wantErrIs:       kms.ErrInvalidParameter,
 			wantErrContains: "not a supported key purpose",
-		},
-		{
-			name:            "wrapper-key-id-error",
-			reader:          rw,
-			writer:          rw,
-			kmsPurposes:     []kms.KeyPurpose{"recovery"},
-			wrapper:         &mockTestWrapper{err: errors.New("KeyId error")},
-			wrapperPurpose:  "recovery",
-			wantErr:         true,
-			wantErrContains: "KeyId error",
-		},
-		{
-			name:            "wrapper-missing-key-id",
-			reader:          rw,
-			writer:          rw,
-			kmsPurposes:     []kms.KeyPurpose{"recovery"},
-			wrapper:         aead.NewWrapper(),
-			wrapperPurpose:  "recovery",
-			wantErr:         true,
-			wantErrIs:       kms.ErrInvalidParameter,
-			wantErrContains: "wrapper has no key version ID",
 		},
 		{
 			name:           "success-non-default-purpose",

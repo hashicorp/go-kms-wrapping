@@ -503,7 +503,7 @@ func TestKms_ClearCache(t *testing.T) {
 	assertCacheEqual(t, 0, kmsCache)
 
 	// delete all the keys (increment version)
-	testDeleteWhere(t, db, &rootKey{}, "1=1")
+	testDeleteWhere(t, db, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "1=1")
 
 	// should now fail to get the wrapper.
 	_, err = kmsCache.GetWrapper(ctx, globalScope, databaseKeyPurpose)
@@ -720,7 +720,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				})
 			}
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			tc.opt = append(tc.opt, WithRewrap(tc.rewrap))
@@ -765,7 +765,7 @@ func TestKms_RotateKeys(t *testing.T) {
 				}
 			}
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -996,7 +996,7 @@ func TestKms_RewrapKeys(t *testing.T) {
 				tc.setup(tc.kms, tc.scopeId)
 			}
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			err = tc.kms.RewrapKeys(testCtx, tc.scopeId, tc.opt...)
@@ -1012,7 +1012,7 @@ func TestKms_RewrapKeys(t *testing.T) {
 			}
 			require.NoError(err)
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -1091,7 +1091,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 
 	setupWithRotationRewrapFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
 		t.Helper()
-		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		testDeleteWhere(t, db, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "1=1")
 		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
 		require.NoError(t, k.RotateKeys(testCtx, "global", WithRewrap(true)))
 		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
@@ -1156,7 +1156,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 			}(),
 			setup: func(t *testing.T, k *Kms) string {
 				t.Helper()
-				testDeleteWhere(t, db, &rootKey{}, "1=1")
+				testDeleteWhere(t, db, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "1=1")
 				require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
 				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
 				require.NoError(t, err)
@@ -1211,7 +1211,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 				testKeyVersionId = tc.setup(t, tc.kms)
 			}
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			err = tc.kms.revokeRootKeyVersion(testCtx, testKeyVersionId)
@@ -1238,7 +1238,7 @@ func TestKms_RevokeRootKeyVersion(t *testing.T) {
 				tc.want(t, testKeyVersionId, tc.kms)
 			}
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -1254,7 +1254,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 
 	setupWithRotationRewrapFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
 		t.Helper()
-		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		testDeleteWhere(t, db, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "1=1")
 		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
 		require.NoError(t, k.RotateKeys(testCtx, "global", WithRewrap(true)))
 		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
@@ -1319,7 +1319,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 			}(),
 			setup: func(t *testing.T, k *Kms) string {
 				t.Helper()
-				testDeleteWhere(t, db, &rootKey{}, "1=1")
+				testDeleteWhere(t, db, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "1=1")
 				require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
 				w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
 				require.NoError(t, err)
@@ -1375,7 +1375,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 				testKeyVersionId = tc.setup(t, tc.kms)
 			}
 
-			prevVersion, err := currentCollectionVersion(testCtx, rw)
+			prevVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 
 			err = tc.kms.revokeDataKeyVersion(testCtx, testKeyVersionId)
@@ -1402,7 +1402,7 @@ func TestKms_RevokeDataKeyVersion(t *testing.T) {
 				tc.want(t, testKeyVersionId, tc.kms)
 			}
 
-			currVersion, err := currentCollectionVersion(testCtx, rw)
+			currVersion, err := currentCollectionVersion(testCtx, rw, DefaultTableNamePrefix)
 			require.NoError(err)
 			assert.Greater(currVersion, prevVersion)
 		})
@@ -1418,7 +1418,7 @@ func TestKms_ListKeys(t *testing.T) {
 
 	setupWithRotationFn := func(t *testing.T, k *Kms) *multi.PooledWrapper {
 		t.Helper()
-		testDeleteWhere(t, db, &rootKey{}, "1=1")
+		testDeleteWhere(t, db, &rootKey{tableNamePrefix: DefaultTableNamePrefix}, "1=1")
 		require.NoError(t, k.CreateKeys(testCtx, "global", []KeyPurpose{"database", "auth"}))
 		require.NoError(t, k.RotateKeys(testCtx, "global"))
 		w, err := k.GetWrapper(testCtx, "global", KeyPurposeRootKey)
@@ -1495,9 +1495,11 @@ func TestKms_ListKeys(t *testing.T) {
 				purposeSwitch:
 					switch purpose {
 					case KeyPurposeRootKey:
-						kv := rootKeyVersion{}
+						kv := rootKeyVersion{
+							tableNamePrefix: DefaultTableNamePrefix,
+						}
 						kv.PrivateId = keyVersionId
-						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
+						err := tc.kms.repo.reader.LookupBy(testCtx, &kv, dbw.WithTable(kv.TableName()))
 						require.NoError(err)
 						for i := range found {
 							if found[i].Purpose == purpose && found[i].Id == kv.RootKeyId {
@@ -1509,9 +1511,11 @@ func TestKms_ListKeys(t *testing.T) {
 								break purposeSwitch
 							}
 						}
-						k := rootKey{}
+						k := rootKey{
+							tableNamePrefix: DefaultTableNamePrefix,
+						}
 						k.PrivateId = kv.RootKeyId
-						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
+						err = tc.kms.repo.reader.LookupBy(testCtx, &k, dbw.WithTable(k.TableName()))
 						require.NoError(err)
 						found = append(found, Key{
 							Id:         k.PrivateId,
@@ -1528,9 +1532,9 @@ func TestKms_ListKeys(t *testing.T) {
 							},
 						})
 					default:
-						kv := dataKeyVersion{}
+						kv := dataKeyVersion{tableNamePrefix: DefaultTableNamePrefix}
 						kv.PrivateId = keyVersionId
-						err := tc.kms.repo.reader.LookupBy(testCtx, &kv)
+						err := tc.kms.repo.reader.LookupBy(testCtx, &kv, dbw.WithTable(kv.TableName()))
 						require.NoError(err)
 						for i := range found {
 							if found[i].Purpose == purpose && found[i].Id == kv.DataKeyId {
@@ -1542,13 +1546,15 @@ func TestKms_ListKeys(t *testing.T) {
 								break purposeSwitch
 							}
 						}
-						k := dataKey{}
+						k := dataKey{tableNamePrefix: DefaultTableNamePrefix}
 						k.PrivateId = kv.DataKeyId
-						err = tc.kms.repo.reader.LookupBy(testCtx, &k)
+						err = tc.kms.repo.reader.LookupBy(testCtx, &k, dbw.WithTable(k.TableName()))
 						require.NoError(err)
-						rk := rootKey{}
+						rk := rootKey{
+							tableNamePrefix: DefaultTableNamePrefix,
+						}
 						rk.PrivateId = k.RootKeyId
-						err = tc.kms.repo.reader.LookupBy(testCtx, &rk)
+						err = tc.kms.repo.reader.LookupBy(testCtx, &rk, dbw.WithTable(rk.TableName()))
 						require.NoError(err)
 						found = append(found, Key{
 							Id:         k.PrivateId,

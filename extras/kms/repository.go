@@ -51,6 +51,11 @@ type repository struct {
 	writer dbw.Writer
 	// defaultLimit provides a default for limiting the number of results returned from the repo
 	defaultLimit int
+
+	// tableNamePrefix defines the prefix to use before the table name and
+	// allows us to support custom prefixes as well as multi KMSs within a
+	// single schema.
+	tableNamePrefix string
 }
 
 // newRepository creates a new kms Repository. Supports the options: WithLimit
@@ -63,18 +68,19 @@ func newRepository(r dbw.Reader, w dbw.Writer, opt ...Option) (*repository, erro
 	if w == nil {
 		return nil, fmt.Errorf("%s: nil writer: %w", op, ErrInvalidParameter)
 	}
-	if _, err := validateSchema(context.Background(), r); err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
 	opts := getOpts(opt...)
 	if opts.withLimit == 0 {
 		// zero signals the defaults should be used.
 		opts.withLimit = defaultLimit
 	}
+	if _, err := validateSchema(context.Background(), r, opts.withTableNamePrefix); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
 	return &repository{
-		reader:       r,
-		writer:       w,
-		defaultLimit: opts.withLimit,
+		reader:          r,
+		writer:          w,
+		defaultLimit:    opts.withLimit,
+		tableNamePrefix: opts.withTableNamePrefix,
 	}, nil
 }
 
@@ -82,13 +88,15 @@ func newRepository(r dbw.Reader, w dbw.Writer, opt ...Option) (*repository, erro
 // required migrations.Version
 func (r *repository) ValidateSchema(ctx context.Context) (string, error) {
 	const op = "kms.(repository).validateVersion"
-	return validateSchema(ctx, r.reader)
+	return validateSchema(ctx, r.reader, r.tableNamePrefix)
 }
 
-func validateSchema(ctx context.Context, r dbw.Reader) (string, error) {
+func validateSchema(ctx context.Context, r dbw.Reader, tableNamePrefix string) (string, error) {
 	const op = "kms.validateSchema"
-	var s schema
-	if err := r.LookupWhere(ctx, &s, "1=1", nil); err != nil {
+	s := schema{
+		tableNamePrefix: tableNamePrefix,
+	}
+	if err := r.LookupWhere(ctx, &s, "1=1", nil, dbw.WithTable(s.TableName())); err != nil {
 		return "", fmt.Errorf("%s: unable to get version: %w", op, err)
 	}
 	if s.Version != migrations.Version {
@@ -104,11 +112,15 @@ func (r *repository) DefaultLimit() int {
 
 // list will return a listing of resources and honor the WithLimit option or the
 // repo defaultLimit.  WithOrderByVersion is supported for types that have a
-// version column.  WithReader option is supported
+// version column.  WithReader option is supported.  Non-exported withTableName
+// is supported
 func (r *repository) list(ctx context.Context, resources interface{}, where string, args []interface{}, opt ...Option) error {
 	opts := getOpts(opt...)
 	limit := r.defaultLimit
 	var dbOpts []dbw.Option
+	if opts.withTableName != "" {
+		dbOpts = append(dbOpts, dbw.WithTable(opts.withTableName))
+	}
 	if opts.withLimit != 0 {
 		// non-zero signals an override of the default limit for the repo.
 		limit = opts.withLimit
@@ -133,17 +145,17 @@ type vetForWriter interface {
 	vetForWrite(ctx context.Context, opType dbw.OpType) error
 }
 
-func updateKeyCollectionVersion(ctx context.Context, w dbw.Writer) error {
+func updateKeyCollectionVersion(ctx context.Context, w dbw.Writer, tableNamePrefix string) error {
 	const (
-		op = "kms.updateKeyCollectionVersion"
-
-		sql = "update kms_collection_version set version = version + 1"
+		op            = "kms.updateKeyCollectionVersion"
+		baseTableName = "collection_version"
+		sql           = "update %s_%s set version = version + 1"
 	)
 	if isNil(w) {
 		return fmt.Errorf("%s: missing writer: %w", op, ErrInvalidParameter)
 	}
 
-	rowsUpdated, err := w.Exec(ctx, sql, nil)
+	rowsUpdated, err := w.Exec(ctx, fmt.Sprintf(sql, tableNamePrefix, baseTableName), nil)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -153,17 +165,17 @@ func updateKeyCollectionVersion(ctx context.Context, w dbw.Writer) error {
 	return nil
 }
 
-func currentCollectionVersion(ctx context.Context, r dbw.Reader) (uint64, error) {
+func currentCollectionVersion(ctx context.Context, r dbw.Reader, tableNamePrefix string) (uint64, error) {
 	const (
-		op = "kms.currentCollectionVersion"
-
-		sql = "select version from kms_collection_version"
+		op            = "kms.currentCollectionVersion"
+		baseTableName = "collection_version"
+		sql           = "select version from %s_%s"
 	)
 	if isNil(r) {
 		return 0, fmt.Errorf("%s: missing reader: %w", op, ErrInvalidParameter)
 	}
 
-	rows, err := r.Query(ctx, sql, nil)
+	rows, err := r.Query(ctx, fmt.Sprintf(sql, tableNamePrefix, baseTableName), nil)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
@@ -221,7 +233,7 @@ type keys map[KeyPurpose]keyWithVersion
 // within a transaction.  To be clear, this repository function doesn't include
 // its own transaction and is intended to be used within a transaction provided
 // by the caller.
-func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, scopeId string, purpose ...KeyPurpose) (keys, error) {
+func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper wrapping.Wrapper, randomReader io.Reader, tableNamePrefix string, scopeId string, purpose ...KeyPurpose) (keys, error) {
 	const op = "kms.createKeysTx"
 	if rootWrapper == nil {
 		return nil, fmt.Errorf("%s: missing root wrapper: %w", op, ErrInvalidParameter)
@@ -231,6 +243,9 @@ func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper w
 	}
 	if scopeId == "" {
 		return nil, fmt.Errorf("%s: missing scope id: %w", op, ErrInvalidParameter)
+	}
+	if tableNamePrefix == "" {
+		return nil, fmt.Errorf("%s: missing table name prefix: %w", op, ErrInvalidParameter)
 	}
 	reserved := reservedKeyPurpose()
 	dups := map[KeyPurpose]struct{}{}
@@ -247,7 +262,7 @@ func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper w
 	if err != nil {
 		return nil, fmt.Errorf("%s: error generating random bytes for root key in scope %q: %w", op, scopeId, err)
 	}
-	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, w, rootWrapper, scopeId, k)
+	rootKey, rootKeyVersion, err := createRootKeyTx(ctx, w, rootWrapper, scopeId, k, tableNamePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("%s: unable to create root key in scope %q: %w", op, scopeId, err)
 	}
@@ -271,7 +286,7 @@ func createKeysTx(ctx context.Context, r dbw.Reader, w dbw.Writer, rootWrapper w
 		if err != nil {
 			return nil, fmt.Errorf("%s: error generating random bytes for data key of purpose %q in scope %q: %w", op, p, scopeId, err)
 		}
-		dataKey, dataKeyVersion, err := createDataKeyTx(ctx, r, w, rkvWrapper, p, k)
+		dataKey, dataKeyVersion, err := createDataKeyTx(ctx, r, w, rkvWrapper, tableNamePrefix, p, k)
 		if err != nil {
 			return nil, fmt.Errorf("%s: unable to create data key of purpose %q in scope %q: %w", op, p, scopeId, err)
 		}

@@ -10,51 +10,54 @@ jobs:
   build:
     strategy:
       matrix:
-        go: ["1.20", "1.19", "1.18", "1.17"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: ${{ matrix.go }}
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@v2
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
 
       - name: Build
-        run: CGO_ENABLED=0 find . -name go.mod -execdir go build ./... \;
+        run: find . -name go.mod -execdir sh -c 'pwd && CGO_ENABLED=0 go build ./... || exit 1' sh {} +
+
+      - name: JS/WASM Build
+        run: find . -name go.mod -not -path "*examples*" -execdir sh -c 'pwd && GOOS=js GOARCH=wasm CGO_CENABLED=0 go build ./... || exit 1' sh {} +
 
       - name: Test
         # exclude the transit plugin since it's tested with the plugin-transit
         # job, which requires a vault container to be running
-        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir go test ./... \;
+        run: find . -name go.mod -not -path "*wrappers/transit/*" -execdir sh -c 'go test ./... || exit 1' sh {} +
 
   sqlite:
     strategy:
       matrix:
-        go: ["1.20", "1.19", "1.18"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: ${{ matrix.go }}
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@v2
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -74,7 +77,7 @@ jobs:
             "postgres:11",
             "postgres:10",
           ]
-        go: ["1.20", "1.19", "1.18"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 
@@ -96,15 +99,15 @@ jobs:
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: ${{ matrix.go }}
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@v2
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -116,21 +119,21 @@ jobs:
   plugin-transit:
     strategy:
       matrix:
-        go: ["1.20", "1.19", "1.18", "1.17"]
+        go: ["1.21", "1.20"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
           go-version: ${{ matrix.go }}
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@v2
+        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -152,19 +155,19 @@ jobs:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: bufbuild/buf-setup-action@v1
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
         with:
           version: "1.15.1"
-      - uses: bufbuild/buf-lint-action@v1
-      - uses: bufbuild/buf-breaking-action@v1
+      - uses: bufbuild/buf-lint-action@bd48f53224baaaf0fc55de9a913e7680ca6dbea4 # v1.0.3
+      - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
         with:
           # The 'main' branch of the GitHub repository that defines the module.
           against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
       - name: Set up Go 1.x
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
         with:
-          go-version-file: go.mod    
+          go-version-file: go.mod
       - name: install go-inject-tag dependency
         run: |
           go install github.com/favadi/protoc-go-inject-tag@v1.4.0
@@ -179,21 +182,22 @@ jobs:
 
   # if merged -> then lint, build and finally push a commit to the buf registry
   buf_if_merged:
+    if: ${{ github.ref_name == 'main'}}
     strategy:
       matrix:
         platform: [ubuntu-latest]
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: bufbuild/buf-setup-action@v1
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
         with:
           version: "1.15.1"
-      - uses: bufbuild/buf-lint-action@v1
-      - uses: bufbuild/buf-breaking-action@v1
+      - uses: bufbuild/buf-lint-action@bd48f53224baaaf0fc55de9a913e7680ca6dbea4 # v1.0.3
+      - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
         with:
           # The 'main' branch of the GitHub repository that defines the module.
           against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
-      - uses: bufbuild/buf-push-action@v1
+      - uses: bufbuild/buf-push-action@1c45f6a21ec277ee4c1fa2772e49b9541ea17f38 # v1.1.1
         with:
           buf_token: ${{ secrets.BUF_TOKEN }}
           draft: ${{ github.ref_name != 'main'}}
