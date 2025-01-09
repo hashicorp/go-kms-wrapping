@@ -97,14 +97,14 @@ func (v *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	case os.Getenv("AZURE_CLIENT_ID") != "" && !opts.withDisallowEnvVars:
 		v.clientID = os.Getenv("AZURE_CLIENT_ID")
 	case opts.withClientId != "":
-		v.clientID = opts.withClientId
+		v.clientID = wrapping.QuietParsePath(opts.withClientId)
 	}
 
 	switch {
 	case os.Getenv("AZURE_CLIENT_SECRET") != "" && !opts.withDisallowEnvVars:
 		v.clientSecret = os.Getenv("AZURE_CLIENT_SECRET")
 	case opts.withClientSecret != "":
-		v.clientSecret = opts.withClientSecret
+		v.clientSecret = wrapping.QuietParsePath(opts.withClientSecret)
 	}
 
 	var envName string

@@ -121,7 +121,7 @@ func newTransitClient(logger hclog.Logger, opts *options) (*TransitClient, *wrap
 		return nil, nil, err
 	}
 	if opts.withToken != "" {
-		apiClient.SetToken(opts.withToken)
+		apiClient.SetToken(wrapping.QuietParsePath(opts.withToken))
 	}
 	if namespace != "" {
 		apiClient.SetNamespace(namespace)

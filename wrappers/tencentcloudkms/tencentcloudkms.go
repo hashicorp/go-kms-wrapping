@@ -66,7 +66,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(PROVIDER_KMS_KEY_ID) != "":
 		k.keyId = os.Getenv(PROVIDER_KMS_KEY_ID)
 	case opts.WithKeyId != "":
-		k.keyId = opts.WithKeyId
+		k.keyId = wrapping.QuietParsePath(opts.WithKeyId)
 	default:
 		return nil, fmt.Errorf("'key_id' not found for TencentCloud kms wrapper configuration")
 	}
@@ -82,7 +82,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(PROVIDER_SECRET_ID) != "":
 		k.accessKey = os.Getenv(PROVIDER_SECRET_ID)
 	case opts.withAccessKey != "":
-		k.accessKey = opts.withAccessKey
+		k.accessKey = wrapping.QuietParsePath(opts.withAccessKey)
 	default:
 		return nil, fmt.Errorf("'access_key' not found for TencentCloud KMS wrapper configuration")
 	}
@@ -91,7 +91,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(PROVIDER_SECRET_KEY) != "":
 		k.secretKey = os.Getenv(PROVIDER_SECRET_KEY)
 	case opts.withSecretKey != "":
-		k.secretKey = opts.withSecretKey
+		k.secretKey = wrapping.QuietParsePath(opts.withSecretKey)
 	default:
 		return nil, fmt.Errorf("'secret_key' not found for TencentCloud KMS wrapper configuration")
 	}
@@ -100,7 +100,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(PROVIDER_SECURITY_TOKEN) != "":
 		k.sessionToken = os.Getenv(PROVIDER_SECURITY_TOKEN)
 	case opts.withSessionToken != "":
-		k.sessionToken = opts.withSessionToken
+		k.sessionToken = wrapping.QuietParsePath(opts.withSessionToken)
 	}
 
 	if k.client == nil {
