@@ -2,7 +2,7 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 
 go 1.20
 
-require github.com/hashicorp/go-kms-wrapping/v2 v2.0.10-0.20250106200727-2dc6748a944a
+require github.com/hashicorp/go-kms-wrapping/v2 v2.0.17-0.20250109190849-0b764cfa6e4a
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

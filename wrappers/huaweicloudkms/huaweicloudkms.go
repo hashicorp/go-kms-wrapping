@@ -59,7 +59,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	keyId, err := getConfig(
 		"kms_key_id",
 		os.Getenv(EnvHuaweiCloudKmsWrapperKeyId),
-		wrapping.QuietParsePath(opts.WithKeyId))
+		opts.WithKeyId)
 	if err != nil {
 		return nil, err
 	}

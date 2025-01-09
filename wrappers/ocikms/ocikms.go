@@ -68,7 +68,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(EnvVaultOciKmsSealKeyId) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(EnvVaultOciKmsSealKeyId)
 	case opts.WithKeyId != "":
-		k.keyId = wrapping.QuietParsePath(opts.WithKeyId)
+		k.keyId = opts.WithKeyId
 	default:
 		return nil, fmt.Errorf("'%s' not found for OCI KMS seal configuration", KmsConfigKeyId)
 	}

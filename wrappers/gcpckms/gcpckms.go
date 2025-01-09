@@ -144,7 +144,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	case os.Getenv(EnvVaultGcpCkmsSealCryptoKey) != "" && !opts.Options.WithDisallowEnvVars:
 		s.cryptoKey = os.Getenv(EnvVaultGcpCkmsSealCryptoKey)
 	case opts.withCryptoKey != "":
-		s.cryptoKey = wrapping.QuietParsePath(opts.withCryptoKey)
+		s.cryptoKey = opts.withCryptoKey
 	case s.keyNotRequired:
 		// key not required to set config
 	default:
