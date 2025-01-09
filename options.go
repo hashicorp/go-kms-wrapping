@@ -5,6 +5,7 @@ package wrapping
 
 import (
 	"errors"
+	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
 // GetOpts iterates the inbound Options and returns a struct
@@ -153,4 +154,12 @@ func WithoutHMAC() Option {
 			return nil
 		})
 	}
+}
+
+func QuietParsePath(val string) string {
+	v, err := parseutil.ParsePath(val)
+	if err != nil {
+		return val
+	}
+	return v
 }
