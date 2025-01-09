@@ -154,14 +154,6 @@ func ParsePath(v string) (string, error) {
 	return p, nil
 }
 
-func QuietParsePath(val string) string {
-	v, err := parseutil.ParsePath(val)
-	if err != nil {
-		return val
-	}
-	return v
-}
-
 // WithoutHMAC disables the requirement for an HMAC to be included with the mechanism.
 func WithoutHMAC() Option {
 	return func() interface{} {
@@ -170,4 +162,15 @@ func WithoutHMAC() Option {
 			return nil
 		})
 	}
+}
+
+func ParsePaths(fields ...*string) error {
+	for i := 0; i < len(fields); i++ {
+		if newVal, err := parseutil.ParsePath(*fields[i]); err != nil {
+			return err
+		} else {
+			*fields[i] = newVal
+		}
+	}
+	return nil
 }
