@@ -112,3 +112,28 @@ func testOptionWithError(t *testing.T) Option {
 		})
 	}
 }
+
+func TestParsePaths(t *testing.T) {
+	type options struct {
+		optionA string
+		optionB string
+	}
+
+	test := options{
+		optionA: "Hello, World!",
+		optionB: "file://test-fixtures/secret.txt",
+	}
+	if err := ParsePaths(&test.optionA, &test.optionB); err != nil {
+		t.Fatal(err)
+	}
+	if test.optionB != "Top Secret" {
+		t.Fatalf("expected TopSecret, got %s", test.optionB)
+	}
+
+	test = options{
+		optionA: "file://test-fixtures/missing.txt",
+	}
+	if err := ParsePaths(&test.optionA, &test.optionB); err == nil {
+		t.Fatal("expected error but didn't get one")
+	}
+}
