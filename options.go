@@ -146,14 +146,6 @@ func WithDisallowEnvVars(disallowEnvVars bool) Option {
 	}
 }
 
-func ParsePath(v string) (string, error) {
-	p, err := ParsePath(v)
-	if err != nil && err != parseutil.ErrNotAUrl {
-		return "", err
-	}
-	return p, nil
-}
-
 // WithoutHMAC disables the requirement for an HMAC to be included with the mechanism.
 func WithoutHMAC() Option {
 	return func() interface{} {
