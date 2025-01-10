@@ -28,7 +28,6 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 		}
 	}
 
-	if err := wrapping.ParsePaths(&opts.withClientId, &opts.withClientSecret
 	// Parse the global options
 	var err error
 	opts.Options, err = wrapping.GetOpts(wrappingOptions...)
@@ -82,7 +81,6 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 	if err := wrapping.ParsePaths(&opts.withCredentials); err != nil {
 		return nil, err
 	}
-
 
 	return &opts, nil
 }
