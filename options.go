@@ -158,7 +158,7 @@ func WithoutHMAC() Option {
 
 func ParsePaths(fields ...*string) error {
 	for i := 0; i < len(fields); i++ {
-		if newVal, err := parseutil.ParsePath(*fields[i]); err != nil {
+		if newVal, err := parseutil.ParsePath(*fields[i], parseutil.WithNoTrimSpaces(true), parseutil.WithErrorOnMissingEnv(true)); err != nil {
 			return err
 		} else {
 			*fields[i] = newVal
