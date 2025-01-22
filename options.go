@@ -156,12 +156,25 @@ func WithoutHMAC() Option {
 	}
 }
 
+// ParsePaths is a helper function to take each string pointer argument and call parseutil.ParsePath,
+// replacing the contents of the target string with the result if no error occurs.  The function exits
+// early if it encounters an error.  In that case no passed fields will have been modified.
+//
+// If any passed pointer is nil it will be ignored.
 func ParsePaths(fields ...*string) error {
+	newVals := make([]string, len(fields))
 	for i := 0; i < len(fields); i++ {
-		if newVal, err := parseutil.ParsePath(*fields[i], parseutil.WithNoTrimSpaces(true), parseutil.WithErrorOnMissingEnv(true)); err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
-			return err
-		} else {
-			*fields[i] = newVal
+		if fields[i] != nil {
+			if newVal, err := parseutil.ParsePath(*fields[i], parseutil.WithNoTrimSpaces(true), parseutil.WithErrorOnMissingEnv(true)); err != nil && !errors.Is(err, parseutil.ErrNotAUrl) {
+				return err
+			} else {
+				newVals[i] = newVal
+			}
+		}
+	}
+	for i := 0; i < len(fields); i++ {
+		if fields[i] != nil {
+			*fields[i] = newVals[i]
 		}
 	}
 	return nil
