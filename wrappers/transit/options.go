@@ -91,7 +91,7 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 		}
 	}
 
-	if err := wrapping.ParsePaths(&opts.withToken); err != nil {
+	if err := wrapping.ParsePaths(&opts.withToken, &opts.withTlsClientKey); err != nil {
 		return nil, err
 	}
 
