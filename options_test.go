@@ -149,6 +149,7 @@ func TestParsePaths(t *testing.T) {
 	if err := ParsePaths(&test.optionA, &test.optionB); err == nil {
 		t.Fatal("expected error but didn't get one")
 	}
+
 	if test.optionA != "file://test-fixtures/secret.txt" {
 		t.Fatalf("optionA was overwritten despite encountering an error")
 	}
