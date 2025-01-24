@@ -19,6 +19,7 @@ jobs:
           - './wrappers/ocikms'
           - './wrappers/tencentcloudkms'
           - './wrappers/transit'
+          - './wrappers/pkcs11'
         go: ["1.22"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
@@ -41,6 +42,12 @@ jobs:
       - name: Tests
         working-directory: ${{ matrix.directory }}
         run: go test ./...
+
+      - name: Container tests
+        run: |-
+          if [ -e "${{ matrix.directory }}/Dockerfile" ]; then
+            docker build -f "${{ matrix.directory }}/Dockerfile" .
+          fi
 
   buf:
     strategy:
