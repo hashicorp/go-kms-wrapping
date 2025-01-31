@@ -292,11 +292,20 @@ func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client
 	var cred azcore.TokenCredential
 
 	switch {
-	// Use client secret if provided
+	// Use a fully specified tenant, client, secret if provided
 	case v.tenantID != "" && v.clientID != "" && v.clientSecret != "":
 		cred, err = azidentity.NewClientSecretCredential(v.tenantID, v.clientID, v.clientSecret, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get client secret credentials %w", err)
+		}
+	case v.clientID != "":
+		// Try a managed service credential with a specified client id
+		clientID := azidentity.ClientID(v.clientID)
+		cred, err = azidentity.NewManagedIdentityCredential(&azidentity.ManagedIdentityCredentialOptions{
+			ID: clientID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get managed identity credentials: %w", err)
 		}
 	// By default let Azure select existing credentials
 	default:
