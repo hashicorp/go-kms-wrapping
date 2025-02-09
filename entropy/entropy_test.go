@@ -10,9 +10,11 @@ import (
 	"testing"
 )
 
-type mockSourcerWithError struct{}
-type mockSourcerFailureWithError struct{}
-type mockSourcerFailureWithoutError struct{}
+type (
+	mockSourcerWithError           struct{}
+	mockSourcerFailureWithError    struct{}
+	mockSourcerFailureWithoutError struct{}
+)
 
 // simulates a sourcer that reads in the requested number of bytes but encounters an error.
 // Read should drop any error if the number of bytes specified were successfully read.
@@ -31,7 +33,7 @@ func (m *mockSourcerFailureWithoutError) GetRandom(bytes int) ([]byte, error) {
 }
 
 func TestRead(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		sourcer      Sourcer
 		preReadBuff  []byte
 		postReadBuff []byte

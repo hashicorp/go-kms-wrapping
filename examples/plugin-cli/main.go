@@ -117,6 +117,7 @@ func builtinKmsPlugins() map[string]pluginutil.InmemCreationFunc {
 }
 
 // content is our static web server content.
+//
 //go:embed plugins/assets
 var content embed.FS
 

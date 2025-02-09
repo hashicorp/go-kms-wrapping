@@ -77,13 +77,13 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 	if err != nil {
 		return nil, err
 	}
-	
+
 	keyId := key.String()
 	k.currentKeyId.Store(keyId)
 
 	ret := &wrapping.BlobInfo{
 		Ciphertext: ciphertext,
-		Iv: iv,
+		Iv:         iv,
 		KeyInfo: &wrapping.KeyInfo{
 			KeyId: keyId,
 		},

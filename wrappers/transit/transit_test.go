@@ -134,11 +134,11 @@ func TestSetConfig(t *testing.T) {
 	cluster, _, client := getTestCluster(t)
 	defer cluster.Cleanup()
 
-	var testWithMountPath = "transit/"
-	var testWithAddress = client.Address()
-	var testWithKeyName = "example-key"
-	var testWithDisableRenewal = "true"
-	var testWithToken = client.Token()
+	testWithMountPath := "transit/"
+	testWithAddress := client.Address()
+	testWithKeyName := "example-key"
+	testWithDisableRenewal := "true"
+	testWithToken := client.Token()
 
 	os.Setenv("BAO_CACERT_BYTES", string(cluster.CACertPEM))
 

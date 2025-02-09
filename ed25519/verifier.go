@@ -23,8 +23,10 @@ type Verifier struct {
 	keyType     wrapping.KeyType
 }
 
-var _ wrapping.SigInfoVerifier = (*Verifier)(nil)
-var _ wrapping.KeyExporter = (*Verifier)(nil)
+var (
+	_ wrapping.SigInfoVerifier = (*Verifier)(nil)
+	_ wrapping.KeyExporter     = (*Verifier)(nil)
+)
 
 // NewVerifier creates a new verifier.  Supported options: WithKeyId,
 // WithKeyPurposes, WithPubKey, WithConfigMap

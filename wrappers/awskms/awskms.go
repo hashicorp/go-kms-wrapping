@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	"github.com/hashicorp/go-secure-stdlib/awsutil"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat

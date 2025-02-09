@@ -10,8 +10,8 @@ import (
 	"os/exec"
 	"os/signal"
 
-	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	gp "github.com/hashicorp/go-plugin"
+	wrapping "github.com/openbao/go-kms-wrapping/v2"
 	grpc "google.golang.org/grpc"
 )
 

@@ -22,8 +22,10 @@ type Signer struct {
 	keyType     wrapping.KeyType
 }
 
-var _ wrapping.SigInfoSigner = (*Signer)(nil)
-var _ wrapping.KeyExporter = (*Signer)(nil)
+var (
+	_ wrapping.SigInfoSigner = (*Signer)(nil)
+	_ wrapping.KeyExporter   = (*Signer)(nil)
+)
 
 // NewSigner creates a new Signer.   Supported options: WithKeyId,
 // WithKeyPurposes, WithPrivKey, WithConfigMap

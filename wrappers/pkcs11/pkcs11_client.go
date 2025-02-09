@@ -4,24 +4,26 @@
 package pkcs11
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
-	"encoding/binary"
-	"encoding/hex"
 
-	"github.com/openbao/openbao/api/v2"
 	pkcs11 "github.com/miekg/pkcs11"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/api/v2"
 )
 
 type Pkcs11Key struct {
-	label		string
-	id			string
+	label string
+	id    string
 }
+
 func (k Pkcs11Key) String() string {
 	return fmt.Sprintf("%s:%s", k.label, k.id)
 }
+
 func newPkcs11Key(v string) (*Pkcs11Key, error) {
 	pos := strings.LastIndex(v, ":")
 	if pos <= 0 {
@@ -29,10 +31,11 @@ func newPkcs11Key(v string) (*Pkcs11Key, error) {
 	}
 	k := &Pkcs11Key{
 		label: v[:pos],
-		id: v[pos+1:],
+		id:    v[pos+1:],
 	}
 	return k, nil
 }
+
 func (k Pkcs11Key) Set(v string) error {
 	pos := strings.LastIndex(v, ":")
 	if pos <= 0 {
@@ -51,14 +54,14 @@ type pkcs11ClientEncryptor interface {
 }
 
 type Pkcs11Client struct {
-	client	  	*pkcs11.Ctx
-	lib	    	string
-	slot      	*uint
-	tokenLabel	string
-	pin       	string
-	keyLabel	string
-	keyId     	string
-	mechanism 	uint
+	client      *pkcs11.Ctx
+	lib         string
+	slot        *uint
+	tokenLabel  string
+	pin         string
+	keyLabel    string
+	keyId       string
+	mechanism   uint
 	rsaOaepHash string
 }
 
@@ -72,13 +75,14 @@ const (
 	EnvHsmWrapperMechanism   = "BAO_HSM_MECHANISM"
 	EnvHsmWrapperRsaOaepHash = "BAO_HSM_RSA_OAEP_HASH"
 )
-const (
-	DefaultAesMechanism      = pkcs11.CKM_AES_GCM
-	DefaultRsaMechanism      = pkcs11.CKM_RSA_PKCS_OAEP
-	DefaultRsaOaepHash       = "sha256"
 
-	CryptoAesGcmNonceSize    = 12
-	CryptoAesGcmOverhead     = 16
+const (
+	DefaultAesMechanism = pkcs11.CKM_AES_GCM
+	DefaultRsaMechanism = pkcs11.CKM_RSA_PKCS_OAEP
+	DefaultRsaOaepHash  = "sha256"
+
+	CryptoAesGcmNonceSize = 12
+	CryptoAesGcmOverhead  = 16
 )
 
 func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, error) {
@@ -233,7 +237,6 @@ func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, err
 	return client, wrapConfig, nil
 }
 
-
 func (c *Pkcs11Client) Close() {
 	if c.client == nil {
 		return
@@ -260,7 +263,7 @@ func (c *Pkcs11Client) Encrypt(plaintext []byte) ([]byte, []byte, *Pkcs11Key, er
 	}
 	defer c.CloseSession(session)
 
-	keyId := Pkcs11Key{ label: c.keyLabel, id: c.keyId }
+	keyId := Pkcs11Key{label: c.keyLabel, id: c.keyId}
 	key, err := c.FindKey(session, keyId, pkcs11.CKA_ENCRYPT)
 	if err != nil {
 		return nil, nil, nil, err
@@ -304,7 +307,7 @@ func (c *Pkcs11Client) EncryptAesGcm(session pkcs11.SessionHandle, key pkcs11.Ob
 
 	// Some HSM (CloudHSM) does not read the nonce/IV and generate its own.
 	// Since it's append, we need to extract it.
-	if len(ciphertext) == CryptoAesGcmNonceSize + len(plaintext) + CryptoAesGcmOverhead {
+	if len(ciphertext) == CryptoAesGcmNonceSize+len(plaintext)+CryptoAesGcmOverhead {
 		nonce = ciphertext[len(ciphertext)-CryptoAesGcmNonceSize:]
 		ciphertext = ciphertext[:len(ciphertext)-CryptoAesGcmNonceSize]
 	}
@@ -312,7 +315,7 @@ func (c *Pkcs11Client) EncryptAesGcm(session pkcs11.SessionHandle, key pkcs11.Ob
 	return ciphertext, nonce, &keyId, nil
 }
 
-func (c *Pkcs11Client) EncryptRsaOaep(session pkcs11.SessionHandle, key pkcs11.ObjectHandle, keyId Pkcs11Key, plaintext []byte) ([]byte, []byte, *Pkcs11Key, error) {	
+func (c *Pkcs11Client) EncryptRsaOaep(session pkcs11.SessionHandle, key pkcs11.ObjectHandle, keyId Pkcs11Key, plaintext []byte) ([]byte, []byte, *Pkcs11Key, error) {
 	var rsaOaepHash string
 	if c.rsaOaepHash != "" {
 		rsaOaepHash = c.rsaOaepHash
@@ -345,7 +348,7 @@ func (c *Pkcs11Client) Decrypt(ciphertext []byte, nonce []byte, keyId *Pkcs11Key
 	defer c.CloseSession(session)
 
 	if keyId == nil {
-		keyId = &Pkcs11Key{ label: c.keyLabel, id: c.keyId }
+		keyId = &Pkcs11Key{label: c.keyLabel, id: c.keyId}
 	}
 
 	key, err := c.FindKey(session, *keyId, pkcs11.CKA_DECRYPT)
@@ -410,7 +413,7 @@ func (c *Pkcs11Client) DecryptRsaOaep(session pkcs11.SessionHandle, key pkcs11.O
 }
 
 // Create a PKCS11 client for the configured module.
-func (c *Pkcs11Client) InitializeClient() (error) {
+func (c *Pkcs11Client) InitializeClient() error {
 	if c.client != nil {
 		return nil
 	}
@@ -549,7 +552,7 @@ func (c *Pkcs11Client) GetKeyMechanism(session pkcs11.SessionHandle, key pkcs11.
 func (c *Pkcs11Client) GetCurrentKey() Pkcs11Key {
 	return Pkcs11Key{
 		label: c.keyLabel,
-		id: c.keyId,
+		id:    c.keyId,
 	}
 }
 

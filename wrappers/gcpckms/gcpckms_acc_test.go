@@ -33,7 +33,6 @@ func TestGcpKeyIdAfterConfig(t *testing.T) {
 		opts        []wrapping.Option
 		expectKeyId bool
 	}{
-
 		{
 			name: "expected-key-id",
 			opts: []wrapping.Option{
@@ -91,7 +90,6 @@ func TestGcpKeyIdAfterConfig(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestGcpCkmsSeal(t *testing.T) {

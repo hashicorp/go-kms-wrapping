@@ -86,13 +86,13 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withSlot      	string
-	withPin       	string
-	withLib       	string
-	withKeyId		string
-	withKeyLabel   	string
-	withTokenLabel	string
-	withMechanism 	string
+	withSlot        string
+	withPin         string
+	withLib         string
+	withKeyId       string
+	withKeyLabel    string
+	withTokenLabel  string
+	withMechanism   string
 	withRsaOaepHash string
 }
 
