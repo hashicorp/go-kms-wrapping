@@ -53,7 +53,7 @@ type pkcs11ClientEncryptor interface {
 type Pkcs11Client struct {
 	client	  	*pkcs11.Ctx
 	lib	    	string
-	slot      	uint
+	slot      	*uint
 	tokenLabel	string
 	pin       	string
 	keyLabel	string
@@ -83,7 +83,8 @@ const (
 
 func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, error) {
 	var lib, slot, keyId, tokenLabel, pin, keyLabel, mechanism, rsaOaepHash string
-	var slotNum, mechanismNum uint64
+	var slotNum *uint64
+	var mechanismNum uint64
 	var err error
 
 	switch {
@@ -167,11 +168,13 @@ func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, err
 	}
 
 	if slot != "" {
-		if slotNum, err = numberAutoParse(slot, 32); err != nil {
+		var slotNumRaw uint64
+		if slotNumRaw, err = numberAutoParse(slot, 32); err != nil {
 			return nil, nil, fmt.Errorf("Invalid slot number")
 		}
+		slotNum = &slotNumRaw
 	} else {
-		slotNum = 0
+		slotNum = nil
 	}
 
 	if mechanism != "" {
@@ -185,13 +188,16 @@ func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, err
 	client := &Pkcs11Client{
 		client:      nil,
 		lib:         lib,
-		slot:        uint(slotNum),
 		pin:         pin,
 		tokenLabel:  tokenLabel,
 		keyId:       keyId,
 		keyLabel:    keyLabel,
 		mechanism:   uint(mechanismNum),
 		rsaOaepHash: rsaOaepHash,
+	}
+	if slotNum != nil {
+		client.slot = new(uint)
+		*client.slot = uint(*slotNum)
 	}
 
 	// Initialize the client
@@ -211,8 +217,8 @@ func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, err
 	wrapConfig.Metadata["lib"] = lib
 	wrapConfig.Metadata["key_label"] = keyLabel
 	wrapConfig.Metadata["key_id"] = keyId
-	if slotNum != 0 {
-		wrapConfig.Metadata["slot"] = strconv.Itoa(int(slotNum))
+	if slotNum != nil {
+		wrapConfig.Metadata["slot"] = strconv.Itoa(int(*slotNum))
 	}
 	if tokenLabel != "" {
 		wrapConfig.Metadata["token_label"] = tokenLabel
@@ -418,8 +424,8 @@ func (c *Pkcs11Client) InitializeClient() (error) {
 }
 
 func (c *Pkcs11Client) GetSlotForLabel() (uint, error) {
-	if c.slot != 0 {
-		return c.slot, nil
+	if c.slot != nil {
+		return *c.slot, nil
 	}
 	if c.tokenLabel == "" {
 		return 0, fmt.Errorf("not token label configured")
@@ -428,14 +434,14 @@ func (c *Pkcs11Client) GetSlotForLabel() (uint, error) {
 	for _, slot := range slots {
 		tokenInfo, err := c.client.GetTokenInfo(slot)
 		if err == nil && tokenInfo.Label == c.tokenLabel {
-			c.slot = slot
+			c.slot = &slot
 			break
 		}
 	}
-	if c.slot == 0 {
+	if c.slot == nil {
 		return 0, fmt.Errorf("failed to find token with label: %s", c.tokenLabel)
 	}
-	return c.slot, nil
+	return *c.slot, nil
 }
 
 // Open a session and perform the authentication process.
@@ -444,14 +450,14 @@ func (c *Pkcs11Client) GetSession() (pkcs11.SessionHandle, error) {
 		return 0, fmt.Errorf("PKCS11 not initialized")
 	}
 
-	if c.slot == 0 {
+	if c.slot == nil {
 		_, err := c.GetSlotForLabel()
 		if err != nil {
 			return 0, err
 		}
 	}
 
-	session, err := c.client.OpenSession(c.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+	session, err := c.client.OpenSession(*c.slot, pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open session: %w", err)
 	}
