@@ -101,10 +101,10 @@ github.com/moby/term v0.0.0-20221205130635-1aeaba878587 h1:HfkjXDfhgVaN5rmueG8cL
 github.com/moby/term v0.0.0-20221205130635-1aeaba878587/go.mod h1:8FzsFHVUBGZdbDsJw/ot+X+d5HLUbvklYLJ9uGfcI3Y=
 github.com/morikuni/aec v1.0.0 h1:nP9CBfwrvYnBRgY6qfDQkygYDmYwOilePFkwzv4dU8A=
 github.com/morikuni/aec v1.0.0/go.mod h1:BbKIizmSmc5MMPqRYbxO4ZU0S0+P200+tUnFx7PXmsc=
-github.com/openbao/openbao/api/v2 v2.1.1-0.20250209152033-92b45291cda1 h1:RkwM7zY5PMkDgX4G+WExpso8nMLrIc6TpJvcwRmKdRE=
-github.com/openbao/openbao/api/v2 v2.1.1-0.20250209152033-92b45291cda1/go.mod h1:9EkGGfWrjhh/1cqBXGPA15PawB0TOXohYmHPe0Djku8=
-github.com/openbao/openbao/sdk/v2 v2.1.1-0.20250209152033-92b45291cda1 h1:h+0ISMr5mq8AG2eHqf5m7flyF7Ojd8tsCfBCvKy5Txk=
-github.com/openbao/openbao/sdk/v2 v2.1.1-0.20250209152033-92b45291cda1/go.mod h1:7q4I/+G5jwWvTL14VmKuvmappkbeQnnO4TqEmZjSHQI=
+github.com/openbao/openbao/api/v2 v2.2.0 h1:RPHdUtC/A6ZZSb1uR8dxA1X5Eu71ojH+UiRHz90Pm8g=
+github.com/openbao/openbao/api/v2 v2.2.0/go.mod h1:9EkGGfWrjhh/1cqBXGPA15PawB0TOXohYmHPe0Djku8=
+github.com/openbao/openbao/sdk/v2 v2.1.1-0.20250213170500-bf84bfe8daa7 h1:xdfmRZ2Ddiy0SeBZYrHZ+s+WTVPzAWI4ba8K6YcBnhc=
+github.com/openbao/openbao/sdk/v2 v2.1.1-0.20250213170500-bf84bfe8daa7/go.mod h1:s47Na1WRQY6WdAKbcyj8pxWEpxGhulgPq9xI/HNpBqA=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQb2IpWsCzug=

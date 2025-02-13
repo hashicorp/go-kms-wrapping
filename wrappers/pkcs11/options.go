@@ -76,6 +76,10 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 		}
 	}
 
+	if err := wrapping.ParsePaths(&opts.withPin); err != nil {
+		return nil, err
+	}
+
 	return &opts, nil
 }
 

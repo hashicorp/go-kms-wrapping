@@ -4,6 +4,7 @@
 package transit
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -29,8 +30,8 @@ const (
 
 type transitClientEncryptor interface {
 	Close()
-	Encrypt(plaintext []byte) (ciphertext []byte, err error)
-	Decrypt(ciphertext []byte) (plaintext []byte, err error)
+	Encrypt(ctx context.Context, plaintext []byte) (ciphertext []byte, err error)
+	Decrypt(ctx context.Context, ciphertext []byte) (plaintext []byte, err error)
 }
 
 type TransitClient struct {
@@ -197,10 +198,10 @@ func (c *TransitClient) Close() {
 	}
 }
 
-func (c *TransitClient) Encrypt(plaintext []byte) ([]byte, error) {
+func (c *TransitClient) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {
 	encPlaintext := base64.StdEncoding.EncodeToString(plaintext)
 	path := path.Join(c.mountPath, "encrypt", c.keyName)
-	secret, err := c.client.Logical().Write(path, map[string]interface{}{
+	secret, err := c.client.Logical().WriteWithContext(ctx, path, map[string]interface{}{
 		"plaintext": encPlaintext,
 	})
 	if err != nil {
@@ -224,9 +225,9 @@ func (c *TransitClient) Encrypt(plaintext []byte) ([]byte, error) {
 	return []byte(ctStr), nil
 }
 
-func (c *TransitClient) Decrypt(ciphertext []byte) ([]byte, error) {
+func (c *TransitClient) Decrypt(ctx context.Context, ciphertext []byte) ([]byte, error) {
 	path := path.Join(c.mountPath, "decrypt", c.keyName)
-	secret, err := c.client.Logical().Write(path, map[string]interface{}{
+	secret, err := c.client.Logical().WriteWithContext(ctx, path, map[string]interface{}{
 		"ciphertext": string(ciphertext),
 	})
 	if err != nil {

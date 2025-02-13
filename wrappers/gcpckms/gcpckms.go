@@ -130,7 +130,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	switch {
 	case os.Getenv(EnvGcpCkmsWrapperKeyRing) != "" && !opts.Options.WithDisallowEnvVars:
 		s.keyRing = os.Getenv(EnvGcpCkmsWrapperKeyRing)
-	case os.Getenv(EnvVaultGcpCkmsSealKeyRing) != "":
+	case os.Getenv(EnvVaultGcpCkmsSealKeyRing) != "" && !opts.Options.WithDisallowEnvVars:
 		s.keyRing = os.Getenv(EnvVaultGcpCkmsSealKeyRing)
 	case opts.withKeyRing != "":
 		s.keyRing = opts.withKeyRing
@@ -141,7 +141,7 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	switch {
 	case os.Getenv(EnvGcpCkmsWrapperCryptoKey) != "" && !opts.Options.WithDisallowEnvVars:
 		s.cryptoKey = os.Getenv(EnvGcpCkmsWrapperCryptoKey)
-	case os.Getenv(EnvVaultGcpCkmsSealCryptoKey) != "":
+	case os.Getenv(EnvVaultGcpCkmsSealCryptoKey) != "" && !opts.Options.WithDisallowEnvVars:
 		s.cryptoKey = os.Getenv(EnvVaultGcpCkmsSealCryptoKey)
 	case opts.withCryptoKey != "":
 		s.cryptoKey = opts.withCryptoKey

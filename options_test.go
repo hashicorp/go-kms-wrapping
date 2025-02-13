@@ -112,3 +112,45 @@ func testOptionWithError(t *testing.T) Option {
 		})
 	}
 }
+
+func TestParsePaths(t *testing.T) {
+	type options struct {
+		optionA string
+		optionB string
+	}
+
+	test := options{
+		optionA: "Hello, World!",
+		optionB: "file://test-fixtures/secret.txt",
+	}
+	if err := ParsePaths(&test.optionA, &test.optionB); err != nil {
+		t.Fatal(err)
+	}
+	if test.optionB != "Top Secret" {
+		t.Fatalf("expected TopSecret, got %s", test.optionB)
+	}
+
+	// Test nil handling
+	test = options{
+		optionA: "file://test-fixtures/secret.txt",
+	}
+	if err := ParsePaths(nil, &test.optionA, nil); err != nil {
+		t.Fatal(err)
+	}
+	if test.optionA != "Top Secret" {
+		t.Fatalf("expected TopSecret, got %s", test.optionB)
+	}
+
+	// Test errors and error atomicity
+	test = options{
+		optionA: "file://test-fixtures/secret.txt",
+		optionB: "file://test-fixtures/missing.txt",
+	}
+	if err := ParsePaths(&test.optionA, &test.optionB); err == nil {
+		t.Fatal("expected error but didn't get one")
+	}
+
+	if test.optionA != "file://test-fixtures/secret.txt" {
+		t.Fatalf("optionA was overwritten despite encountering an error")
+	}
+}

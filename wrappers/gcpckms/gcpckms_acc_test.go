@@ -23,7 +23,6 @@ const (
 // TestGcpKeyIdAfterConfig will test the result of calling the wrapper's KeyId()
 // after it's configured with various options
 func TestGcpKeyIdAfterConfig(t *testing.T) {
-	t.Parallel()
 	// Now test for cases where CKMS values are provided
 	checkAndSetEnvVars(t)
 	ctx := context.Background()
@@ -92,7 +91,53 @@ func TestGcpKeyIdAfterConfig(t *testing.T) {
 	}
 }
 
+// TestDisableEnv makes sure that we properly get all our settings from a configuration
+// map instead of the environment variables
+func TestDisableEnv(t *testing.T) {
+	// Now test for cases where CKMS values are provided
+	checkAndSetEnvVars(t)
+
+	configMap := map[string]string{
+		"project":    os.Getenv(EnvGcpCkmsWrapperProject),
+		"region":     os.Getenv(EnvGcpCkmsWrapperLocation),
+		"key_ring":   os.Getenv(EnvGcpCkmsWrapperKeyRing),
+		"crypto_key": os.Getenv(EnvGcpCkmsWrapperCryptoKey),
+	}
+
+	// Reset the env values to validate we are using the config map ones
+	t.Setenv(EnvGcpCkmsWrapperProject, "bad_project")
+	t.Setenv(EnvGcpCkmsWrapperLocation, "bad_location")
+	t.Setenv(EnvGcpCkmsWrapperKeyRing, "bad_key_ring")
+	t.Setenv(EnvGcpCkmsWrapperCryptoKey, "bad_crypto_key")
+	t.Setenv(EnvVaultGcpCkmsSealKeyRing, "bad_vault_key_ring")
+	t.Setenv(EnvVaultGcpCkmsSealCryptoKey, "bad_vault_crypto_key")
+
+	s := NewWrapper()
+	_, err := s.SetConfig(context.Background(), wrapping.WithConfigMap(configMap), wrapping.WithDisallowEnvVars(true))
+	if err != nil {
+		t.Fatalf("got error from SetConfig %v", err)
+	}
+
+	// Make sure we can use the key properly.
+	input := []byte("foo")
+	swi, err := s.Encrypt(context.Background(), input)
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	pt, err := s.Decrypt(context.Background(), swi)
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(input, pt) {
+		t.Fatalf("expected %s, got %s", input, pt)
+	}
+}
+
 func TestGcpCkmsSeal(t *testing.T) {
+	t.Setenv(EnvGcpCkmsWrapperProject, "") // Make sure at least one required value is not set.
+
 	// Do an error check before env vars are set
 	s := NewWrapper()
 	_, err := s.SetConfig(context.Background())

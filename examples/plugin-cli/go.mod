@@ -28,6 +28,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-plugin v1.6.3 // indirect
 	github.com/hashicorp/go-secure-stdlib/base62 v0.1.2 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.9 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect

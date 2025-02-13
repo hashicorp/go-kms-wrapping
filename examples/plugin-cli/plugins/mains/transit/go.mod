@@ -1,8 +1,8 @@
 module github.com/openbao/go-kms-wrapping/examples/cli/plugins/mains/transit
 
-go 1.22.1
+go 1.23.1
 
-toolchain go1.23.2
+toolchain go1.23.6
 
 replace github.com/openbao/go-kms-wrapping/plugin/v2 => ../../../../../plugin
 
@@ -18,7 +18,6 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
-	github.com/go-test/deep v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -39,7 +38,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/openbao/go-kms-wrapping/v2 v2.2.0 // indirect
-	github.com/openbao/openbao/api/v2 v2.1.0 // indirect
+	github.com/openbao/openbao/api/v2 v2.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect

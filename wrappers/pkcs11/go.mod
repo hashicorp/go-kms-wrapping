@@ -7,7 +7,7 @@ replace github.com/openbao/go-kms-wrapping/v2 => ../../
 require (
 	github.com/miekg/pkcs11 v1.1.2-0.20231115102856-9078ad6b9d4b
 	github.com/openbao/go-kms-wrapping/v2 v2.2.0
-	github.com/openbao/openbao/api/v2 v2.1.0
+	github.com/openbao/openbao/api/v2 v2.2.0
 	github.com/stretchr/testify v1.10.0
 )
 

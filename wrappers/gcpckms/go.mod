@@ -26,7 +26,12 @@ require (
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.9 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
+	github.com/hashicorp/go-sockaddr v1.0.6 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/ryanuber/go-glob v1.0.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.58.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
