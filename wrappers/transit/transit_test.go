@@ -312,6 +312,22 @@ func TestSetConfig(t *testing.T) {
 				WithKeyIdPrefix("test/"),
 			},
 		},
+		{
+			name: "success-without-opts",
+			setup: func(t *testing.T) {
+				require.NoError(t, os.Setenv(EnvTransitWrapperAddr, testWithAddress))
+				require.NoError(t, os.Setenv(EnvTransitWrapperToken, testWithToken))
+				require.NoError(t, os.Setenv(EnvTransitWrapperDisableRenewal, testWithDisableRenewal))
+				require.NoError(t, os.Setenv(EnvTransitWrapperKeyName, testWithKeyName))
+				require.NoError(t, os.Setenv(EnvTransitWrapperMountPath, testWithMountPath))
+				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperAddr) })
+				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperToken) })
+				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperDisableRenewal) })
+				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperKeyName) })
+				t.Cleanup(func() { os.Unsetenv(EnvTransitWrapperMountPath) })
+			},
+			opts: []wrapping.Option{},
+		},
 	}
 
 	for _, tc := range tests {

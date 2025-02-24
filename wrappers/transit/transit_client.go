@@ -24,6 +24,12 @@ const (
 	EnvTransitWrapperKeyName   = "TRANSIT_WRAPPER_KEY_NAME"
 	EnvVaultTransitSealKeyName = "VAULT_TRANSIT_SEAL_KEY_NAME"
 
+	EnvTransitWrapperAddr   = "TRANSIT_WRAPPER_ADDR"
+	EnvVaultTransitSealAddr = "VAULT_TRANSIT_SEAL_ADDR"
+
+	EnvTransitWrapperToken   = "TRANSIT_WRAPPER_TOKEN"
+	EnvVaultTransitSealToken = "VAULT_TRANSIT_SEAL_TOKEN"
+
 	EnvTransitWrapperDisableRenewal   = "TRANSIT_WRAPPER_DISABLE_RENEWAL"
 	EnvVaultTransitSealDisableRenewal = "VAULT_TRANSIT_SEAL_DISABLE_RENEWAL"
 )
@@ -92,9 +98,29 @@ func newTransitClient(logger hclog.Logger, opts *options) (*TransitClient, *wrap
 		namespace = opts.withNamespace
 	}
 
+	var address string
+	switch {
+	case os.Getenv(EnvTransitWrapperAddr) != "" && !opts.Options.WithDisallowEnvVars:
+		address = os.Getenv(EnvTransitWrapperAddr)
+	case os.Getenv(EnvVaultTransitSealAddr) != "" && !opts.Options.WithDisallowEnvVars:
+		address = os.Getenv(EnvVaultTransitSealAddr)
+	case opts.withAddress != "":
+		address = opts.withAddress
+	}
+
+	var token string
+	switch {
+	case os.Getenv(EnvTransitWrapperToken) != "" && !opts.Options.WithDisallowEnvVars:
+		token = os.Getenv(EnvTransitWrapperToken)
+	case os.Getenv(EnvVaultTransitSealToken) != "" && !opts.Options.WithDisallowEnvVars:
+		token = os.Getenv(EnvVaultTransitSealToken)
+	case opts.withToken != "":
+		token = opts.withToken
+	}
+
 	apiConfig := api.DefaultConfig()
-	if opts.withAddress != "" {
-		apiConfig.Address = opts.withAddress
+	if address != "" {
+		apiConfig.Address = address
 	}
 	if opts.withTlsCaCert != "" ||
 		opts.withTlsCaPath != "" ||
@@ -120,8 +146,8 @@ func newTransitClient(logger hclog.Logger, opts *options) (*TransitClient, *wrap
 	if err != nil {
 		return nil, nil, err
 	}
-	if opts.withToken != "" {
-		apiClient.SetToken(opts.withToken)
+	if token != "" {
+		apiClient.SetToken(token)
 	}
 	if namespace != "" {
 		apiClient.SetNamespace(namespace)
