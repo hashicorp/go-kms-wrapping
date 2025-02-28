@@ -156,6 +156,16 @@ func WithoutHMAC() Option {
 	}
 }
 
+// WithoutEnvelope requests a 'raw' encryption, rather than an envelope encryption
+func WithoutEnvelope() Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithoutEnvelope = true
+			return nil
+		})
+	}
+}
+
 // ParsePaths is a helper function to take each string pointer argument and call parseutil.ParsePath,
 // replacing the contents of the target string with the result if no error occurs.  The function exits
 // early if it encounters an error.  In that case no passed fields will have been modified.
