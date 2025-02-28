@@ -306,9 +306,13 @@ func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client
 		// Some hoops to jump through to make sure two wrappers being setup at the same time don't step on the
 		// env var
 		managedClientIdLock.Lock()
-		oldVal := os.Getenv(EnvAzureClientId)
+		oldVal, found := os.LookupEnv(EnvAzureClientId)
 		unlock := func() {
-			os.Setenv(EnvAzureClientId, oldVal)
+			if found {
+				os.Setenv(EnvAzureClientId, oldVal)
+			} else {
+				os.Unsetenv(EnvAzureClientId)
+			}
 			managedClientIdLock.Unlock()
 		}
 
