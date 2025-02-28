@@ -306,16 +306,21 @@ func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client
 		// Some hoops to jump through to make sure two wrappers being setup at the same time don't step on the
 		// env var
 		managedClientIdLock.Lock()
-		defer managedClientIdLock.Unlock()
 		oldVal := os.Getenv(EnvAzureClientId)
-		defer func() {
+		unlock := func() {
 			os.Setenv(EnvAzureClientId, oldVal)
-		}()
+			managedClientIdLock.Unlock()
+		}
 
 		// This could be a managed identity auth, so supply the default credential provider with clientId and let it
 		// figure it out.  Sort of a hack, but Azure's library doesn't allow us to specify clientID as an option.
 		os.Setenv(EnvAzureClientId, v.clientID)
-		fallthrough
+		cred, err = azidentity.NewDefaultAzureCredential(nil)
+		if err != nil {
+			unlock()
+			return nil, fmt.Errorf("failed to acquire managed identity credentials %w", err)
+		}
+		unlock()
 	// By default let Azure select existing credentials
 	default:
 		cred, err = azidentity.NewDefaultAzureCredential(nil)
