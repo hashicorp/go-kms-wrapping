@@ -300,7 +300,8 @@ func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client
 			return nil, fmt.Errorf("failed to get client secret credentials %w", err)
 		}
 	case v.clientID != "":
-		// Set an env var with the client id, and let the default credential provider work through the possibilities
+		// This could be a managed identity auth, so supply the default credential provider with clientId and let it
+		// figure it out.
 		os.Setenv(EnvAzureClientId, v.clientID)
 		fallthrough
 	// By default let Azure select existing credentials
