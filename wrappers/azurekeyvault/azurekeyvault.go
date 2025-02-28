@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -288,6 +289,8 @@ func (v *Wrapper) buildBaseURL() string {
 	return fmt.Sprintf("https://%s.%s/", v.vaultName, v.environment.KeyVaultDNSSuffix)
 }
 
+var managedClientIdLock sync.Mutex
+
 func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client, error) {
 	var err error
 	var cred azcore.TokenCredential
@@ -300,8 +303,17 @@ func (v *Wrapper) getKeyVaultClient(withCertPool *x509.CertPool) (*azkeys.Client
 			return nil, fmt.Errorf("failed to get client secret credentials %w", err)
 		}
 	case v.clientID != "":
+		// Some hoops to jump through to make sure two wrappers being setup at the same time don't step on the
+		// env var
+		managedClientIdLock.Lock()
+		defer managedClientIdLock.Unlock()
+		oldVal := os.Getenv(EnvAzureClientId)
+		defer func() {
+			os.Setenv(EnvAzureClientId, oldVal)
+		}()
+
 		// This could be a managed identity auth, so supply the default credential provider with clientId and let it
-		// figure it out.
+		// figure it out.  Sort of a hack, but Azure's library doesn't allow us to specify clientID as an option.
 		os.Setenv(EnvAzureClientId, v.clientID)
 		fallthrough
 	// By default let Azure select existing credentials
