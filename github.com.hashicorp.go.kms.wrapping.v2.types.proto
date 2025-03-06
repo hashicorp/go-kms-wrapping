@@ -146,6 +146,9 @@ message Options {
 
   // WithoutHmac specifies that an HMAC is not necessary for the mechanism, even if marked as "required"
   bool without_hmac = 100;
+
+  // WithoutEnvelope specifies that encryption should be over the plaintext rather than using an envelope encryption pattern
+  bool without_envelope = 110;
 }
 
 // SigInfo contains information about a cryptographic signature
