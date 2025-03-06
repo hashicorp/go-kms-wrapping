@@ -696,6 +696,8 @@ type Options struct {
 	WithDisallowEnvVars    bool        `protobuf:"varint,90,opt,name=with_disallow_env_vars,json=withDisallowEnvVars,proto3" json:"with_disallow_env_vars,omitempty"`
 	// WithoutHmac specifies that an HMAC is not necessary for the mechanism, even if marked as "required"
 	WithoutHmac bool `protobuf:"varint,100,opt,name=without_hmac,json=withoutHmac,proto3" json:"without_hmac,omitempty"`
+	// WithoutEnvelope specifies that encryption should be over the plaintext rather than using an envelope encryption pattern
+	WithoutEnvelope bool `protobuf:"varint,100,opt,name=without_envelope,json=withoutEnvelope,proto3" json:"without_envelope,omitempty"`
 }
 
 func (x *Options) Reset() {
