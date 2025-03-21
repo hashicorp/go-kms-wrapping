@@ -6,6 +6,7 @@ package kmip
 
 import (
 	"strconv"
+	"strings"
 
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
 )
@@ -67,6 +68,13 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 					return nil, err
 				}
 				opts.withTimeout = timeout
+			case "encrypt_alg":
+				opts.withCryptoParams = v
+			case "tls12_ciphers":
+				for _, cipher := range strings.Split(v, ",") {
+					cipher = strings.TrimSpace(cipher)
+					opts.withTls12Ciphers = append(opts.withTls12Ciphers, cipher)
+				}
 			}
 		}
 	}
