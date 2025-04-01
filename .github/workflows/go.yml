@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3.3.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3.3.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -99,7 +99,7 @@ jobs:
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3.3.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -125,7 +125,7 @@ jobs:
 
     steps:
       - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version: ${{ matrix.go }}
 
@@ -133,7 +133,7 @@ jobs:
         uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
 
       - name: go mod package cache
-        uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+        uses: actions/cache@e12d46a63a90f2fae62d114769bbf2a179198b5c # v3.3.3
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('tests/go.mod') }}
@@ -156,16 +156,16 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-      - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           version: "1.15.1"
-      - uses: bufbuild/buf-lint-action@bd48f53224baaaf0fc55de9a913e7680ca6dbea4 # v1.0.3
-      - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
+      - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325 # v1.1.1
+      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba # v1.1.4
         with:
           # The 'main' branch of the GitHub repository that defines the module.
           against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
       - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+        uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
         with:
           go-version-file: go.mod
       - name: install go-inject-tag dependency
@@ -189,15 +189,15 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-      - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
         with:
           version: "1.15.1"
-      - uses: bufbuild/buf-lint-action@bd48f53224baaaf0fc55de9a913e7680ca6dbea4 # v1.0.3
-      - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
+      - uses: bufbuild/buf-lint-action@06f9dd823d873146471cfaaf108a993fe00e5325 # v1.1.1
+      - uses: bufbuild/buf-breaking-action@c57b3d842a5c3f3b454756ef65305a50a587c5ba # v1.1.4
         with:
           # The 'main' branch of the GitHub repository that defines the module.
           against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
-      - uses: bufbuild/buf-push-action@1c45f6a21ec277ee4c1fa2772e49b9541ea17f38 # v1.1.1
+      - uses: bufbuild/buf-push-action@a654ff18effe4641ebea4a4ce242c49800728459 # v1.2.0
         with:
           buf_token: ${{ secrets.BUF_TOKEN }}
           draft: ${{ github.ref_name != 'main'}}
