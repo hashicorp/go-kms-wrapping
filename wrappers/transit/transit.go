@@ -22,7 +22,11 @@ type Wrapper struct {
 	keyIdPrefix  string
 }
 
-var _ wrapping.Wrapper = (*Wrapper)(nil)
+var (
+	// Ensure that we implement both Wrapper and InitFinalizer correctly
+	_ wrapping.Wrapper       = (*Wrapper)(nil)
+	_ wrapping.InitFinalizer = (*Wrapper)(nil)
+)
 
 // NewWrapper creates a new transit wrapper
 func NewWrapper() *Wrapper {
@@ -59,12 +63,12 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 }
 
 // Init is called during core.Initialize
-func (s *Wrapper) Init(_ context.Context) error {
+func (s *Wrapper) Init(_ context.Context, _ ...wrapping.Option) error {
 	return nil
 }
 
 // Finalize is called during shutdown
-func (s *Wrapper) Finalize(_ context.Context) error {
+func (s *Wrapper) Finalize(_ context.Context, _ ...wrapping.Option) error {
 	s.client.Close()
 	return nil
 }

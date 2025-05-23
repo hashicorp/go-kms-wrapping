@@ -18,8 +18,11 @@ type Wrapper struct {
 	currentKeyId *atomic.Value
 }
 
-// Ensure that we are implementing Wrapper
-var _ wrapping.Wrapper = (*Wrapper)(nil)
+var (
+	// Ensure that we implement both Wrapper and InitFinalizer correctly
+	_ wrapping.Wrapper       = (*Wrapper)(nil)
+	_ wrapping.InitFinalizer = (*Wrapper)(nil)
+)
 
 // NewWrapper creates a new PKCS11 Wrapper
 func NewWrapper() *Wrapper {
@@ -31,12 +34,12 @@ func NewWrapper() *Wrapper {
 }
 
 // Init is called during core.Initialize
-func (k *Wrapper) Init(_ context.Context) error {
+func (k *Wrapper) Init(_ context.Context, _ ...wrapping.Option) error {
 	return nil
 }
 
 // Finalize is called during shutdown
-func (k *Wrapper) Finalize(_ context.Context) error {
+func (k *Wrapper) Finalize(_ context.Context, _ ...wrapping.Option) error {
 	k.client.Close()
 	return nil
 }
