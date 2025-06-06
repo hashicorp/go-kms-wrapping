@@ -50,6 +50,7 @@ as they may have been used for past encryption operations.
   * Supports generic integrations
   * * PKCS11
   * * KMIP
+  * * Static unseal keys (environment/file)
   * Transparently supports multiple decryption targets, allowing for key rotation
   * Supports Additional Authenticated Data (AAD) for all KMSes except Vault Transit.
 

@@ -14,8 +14,6 @@ github.com/hashicorp/go-uuid v1.0.3 h1:2gKiV6YVmrJ1i2CKKa9obLvRieoRGviZFL26PcT/C
 github.com/hashicorp/go-uuid v1.0.3/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/bN7x4byOro=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
-github.com/ovh/kmip-go v0.3.2 h1:/urFrXtO6SPqQR7Mj07W8WY5Q6tKflLRetGQstS6q6M=
-github.com/ovh/kmip-go v0.3.2/go.mod h1:ATNCndyULLBcEt7jp4j8cR4ko4gnH37KBA9ZPeNUuKk=
 github.com/ovh/kmip-go v0.3.3 h1:/dWFCRug8wuBI7hZ4J2ZpFy5U00Qtesdwv883pcDDvM=
 github.com/ovh/kmip-go v0.3.3/go.mod h1:ATNCndyULLBcEt7jp4j8cR4ko4gnH37KBA9ZPeNUuKk=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=

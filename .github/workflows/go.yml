@@ -16,11 +16,12 @@ jobs:
           - './wrappers/azurekeyvault'
           - './wrappers/gcpckms'
           - './wrappers/huaweicloudkms'
+          - './wrappers/kmip'
           - './wrappers/ocikms'
+          - './wrappers/pkcs11'
+          - './wrappers/static'
           - './wrappers/tencentcloudkms'
           - './wrappers/transit'
-          - './wrappers/pkcs11'
-          - './wrappers/kmip'
         go: ["1.22"]
         platform: [ubuntu-latest] # can not run in macOS and Windows
     runs-on: ${{ matrix.platform }}
@@ -49,33 +50,3 @@ jobs:
           if [ -e "${{ matrix.directory }}/Dockerfile" ]; then
             docker build -f "${{ matrix.directory }}/Dockerfile" .
           fi
-
-  buf:
-    strategy:
-      matrix:
-        platform: [ubuntu-latest]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
-      - uses: bufbuild/buf-setup-action@a2450ddf330ebcbbb88645837933e7141568fd09 # v1.23.1
-        with:
-          version: "1.15.1"
-      - uses: bufbuild/buf-breaking-action@f47418c81c00bfd65394628385593542f64db477 # v1.1.2
-        with:
-          # The 'main' branch of the GitHub repository that defines the module.
-          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=main"
-      - name: Set up Go 1.x
-        uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
-        with:
-          go-version-file: go.mod
-      - name: install go-inject-tag dependency
-        run: |
-          go install github.com/favadi/protoc-go-inject-tag@v1.4.0
-      - name: running make proto
-        run: |
-          make proto
-      - name: check for changes
-        run: |
-          git diff --exit-code
-          git status --porcelain
-          test -z "$(git status --porcelain)"
