@@ -2,8 +2,6 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 
 go 1.23.0
 
-toolchain go1.24.3
-
 require github.com/hashicorp/go-kms-wrapping/v2 v2.0.17
 
 require (

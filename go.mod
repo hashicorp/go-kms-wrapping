@@ -2,8 +2,6 @@ module github.com/hashicorp/go-kms-wrapping/v2
 
 go 1.23.0
 
-toolchain go1.24.3
-
 require (
 	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.9
 	github.com/hashicorp/go-uuid v1.0.3

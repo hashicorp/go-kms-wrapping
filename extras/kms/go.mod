@@ -2,8 +2,6 @@ module github.com/hashicorp/go-kms-wrapping/extras/kms/v2
 
 go 1.23.0
 
-toolchain go1.24.3
-
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.16.2
