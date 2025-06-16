@@ -1,6 +1,6 @@
 module github.com/hashicorp/go-kms-wrapping/wrappers/aead/v2
 
-go 1.20
+go 1.23.0
 
 require github.com/hashicorp/go-kms-wrapping/v2 v2.0.17
 
@@ -16,7 +16,7 @@ require (
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
