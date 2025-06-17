@@ -9,14 +9,23 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+)
+
+const (
+	EnvBaoCurrentKeyValueName       = "BAO_STATIC_SEAL_CURRENT_KEY"
+	EnvBaoCurrentKeyIdentifierName  = "BAO_STATIC_SEAL_CURRENT_KEY_ID"
+	EnvBaoPreviousKeyValueName      = "BAO_STATIC_SEAL_PREVIOUS_KEY"
+	EnvBaoPreviousKeyIdentifierName = "BAO_STATIC_SEAL_PREVIOUS_KEY_ID"
 )
 
 // Wrapper is a wrapper that leverages Vault's Transit secret
@@ -47,75 +56,103 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 	s.logger = opts.withLogger
 
+	// Load keys, identifiers from environments or options.
+	currentKey := opts.withCurrentKey
+	previousKey := opts.withPreviousKey
+
+	s.currentKeyId = opts.withCurrentKeyId
+	s.previousKeyId = opts.withPreviousKeyId
+
+	if !opts.Options.WithDisallowEnvVars {
+		if env := os.Getenv(EnvBaoCurrentKeyValueName); env != "" {
+			currentKey = env
+		}
+		if env := os.Getenv(EnvBaoPreviousKeyValueName); env != "" {
+			previousKey = env
+		}
+		if env := os.Getenv(EnvBaoCurrentKeyIdentifierName); env != "" {
+			s.currentKeyId = env
+		}
+		if env := os.Getenv(EnvBaoPreviousKeyIdentifierName); env != "" {
+			s.previousKeyId = env
+		}
+	}
+
 	// Current key information
-	switch len(opts.withCurrentKey) {
+	switch len(currentKey) {
 	case 64:
 		// hex
-		s.currentKey, err = hex.DecodeString(opts.withCurrentKey)
+		s.currentKey, err = hex.DecodeString(currentKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hex decode current key: %w", err)
 		}
 	case 44:
 		// regular base64
-		s.currentKey, err = base64.StdEncoding.DecodeString(opts.withCurrentKey)
+		s.currentKey, err = base64.StdEncoding.DecodeString(currentKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to base64 decode current key: %w", err)
 		}
 	case 43:
 		// raw url-safe base64
-		s.currentKey, err = base64.RawURLEncoding.DecodeString(opts.withCurrentKey)
+		s.currentKey, err = base64.RawURLEncoding.DecodeString(currentKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to base64 decode current key: %w", err)
 		}
 	case 32:
 		// raw
-		s.currentKey = []byte(opts.withCurrentKey)
+		s.currentKey = []byte(currentKey)
 	case 0:
-		return nil, errors.New("missing required key")
+		return nil, errors.New("missing required current key")
 	default:
 		return nil, errors.New("unknown encoding for AES-256 key: must be either a raw, hex, or base64-encoded")
 	}
-	s.currentKeyId = opts.withCurrentKeyId
 
 	if len(s.currentKeyId) == 0 {
 		return nil, errors.New("got empty current_key_id; please specify a permanent identifier for this key")
 	}
 
 	// Previous key information
-	switch len(opts.withPreviousKey) {
+	switch len(previousKey) {
 	case 64:
 		// hex
-		s.previousKey, err = hex.DecodeString(opts.withPreviousKey)
+		s.previousKey, err = hex.DecodeString(previousKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to hex decode previous key: %w", err)
 		}
 	case 44:
 		// regular base64
-		s.previousKey, err = base64.StdEncoding.DecodeString(opts.withPreviousKey)
+		s.previousKey, err = base64.StdEncoding.DecodeString(previousKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to base64 decode previous key: %w", err)
 		}
 	case 43:
 		// raw url-safe base64
-		s.previousKey, err = base64.RawURLEncoding.DecodeString(opts.withPreviousKey)
+		s.previousKey, err = base64.RawURLEncoding.DecodeString(previousKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to base64 decode previous key: %w", err)
 		}
 	case 32:
 		// raw
-		s.previousKey = []byte(opts.withPreviousKey)
+		s.previousKey = []byte(previousKey)
 	case 0:
 		// missing previous key is OK
 	default:
 		return nil, errors.New("unknown encoding for AES-256 key: must be either a raw, hex, or base64-encoded")
 	}
-	s.previousKeyId = opts.withPreviousKeyId
 
 	if len(s.previousKeyId) == 0 && len(s.previousKey) != 0 {
 		return nil, errors.New("got empty previous_key_id with non-empty previous_key; please specify the matching key identifier")
 	}
 	if len(s.previousKeyId) != 0 && len(s.previousKey) == 0 {
 		return nil, errors.New("got non-empty previous_key_id with empty previous_key; please specify the previous key or remove previous_key_id")
+	}
+
+	if subtle.ConstantTimeCompare(s.currentKey, s.previousKey) == 1 && s.previousKeyId != s.currentKeyId {
+		return nil, errors.New("current and previous key material match with different key identifiers")
+	}
+
+	if subtle.ConstantTimeCompare(s.currentKey, s.previousKey) != 1 && s.previousKeyId == s.currentKeyId {
+		return nil, errors.New("current and previous key material differs with same key identifiers")
 	}
 
 	wrapConfig := new(wrapping.WrapperConfig)
