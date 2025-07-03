@@ -16,6 +16,7 @@ const (
 	WrapperTypeHsmAuto         WrapperType = "hsm-auto"
 	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
 	WrapperTypeOciKms          WrapperType = "ocikms"
+	WrapperTypeNcloudKms       WrapperType = "ncloudkms"
 	WrapperTypePkcs11          WrapperType = "pkcs11"
 	WrapperTypePooled          WrapperType = "pooled"
 	WrapperTypeShamir          WrapperType = "shamir"
