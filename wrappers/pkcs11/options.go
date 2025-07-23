@@ -211,3 +211,14 @@ func WithRsaOaepHash(hashMechanisme string) wrapping.Option {
 		})
 	}
 }
+
+// WithSoftwareEncryption enables/disables software encryption for asymmetric
+// keys.
+func WithSoftwareEncryption(value bool) wrapping.Option {
+	return func() any {
+		return OptionFunc(func(o *options) error {
+			o.withSoftwareEncryption = value
+			return nil
+		})
+	}
+}
