@@ -6,6 +6,11 @@ package pkcs11
 
 import (
 	wrapping "github.com/openbao/go-kms-wrapping/v2"
+	"github.com/openbao/openbao/api/v2"
+)
+
+const (
+	EnvHsmWrapperSoftwareEncryption = "BAO_HSM_SOFTWARE_ENCRYPTION"
 )
 
 // getOpts iterates the inbound Options and returns a struct
@@ -39,6 +44,14 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 		opts.Options = new(wrapping.Options)
 	}
 
+	// Merge the local options with values provided by environment variables
+	if !opts.WithDisallowEnvVars {
+		if opts.WithConfigMap == nil {
+			opts.WithConfigMap = make(map[string]string)
+		}
+		mergeConfigMapWithEnv(opts.WithConfigMap)
+	}
+
 	// Local options can be provided either via the WithConfigMap field
 	// (for over the plugin barrier or embedding) or via local option functions
 	// (for embedding). First pull from the option.
@@ -62,6 +75,12 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withMechanism = v
 			case "rsa_oaep_hash":
 				opts.withRsaOaepHash = v
+			case "software_encryption":
+				soft, err := parseBool(v)
+				if err != nil {
+					return nil, err
+				}
+				opts.withSoftwareEncryption = soft
 			}
 		}
 	}
@@ -83,6 +102,12 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 	return &opts, nil
 }
 
+func mergeConfigMapWithEnv(config map[string]string) {
+	if env := api.ReadBaoVariable(EnvHsmWrapperSoftwareEncryption); env != "" {
+		config["software_encryption"] = env
+	}
+}
+
 // OptionFunc holds a function with local options
 type OptionFunc func(*options) error
 
@@ -90,18 +115,21 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withSlot        string
-	withPin         string
-	withLib         string
-	withKeyId       string
-	withKeyLabel    string
-	withTokenLabel  string
-	withMechanism   string
-	withRsaOaepHash string
+	withSlot               string
+	withPin                string
+	withLib                string
+	withKeyId              string
+	withKeyLabel           string
+	withTokenLabel         string
+	withMechanism          string
+	withRsaOaepHash        string
+	withSoftwareEncryption bool
 }
 
 func getDefaultOptions() options {
-	return options{}
+	var opts = options{}
+	opts.withSoftwareEncryption = true
+	return opts
 }
 
 // WithSlot sets the slot
