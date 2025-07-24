@@ -4,9 +4,16 @@
 package pkcs11
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"hash"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -54,15 +61,16 @@ type pkcs11ClientEncryptor interface {
 }
 
 type Pkcs11Client struct {
-	client      *pkcs11.Ctx
-	lib         string
-	slot        *uint
-	tokenLabel  string
-	pin         string
-	keyLabel    string
-	keyId       string
-	mechanism   uint
-	rsaOaepHash string
+	client                *pkcs11.Ctx
+	lib                   string
+	slot                  *uint
+	tokenLabel            string
+	pin                   string
+	keyLabel              string
+	keyId                 string
+	mechanism             uint
+	rsaOaepHash           string
+	useSoftwareEncryption bool
 }
 
 const (
@@ -190,14 +198,15 @@ func newPkcs11Client(opts *options) (*Pkcs11Client, *wrapping.WrapperConfig, err
 	}
 
 	client := &Pkcs11Client{
-		client:      nil,
-		lib:         lib,
-		pin:         pin,
-		tokenLabel:  tokenLabel,
-		keyId:       keyId,
-		keyLabel:    keyLabel,
-		mechanism:   uint(mechanismNum),
-		rsaOaepHash: rsaOaepHash,
+		client:                nil,
+		lib:                   lib,
+		pin:                   pin,
+		tokenLabel:            tokenLabel,
+		keyId:                 keyId,
+		keyLabel:              keyLabel,
+		mechanism:             uint(mechanismNum),
+		rsaOaepHash:           rsaOaepHash,
+		useSoftwareEncryption: opts.withSoftwareEncryption,
 	}
 	if slotNum != nil {
 		client.slot = new(uint)
@@ -278,6 +287,12 @@ func (c *Pkcs11Client) Encrypt(plaintext []byte) ([]byte, []byte, *Pkcs11Key, er
 	case pkcs11.CKM_AES_GCM:
 		return c.EncryptAesGcm(session, key, keyId, plaintext)
 	case pkcs11.CKM_RSA_PKCS_OAEP:
+		if c.useSoftwareEncryption {
+			pubkey, err := exportRSAPublicKey(session, *c.client, key)
+			if err == nil && pubkey != nil {
+				return c.EncryptRsaOaepSoftware(pubkey, keyId, plaintext)
+			}
+		}
 		return c.EncryptRsaOaep(session, key, keyId, plaintext)
 	}
 	return nil, nil, nil, fmt.Errorf("unsupported mechanism")
@@ -338,6 +353,48 @@ func (c *Pkcs11Client) EncryptRsaOaep(session pkcs11.SessionHandle, key pkcs11.O
 	}
 
 	return ciphertext, nil, &keyId, nil
+}
+
+// Software RSA OAEP encryption using Go's crypto module
+func (c *Pkcs11Client) EncryptRsaOaepSoftware(pubkey *rsa.PublicKey, keyId Pkcs11Key, plaintext []byte) ([]byte, []byte, *Pkcs11Key, error) {
+	var rsaOaepHash string
+	if c.rsaOaepHash != "" {
+		rsaOaepHash = c.rsaOaepHash
+	} else {
+		rsaOaepHash = DefaultRsaOaepHash
+	}
+
+	// Get the hash function for OAEP
+	hashFunc, err := getHashFunc(rsaOaepHash)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Encrypt using Go's crypto/rsa package
+	ciphertext, err := rsa.EncryptOAEP(hashFunc, rand.Reader, pubkey, plaintext, nil)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to encrypt with software RSA OAEP: %w", err)
+	}
+
+	return ciphertext, nil, &keyId, nil
+}
+
+// Helper function to get hash function from string
+func getHashFunc(hashName string) (hash.Hash, error) {
+	switch strings.ToLower(hashName) {
+	case "sha1":
+		return sha1.New(), nil
+	case "sha224":
+		return sha256.New224(), nil
+	case "sha256":
+		return sha256.New(), nil
+	case "sha384":
+		return sha512.New384(), nil
+	case "sha512":
+		return sha512.New(), nil
+	default:
+		return nil, fmt.Errorf("unsupported hash function: %s", hashName)
+	}
 }
 
 func (c *Pkcs11Client) Decrypt(ciphertext []byte, nonce []byte, keyId *Pkcs11Key) ([]byte, error) {
@@ -479,8 +536,42 @@ func (c *Pkcs11Client) CloseSession(session pkcs11.SessionHandle) {
 	c.client.CloseSession(session)
 }
 
+func exportRSAPublicKey(sh pkcs11.SessionHandle, ctx pkcs11.Ctx, key pkcs11.ObjectHandle) (*rsa.PublicKey, error) {
+	template := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, nil),
+	}
+	attrs, err := ctx.GetAttributeValue(sh, key, template)
+	if err != nil {
+		return nil, fmt.Errorf("failed to pkcs#11 GetAttributeValue: %w", err)
+	}
+
+	var n = new(big.Int)
+	n.SetBytes(attrs[0].Value)
+	var e = new(big.Int)
+	e.SetBytes(attrs[1].Value)
+
+	// Sanity checks
+	one := big.NewInt(1)
+	if n.Cmp(one) != 1 {
+		return nil, fmt.Errorf("malformed rsa public key: modulus is less than one")
+	}
+	if e.Cmp(one) != 1 {
+		return nil, fmt.Errorf("malformed rsa public key: exponent is less than one")
+	}
+	if n.Cmp(e) != 1 {
+		return nil, fmt.Errorf("malformed rsa public key: modulus must be greater than exponent")
+	}
+	if e.BitLen() > 32 {
+		return nil, fmt.Errorf("malformed rsa public key: exponent is longer than 32 bits")
+	}
+
+	return &rsa.PublicKey{N: n, E: int(e.Int64())}, nil
+}
+
 // Find on key for the given Label, ID and Mechanism.
 func (c *Pkcs11Client) FindKey(session pkcs11.SessionHandle, key Pkcs11Key, typ uint) (pkcs11.ObjectHandle, error) {
+
 	template := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, []byte(key.label)),
 		pkcs11.NewAttribute(typ, true),
@@ -607,24 +698,6 @@ func MechanismFromString(mech string) (uint64, error) {
 			}
 		}
 		return 0, fmt.Errorf("unsupported mechanism: %s", mech)
-	}
-}
-
-func RsaHashMechFromString(mech string) (uint, uint, error) {
-	mech = strings.ToLower(mech)
-	switch mech {
-	case "sha1":
-		return pkcs11.CKM_SHA_1, pkcs11.CKG_MGF1_SHA1, nil
-	case "sha224":
-		return pkcs11.CKM_SHA224, pkcs11.CKG_MGF1_SHA224, nil
-	case "sha256":
-		return pkcs11.CKM_SHA256, pkcs11.CKG_MGF1_SHA256, nil
-	case "sha384":
-		return pkcs11.CKM_SHA384, pkcs11.CKG_MGF1_SHA384, nil
-	case "sha512":
-		return pkcs11.CKM_SHA512, pkcs11.CKG_MGF1_SHA512, nil
-	default:
-		return 0, 0, fmt.Errorf("unsupported mechanism: %s", mech)
 	}
 }
 
