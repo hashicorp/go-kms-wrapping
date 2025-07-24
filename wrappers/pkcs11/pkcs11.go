@@ -57,14 +57,7 @@ func (k *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 		return nil, err
 	}
 	k.client = client
-	key := client.GetCurrentKey()
-	k.keyId = key.String()
-
-	session, err := client.GetSession()
-	if err != nil {
-		return nil, err
-	}
-	defer client.CloseSession(session)
+	k.keyId = client.GetCurrentKey().String()
 
 	return wrapConfig, nil
 }
