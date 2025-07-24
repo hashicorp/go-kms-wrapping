@@ -6,13 +6,9 @@ package pkcs11
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"hash"
 	"math/big"
 	"strconv"
 	"strings"
@@ -365,36 +361,20 @@ func (c *Pkcs11Client) EncryptRsaOaepSoftware(pubkey *rsa.PublicKey, keyId Pkcs1
 	}
 
 	// Get the hash function for OAEP
-	hashFunc, err := getHashFunc(rsaOaepHash)
+	hash, _, err := RsaHashMechFromString(rsaOaepHash)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
+	hashFunc := hashMechanismToCrypto(hash)
+
 	// Encrypt using Go's crypto/rsa package
-	ciphertext, err := rsa.EncryptOAEP(hashFunc, rand.Reader, pubkey, plaintext, nil)
+	ciphertext, err := rsa.EncryptOAEP(hashFunc.New(), rand.Reader, pubkey, plaintext, nil)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to encrypt with software RSA OAEP: %w", err)
 	}
 
 	return ciphertext, nil, &keyId, nil
-}
-
-// Helper function to get hash function from string
-func getHashFunc(hashName string) (hash.Hash, error) {
-	switch strings.ToLower(hashName) {
-	case "sha1":
-		return sha1.New(), nil
-	case "sha224":
-		return sha256.New224(), nil
-	case "sha256":
-		return sha256.New(), nil
-	case "sha384":
-		return sha512.New384(), nil
-	case "sha512":
-		return sha512.New(), nil
-	default:
-		return nil, fmt.Errorf("unsupported hash function: %s", hashName)
-	}
 }
 
 func (c *Pkcs11Client) Decrypt(ciphertext []byte, nonce []byte, keyId *Pkcs11Key) ([]byte, error) {
