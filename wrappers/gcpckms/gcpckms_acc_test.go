@@ -18,6 +18,8 @@ const (
 	gcpckmsTestLocationID = "global"
 	gcpckmsTestKeyRing    = "vault-test-keyring"
 	gcpckmsTestCryptoKey  = "vault-test-key"
+	// set the default universe_domain
+	gcpckmsTestUniverseDomain = "googleapis.com"
 )
 
 // TestGcpKeyIdAfterConfig will test the result of calling the wrapper's KeyId()
@@ -36,14 +38,18 @@ func TestGcpKeyIdAfterConfig(t *testing.T) {
 		{
 			name: "expected-key-id",
 			opts: []wrapping.Option{
-				wrapping.WithConfigMap(map[string]string{"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")}),
+				wrapping.WithConfigMap(map[string]string{
+					"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+				}),
 			},
 			expectKeyId: true,
 		},
 		{
 			name: "unexpected-key-id",
 			opts: []wrapping.Option{
-				wrapping.WithConfigMap(map[string]string{"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")}),
+				wrapping.WithConfigMap(map[string]string{
+					"credentials": os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+				}),
 				WithKeyNotRequired(true),
 			},
 			expectKeyId: false,
@@ -99,10 +105,11 @@ func TestDisableEnv(t *testing.T) {
 	checkAndSetEnvVars(t)
 
 	configMap := map[string]string{
-		"project":    os.Getenv(EnvGcpCkmsWrapperProject),
-		"region":     os.Getenv(EnvGcpCkmsWrapperLocation),
-		"key_ring":   os.Getenv(EnvGcpCkmsWrapperKeyRing),
-		"crypto_key": os.Getenv(EnvGcpCkmsWrapperCryptoKey),
+		"project":         os.Getenv(EnvGcpCkmsWrapperProject),
+		"region":          os.Getenv(EnvGcpCkmsWrapperLocation),
+		"key_ring":        os.Getenv(EnvGcpCkmsWrapperKeyRing),
+		"crypto_key":      os.Getenv(EnvGcpCkmsWrapperCryptoKey),
+		"universe_domain": os.Getenv(EnvVaultGcpCkmsUniverseDomain),
 	}
 
 	// Reset the env values to validate we are using the config map ones
@@ -112,6 +119,7 @@ func TestDisableEnv(t *testing.T) {
 	t.Setenv(EnvGcpCkmsWrapperCryptoKey, "bad_crypto_key")
 	t.Setenv(EnvVaultGcpCkmsSealKeyRing, "bad_vault_key_ring")
 	t.Setenv(EnvVaultGcpCkmsSealCryptoKey, "bad_vault_crypto_key")
+	t.Setenv(EnvVaultGcpCkmsUniverseDomain, "bad_universe_domain")
 
 	s := NewWrapper()
 	_, err := s.SetConfig(context.Background(), wrapping.WithConfigMap(configMap), wrapping.WithDisallowEnvVars(true))
@@ -137,6 +145,8 @@ func TestDisableEnv(t *testing.T) {
 }
 
 func TestGcpCkmsSeal(t *testing.T) {
+	// get the project defined by the user
+	originalProject := os.Getenv(EnvGcpCkmsWrapperProject)
 	t.Setenv(EnvGcpCkmsWrapperProject, "") // Make sure at least one required value is not set.
 
 	// Do an error check before env vars are set
@@ -144,6 +154,12 @@ func TestGcpCkmsSeal(t *testing.T) {
 	_, err := s.SetConfig(context.Background())
 	if err == nil {
 		t.Fatal("expected error when GcpCkmsSeal required values are not provided")
+	}
+	// after the error check:
+	// restore the user's exported project into the wrapper env name so
+	// checkAndSetEnvVars will see it and *not* overwrite with the default.
+	if originalProject != "" {
+		t.Setenv(EnvGcpCkmsWrapperProject, originalProject)
 	}
 
 	// Now test for cases where CKMS values are provided
@@ -236,5 +252,8 @@ func checkAndSetEnvVars(t *testing.T) {
 	}
 	if os.Getenv(EnvGcpCkmsWrapperCryptoKey) == "" {
 		os.Setenv(EnvGcpCkmsWrapperCryptoKey, gcpckmsTestCryptoKey)
+	}
+	if os.Getenv(EnvVaultGcpCkmsUniverseDomain) == "" {
+		os.Setenv(EnvVaultGcpCkmsUniverseDomain, gcpckmsTestUniverseDomain)
 	}
 }
