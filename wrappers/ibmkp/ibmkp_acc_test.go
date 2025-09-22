@@ -26,8 +26,8 @@ package ibmkp
 
 import (
 	"context"
+	"crypto/subtle"
 	"os"
-	"reflect"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -42,7 +42,6 @@ const (
 )
 
 func TestIbmKp_SetConfig(t *testing.T) {
-
 	checkAndSetEnvVars(t)
 
 	s := NewWrapper()
@@ -78,23 +77,21 @@ func TestIbmKp_IgnoreEnv(t *testing.T) {
 
 	config := map[string]string{
 		"disallow_env_vars": "true",
-		"kms_key_id":        "a-key-key",
 		"api_key":           "a-api-key",
 		"instance_id":       "a-instance-id",
 		"endpoint":          "my-endpoint",
 	}
 
-	_, err := wrapper.SetConfig(context.Background(), wrapping.WithConfigMap(config))
+	_, err := wrapper.SetConfig(context.Background(), wrapping.WithConfigMap(config), wrapping.WithKeyId("a-key-key"))
 	assert.NoError(t, err)
 
 	require.Equal(t, config["api_key"], wrapper.apiKey)
 	require.Equal(t, config["instance_id"], wrapper.instanceId)
-	require.Equal(t, config["kms_key_id"], wrapper.keyId)
+	require.Equal(t, "a-key-key", wrapper.keyId)
 	require.Equal(t, config["endpoint"], wrapper.endpoint)
 }
 
 func TestIbmKp_Lifecycle(t *testing.T) {
-
 	checkAndSetEnvVars(t)
 
 	s := NewWrapper()
@@ -115,7 +112,7 @@ func TestIbmKp_Lifecycle(t *testing.T) {
 		t.Fatalf("error decrypting: %s", err.Error())
 	}
 
-	if !reflect.DeepEqual(input, pt) {
+	if subtle.ConstantTimeCompare(input, pt) == 1 {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
 }

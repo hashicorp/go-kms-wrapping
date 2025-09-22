@@ -56,8 +56,6 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 					return nil, err
 				}
 				opts.withKeyNotRequired = keyNotRequired
-			case "kms_key_id": // deprecated backend-specific value, set global
-				opts.WithKeyId = v
 			case "api_key":
 				opts.withApiKey = v
 			case "endpoint":
