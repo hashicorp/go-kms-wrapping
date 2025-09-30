@@ -112,7 +112,7 @@ func TestIbmKp_Lifecycle(t *testing.T) {
 		t.Fatalf("error decrypting: %s", err.Error())
 	}
 
-	if subtle.ConstantTimeCompare(input, pt) == 1 {
+	if subtle.ConstantTimeCompare(input, pt) == 0 {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
 }
@@ -121,11 +121,6 @@ func TestIbmKp_Lifecycle(t *testing.T) {
 // not ran as acceptance tests since they require calling to external APIs.
 func checkAndSetEnvVars(t *testing.T) {
 	t.Helper()
-
-	// Skip tests if we are not running acceptance tests
-	if os.Getenv("VAULT_ACC") == "" {
-		t.Skip("Skipping, env var 'VAULT_ACC' is empty")
-	}
 
 	if os.Getenv(EnvIbmApiKey) == "" {
 		os.Setenv(EnvIbmApiKey, TestIbmApiKey)
