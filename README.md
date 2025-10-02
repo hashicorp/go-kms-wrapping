@@ -43,7 +43,6 @@ as they may have been used for past encryption operations.
   * * Azure KeyVault (uses envelopes)
   * * GCP CKMS (uses envelopes)
   * * Huawei Cloud KMS (uses envelopes)
-  * * IBM Key Protect (uses envelopes)
   * * OCI KMS (uses envelopes)
   * * Tencent Cloud KMS (uses envelopes)
   * * Vault Transit mount
