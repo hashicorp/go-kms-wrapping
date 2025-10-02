@@ -122,6 +122,10 @@ func TestIbmKp_Lifecycle(t *testing.T) {
 func checkAndSetEnvVars(t *testing.T) {
 	t.Helper()
 
+	if os.Getenv("VAULT_ACC") == "" {
+		t.Skip("Skipping, env var 'VAULT_ACC' is empty")
+	}
+
 	if os.Getenv(EnvIbmApiKey) == "" {
 		os.Setenv(EnvIbmApiKey, TestIbmApiKey)
 	}
