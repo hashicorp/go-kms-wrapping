@@ -129,7 +129,7 @@ func WithApiKey(with string) wrapping.Option {
 	}
 }
 
-// WithEndpoint provides a way to chose the endpoint
+// WithEndpoint provides a way to choose the endpoint
 func WithEndpoint(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
