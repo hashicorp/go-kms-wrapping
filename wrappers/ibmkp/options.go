@@ -119,7 +119,7 @@ func WithKeyNotRequired(with bool) wrapping.Option {
 	}
 }
 
-// WithApiKey provides a way to chose the api_key
+// WithApiKey provides a way to choose the api_key
 func WithApiKey(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
