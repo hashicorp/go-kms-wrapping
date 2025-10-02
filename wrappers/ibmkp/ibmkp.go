@@ -203,13 +203,13 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, err
 	}
 
-	envelopKey, err := base64.StdEncoding.DecodeString(string(envelopKeyBase64))
+	envelopeKey, err := base64.StdEncoding.DecodeString(string(envelopKeyBase64))
 	if err != nil {
 		return nil, err
 	}
 
 	envInfo := &wrapping.EnvelopeInfo{
-		Key:        envelopKey,
+		Key:        envelopeKey,
 		Iv:         in.Iv,
 		Ciphertext: in.Ciphertext,
 	}
