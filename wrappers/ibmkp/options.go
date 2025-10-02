@@ -139,7 +139,7 @@ func WithEndpoint(with string) wrapping.Option {
 	}
 }
 
-// WithInstanceId provides a way to chose the instance_id
+// WithInstanceId provides a way to choose the instance_id
 func WithInstanceId(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
