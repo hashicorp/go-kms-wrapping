@@ -151,7 +151,7 @@ func (k *Wrapper) KeyId(_ context.Context) (string, error) {
 	return k.currentkeyId.Load().(string), nil
 }
 
-// Encrypt is used to encrypt the master key using the the IBM KeyProtect API.
+// Encrypt is used to encrypt the master key using the IBM KeyProtect API.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after the KMS client has been instantiated.
 func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
