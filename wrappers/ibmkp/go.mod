@@ -1,6 +1,6 @@
 module github.com/hashicorp/go-kms-wrapping/wrappers/ibmkp/v2
 
-go 1.22
+go 1.23.0
 
 replace github.com/hashicorp/go-kms-wrapping/v2 => ../..
 
@@ -28,7 +28,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

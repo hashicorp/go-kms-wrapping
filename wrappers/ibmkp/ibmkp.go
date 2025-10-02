@@ -168,8 +168,8 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 		return nil, fmt.Errorf("nil client")
 	}
 
-	envelopKeyBase64 := []byte(base64.StdEncoding.EncodeToString(env.Key))
-	ciphertext, err := k.client.Wrap(ctx, k.keyId, envelopKeyBase64, nil)
+	envelopeKeyBase64 := []byte(base64.StdEncoding.EncodeToString(env.Key))
+	ciphertext, err := k.client.Wrap(ctx, k.keyId, envelopeKeyBase64, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
@@ -198,12 +198,12 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, errors.New("key info is nil")
 	}
 
-	envelopKeyBase64, err := k.client.Unwrap(ctx, in.KeyInfo.KeyId, in.KeyInfo.WrappedKey, nil)
+	envelopeKeyBase64, err := k.client.Unwrap(ctx, in.KeyInfo.KeyId, in.KeyInfo.WrappedKey, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	envelopeKey, err := base64.StdEncoding.DecodeString(string(envelopKeyBase64))
+	envelopeKey, err := base64.StdEncoding.DecodeString(string(envelopeKeyBase64))
 	if err != nil {
 		return nil, err
 	}
