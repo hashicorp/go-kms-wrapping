@@ -10,20 +10,20 @@ import (
 	"os"
 	"sync/atomic"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/hashicorp/go-secure-stdlib/awsutil"
+	"github.com/hashicorp/go-secure-stdlib/awsutil/v2"
 )
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvAwsKmsWrapperKeyId   = "AWSKMS_WRAPPER_KEY_ID"
-	EnvVaultAwsKmsSealKeyId = "VAULT_AWSKMS_SEAL_KEY_ID"
+	EnvAwsKmsWrapperKeyId       = "AWSKMS_WRAPPER_KEY_ID"
+	EnvVaultAwsKmsSealKeyId     = "VAULT_AWSKMS_SEAL_KEY_ID"
+	DeprecatedEnvAwsKmsEndpoint = "AWS_KMS_ENDPOINT"
+	EnvAwsKmsEndpoint           = "AWSKMS_ENDPOINT"
 )
 
 const (
@@ -52,9 +52,16 @@ type Wrapper struct {
 
 	currentKeyId *atomic.Value
 
-	client kmsiface.KMSAPI
+	client KmsApi
 
 	logger hclog.Logger
+}
+
+// Replaces aws-sdk v1's iface package interfaces
+type KmsApi interface {
+	Encrypt(ctx context.Context, input *kms.EncryptInput, opts ...func(*kms.Options)) (*kms.EncryptOutput, error)
+	Decrypt(ctx context.Context, input *kms.DecryptInput, opts ...func(*kms.Options)) (*kms.DecryptOutput, error)
+	DescribeKey(ctx context.Context, inpput *kms.DescribeKeyInput, opts ...func(*kms.Options)) (*kms.DescribeKeyOutput, error)
 }
 
 // Ensure that we are implementing Wrapper
@@ -77,7 +84,7 @@ func NewWrapper() *Wrapper {
 // * Passed in config map
 // * Instance metadata role (access key and secret key)
 // * Default values
-func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
+func (k *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
@@ -103,7 +110,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	k.currentKeyId.Store(k.keyId)
 
 	// Please see GetRegion for an explanation of the order in which region is parsed.
-	k.region, err = awsutil.GetRegion(opts.withRegion)
+	k.region, err = awsutil.GetRegion(ctx, opts.withRegion)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +126,11 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	k.roleArn = opts.withRoleArn
 
 	if !opts.withDisallowEnvVars {
-		k.endpoint = os.Getenv("AWS_KMS_ENDPOINT")
+		ep := os.Getenv(EnvAwsKmsEndpoint)
+		if ep == "" {
+			ep = os.Getenv(DeprecatedEnvAwsKmsEndpoint)
+		}
+		k.endpoint = ep
 	}
 	if k.endpoint == "" {
 		k.endpoint = opts.withEndpoint
@@ -127,15 +138,15 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 
 	// Check and set k.client
 	if k.client == nil {
-		client, err := k.GetAwsKmsClient()
+		client, err := k.GetAwsKmsClient(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing AWS KMS wrapping client: %w", err)
 		}
 
 		if !k.keyNotRequired {
 			// Test the client connection using provided key ID
-			keyInfo, err := client.DescribeKey(&kms.DescribeKeyInput{
-				KeyId: aws.String(k.keyId),
+			keyInfo, err := client.DescribeKey(ctx, &kms.DescribeKeyInput{
+				KeyId: &k.keyId,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("error fetching AWS KMS wrapping key information: %w", err)
@@ -143,7 +154,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 			if keyInfo == nil || keyInfo.KeyMetadata == nil || keyInfo.KeyMetadata.KeyId == nil {
 				return nil, errors.New("no key information returned")
 			}
-			k.currentKeyId.Store(aws.StringValue(keyInfo.KeyMetadata.KeyId))
+			k.currentKeyId.Store(*keyInfo.KeyMetadata.KeyId)
 		}
 
 		k.client = client
@@ -174,7 +185,7 @@ func (k *Wrapper) KeyId(_ context.Context) (string, error) {
 // Encrypt is used to encrypt the master key using the the AWS CMK.
 // This returns the ciphertext, and/or any errors from this
 // call. This should be called after the KMS client has been instantiated.
-func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
+func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
 	if plaintext == nil {
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
@@ -189,10 +200,10 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 	}
 
 	input := &kms.EncryptInput{
-		KeyId:     aws.String(k.keyId),
+		KeyId:     &k.keyId,
 		Plaintext: env.Key,
 	}
-	output, err := k.client.Encrypt(input)
+	output, err := k.client.Encrypt(ctx, input)
 	if err != nil {
 		return nil, fmt.Errorf("error encrypting data: %w", err)
 	}
@@ -203,8 +214,8 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 	// used for encryption.  This is helpful if you are looking to reencyrpt
 	// your data when it is not using the latest key id. See these docs relating
 	// to key rotation https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
-	keyId := aws.StringValue(output.KeyId)
-	k.currentKeyId.Store(keyId)
+	keyId := output.KeyId
+	k.currentKeyId.Store(*keyId)
 
 	ret := &wrapping.BlobInfo{
 		Ciphertext: env.Ciphertext,
@@ -214,7 +225,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 			// Even though we do not use the key id during decryption, store it
 			// to know exactly the specific key used in encryption in case we
 			// want to rewrap older entries
-			KeyId:      keyId,
+			KeyId:      *keyId,
 			WrappedKey: output.CiphertextBlob,
 		},
 	}
@@ -223,7 +234,7 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
-func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
+func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
@@ -242,7 +253,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 			CiphertextBlob: in.Ciphertext,
 		}
 
-		output, err := k.client.Decrypt(input)
+		output, err := k.client.Decrypt(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}
@@ -254,7 +265,7 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		input := &kms.DecryptInput{
 			CiphertextBlob: in.KeyInfo.WrappedKey,
 		}
-		output, err := k.client.Decrypt(input)
+		output, err := k.client.Decrypt(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
 		}
@@ -277,48 +288,47 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 }
 
 // Client returns the AWS KMS client used by the wrapper.
-func (k *Wrapper) Client() kmsiface.KMSAPI {
+func (k *Wrapper) Client() KmsApi {
 	return k.client
 }
 
 // GetAwsKmsClient returns an instance of the KMS client.
-func (k *Wrapper) GetAwsKmsClient() (*kms.KMS, error) {
-	credsConfig := &awsutil.CredentialsConfig{}
+func (k *Wrapper) GetAwsKmsClient(ctx context.Context) (*kms.Client, error) {
+	credsConfig := &awsutil.CredentialsConfig{
+		AccessKey:            k.accessKey,
+		SecretKey:            k.secretKey,
+		SessionToken:         k.sessionToken,
+		Filename:             k.sharedCredsFilename,
+		Profile:              k.sharedCredsProfile,
+		RoleARN:              k.roleArn,
+		RoleSessionName:      k.roleSessionName,
+		WebIdentityTokenFile: k.webIdentityTokenFile,
+		Region:               k.region,
+		Logger:               k.logger,
+		HTTPClient:           cleanhttp.DefaultClient(),
+	}
 
-	credsConfig.AccessKey = k.accessKey
-	credsConfig.SecretKey = k.secretKey
-	credsConfig.SessionToken = k.sessionToken
-	credsConfig.Filename = k.sharedCredsFilename
-	credsConfig.Profile = k.sharedCredsProfile
-	credsConfig.RoleARN = k.roleArn
-	credsConfig.RoleSessionName = k.roleSessionName
-	credsConfig.WebIdentityTokenFile = k.webIdentityTokenFile
-	credsConfig.Region = k.region
-	credsConfig.Logger = k.logger
-
-	credsConfig.HTTPClient = cleanhttp.DefaultClient()
-
-	creds, err := credsConfig.GenerateCredentialChain()
+	creds, err := credsConfig.GenerateCredentialChain(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	awsConfig := &aws.Config{
-		Credentials: creds,
-		Region:      aws.String(credsConfig.Region),
-		HTTPClient:  cleanhttp.DefaultClient(),
+	clientOpts := []func(*config.LoadOptions) error{
+		config.WithCredentialsProvider(creds.Credentials),
+		config.WithRegion(k.region),
+		config.WithHTTPClient(cleanhttp.DefaultClient()),
 	}
 
 	if k.endpoint != "" {
-		awsConfig.Endpoint = aws.String(k.endpoint)
+		clientOpts = append(clientOpts, config.WithBaseEndpoint(k.endpoint))
 	}
 
-	sess, err := session.NewSession(awsConfig)
+	cfg, err := config.LoadDefaultConfig(ctx, clientOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	client := kms.New(sess)
+	client := kms.NewFromConfig(cfg)
 
 	return client, nil
 }

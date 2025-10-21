@@ -4,32 +4,22 @@
 package awskms
 
 import (
+	"context"
 	"encoding/base64"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/aws-sdk-go-v2/service/kms/types"
+	"github.com/hashicorp/go-secure-stdlib/awsutil/v2"
 )
 
-const awsTestKeyId = "foo"
-
-func NewAwsKmsTestWrapper() *Wrapper {
-	s := NewWrapper()
-	s.client = &mockClient{
-		keyId: aws.String(awsTestKeyId),
-	}
-	return s
-}
-
 type mockClient struct {
-	kmsiface.KMSAPI
-	keyId *string
+	KmsApi
+	keyId string
 }
 
 // Encrypt is a mocked call that returns a base64 encoded string.
-func (m *mockClient) Encrypt(input *kms.EncryptInput) (*kms.EncryptOutput, error) {
-	m.keyId = input.KeyId
+func (m *mockClient) Encrypt(_ context.Context, input *kms.EncryptInput, _ ...func(*kms.Options)) (*kms.EncryptOutput, error) {
+	m.keyId = *input.KeyId
 
 	encoded := make([]byte, base64.StdEncoding.EncodedLen(len(input.Plaintext)))
 	base64.StdEncoding.Encode(encoded, input.Plaintext)
@@ -41,7 +31,7 @@ func (m *mockClient) Encrypt(input *kms.EncryptInput) (*kms.EncryptOutput, error
 }
 
 // Decrypt is a mocked call that returns a decoded base64 string.
-func (m *mockClient) Decrypt(input *kms.DecryptInput) (*kms.DecryptOutput, error) {
+func (m *mockClient) Decrypt(_ context.Context, input *kms.DecryptInput, _ ...func(*kms.Options)) (*kms.DecryptOutput, error) {
 	decLen := base64.StdEncoding.DecodedLen(len(input.CiphertextBlob))
 	decoded := make([]byte, decLen)
 	len, err := base64.StdEncoding.Decode(decoded, input.CiphertextBlob)
@@ -54,20 +44,24 @@ func (m *mockClient) Decrypt(input *kms.DecryptInput) (*kms.DecryptOutput, error
 	}
 
 	return &kms.DecryptOutput{
-		KeyId:     m.keyId,
+		KeyId:     &m.keyId,
 		Plaintext: decoded,
 	}, nil
 }
 
 // DescribeKey is a mocked call that returns the keyId.
-func (m *mockClient) DescribeKey(input *kms.DescribeKeyInput) (*kms.DescribeKeyOutput, error) {
-	if m.keyId == nil {
-		return nil, awserr.New(kms.ErrCodeNotFoundException, "key not found", nil)
+func (m *mockClient) DescribeKey(_ context.Context, inpput *kms.DescribeKeyInput, _ ...func(*kms.Options)) (*kms.DescribeKeyOutput, error) {
+	if m.keyId == "" {
+		return nil, &awsutil.MockAWSErr{
+			Code:    "ErrCodeNotFoundException",
+			Message: "Key not found",
+		}
+
 	}
 
 	return &kms.DescribeKeyOutput{
-		KeyMetadata: &kms.KeyMetadata{
-			KeyId: m.keyId,
+		KeyMetadata: &types.KeyMetadata{
+			KeyId: &m.keyId,
 		},
 	}, nil
 }
