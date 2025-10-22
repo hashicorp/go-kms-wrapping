@@ -57,7 +57,7 @@ type Wrapper struct {
 	logger hclog.Logger
 }
 
-// Replaces aws-sdk v1's iface package interfaces
+// KmsApi defines the functionality expected to be implemented by the AWS SDK v2 kms package.
 type KmsApi interface {
 	Encrypt(ctx context.Context, input *kms.EncryptInput, opts ...func(*kms.Options)) (*kms.EncryptOutput, error)
 	Decrypt(ctx context.Context, input *kms.DecryptInput, opts ...func(*kms.Options)) (*kms.DecryptOutput, error)
