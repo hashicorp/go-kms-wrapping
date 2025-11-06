@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/go-kms-wrapping/v2 v2.0.18
-	github.com/hashicorp/go-secure-stdlib/awsutil/v2 v2.1.0
+	github.com/hashicorp/go-secure-stdlib/awsutil/v2 v2.1.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/mock v0.6.0
 )
