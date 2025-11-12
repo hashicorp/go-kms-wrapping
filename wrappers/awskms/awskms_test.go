@@ -6,206 +6,271 @@ package awskms
 import (
 	"context"
 	"os"
-	"reflect"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAwsKmsWrapper(t *testing.T) {
-	s := NewWrapper()
-	s.client = &mockClient{
-		keyId: aws.String(awsTestKeyId),
+const (
+	awsTestKeyId  = "foo"
+	envAwsProfile = "AWS_PROFILE"
+	envAwsRegion  = "AWS_REGION"
+)
+
+func TestSetConfig(t *testing.T) {
+	// Works around lack of AWS_REGION var in CI
+	if os.Getenv(envAwsRegion) == "" {
+		os.Setenv(envAwsRegion, "us-west-2")
+		defer os.Setenv(envAwsRegion, "")
 	}
 
-	_, err := s.SetConfig(nil)
-	if err == nil {
-		t.Fatal("expected error when AwsKms wrapping key ID is not provided")
-	}
-
-	// Set the key
-	oldKeyId := os.Getenv(EnvAwsKmsWrapperKeyId)
-	os.Setenv(EnvAwsKmsWrapperKeyId, awsTestKeyId)
-	defer os.Setenv(EnvAwsKmsWrapperKeyId, oldKeyId)
-	_, err = s.SetConfig(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestAwsKmsWrapper_IgnoreEnv(t *testing.T) {
-	wrapper := NewAwsKmsTestWrapper()
-
-	// Setup environment values to ignore for the following values
-	for _, envVar := range []string{EnvAwsKmsWrapperKeyId, EnvVaultAwsKmsSealKeyId, "AWS_KMS_ENDPOINT"} {
-		oldVal := os.Getenv(envVar)
-		os.Setenv(envVar, "envValue")
-		defer os.Setenv(envVar, oldVal)
-	}
-
-	config := map[string]string{
-		"disallow_env_vars": "true",
-		"kms_key_id":        "a-key-key",
-		"access_key":        "a-access-key",
-		"secret_key":        "a-secret-key",
-		"endpoint":          "my-endpoint",
-	}
-
-	_, err := wrapper.SetConfig(context.Background(), wrapping.WithConfigMap(config))
-	assert.NoError(t, err)
-
-	require.Equal(t, config["access_key"], wrapper.accessKey)
-	require.Equal(t, config["secret_key"], wrapper.secretKey)
-	require.Equal(t, config["kms_key_id"], wrapper.keyId)
-	require.Equal(t, config["endpoint"], wrapper.endpoint)
-}
-
-func TestAwsKmsWrapper_Lifecycle(t *testing.T) {
-	if os.Getenv(EnvAwsKmsWrapperKeyId) == "" && os.Getenv(EnvVaultAwsKmsSealKeyId) == "" {
-		t.SkipNow()
-	}
-	s := NewWrapper()
-	s.client = &mockClient{
-		keyId: aws.String(awsTestKeyId),
-	}
-	oldKeyId := os.Getenv(EnvAwsKmsWrapperKeyId)
-	os.Setenv(EnvAwsKmsWrapperKeyId, awsTestKeyId)
-	defer os.Setenv(EnvAwsKmsWrapperKeyId, oldKeyId)
-	testEncryptionRoundTrip(t, s)
-}
-
-// This test executes real calls. The calls themselves should be free,
-// but the KMS key used is generally not free. AWS charges about $1/month
-// per key.
-//
-// To run this test, the following env variables need to be set:
-//   - AWSKMS_WRAPPER_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID
-//   - AWS_REGION
-//   - AWS_ACCESS_KEY_ID
-//   - AWS_SECRET_ACCESS_KEY
-func TestAccAwsKmsWrapper_Lifecycle(t *testing.T) {
-	if os.Getenv(EnvAwsKmsWrapperKeyId) == "" && os.Getenv(EnvVaultAwsKmsSealKeyId) == "" {
-		t.SkipNow()
-	}
-	s := NewWrapper()
-	testEncryptionRoundTrip(t, s)
-}
-
-func testEncryptionRoundTrip(t *testing.T, w *Wrapper) {
-	w.SetConfig(context.Background())
-	input := []byte("foo")
-	swi, err := w.Encrypt(context.Background(), input, nil)
-	if err != nil {
-		t.Fatalf("err: %s", err.Error())
-	}
-
-	pt, err := w.Decrypt(context.Background(), swi, nil)
-	if err != nil {
-		t.Fatalf("err: %s", err.Error())
-	}
-
-	if !reflect.DeepEqual(input, pt) {
-		t.Fatalf("expected %s, got %s", input, pt)
-	}
-}
-
-func TestAwsKmsWrapper_custom_endpoint(t *testing.T) {
-	customEndpoint := "https://custom.endpoint"
-	customEndpoint2 := "https://custom.endpoint.2"
-	endpointENV := "AWS_KMS_ENDPOINT"
-
-	// unset at end of test
-	os.Setenv(EnvAwsKmsWrapperKeyId, awsTestKeyId)
-	defer func() {
-		if err := os.Unsetenv(EnvAwsKmsWrapperKeyId); err != nil {
-			t.Fatal(err)
+	t.Run("Failure - No wrapper key ID", func(t *testing.T) {
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
 		}
-	}()
+		oldKeyId := os.Getenv(EnvAwsKmsWrapperKeyId)
+		os.Setenv(EnvAwsKmsWrapperKeyId, "")
+		defer os.Setenv(EnvAwsKmsWrapperKeyId, oldKeyId)
 
-	cfg := make(map[string]string)
-	cfg["endpoint"] = customEndpoint
+		_, err := wrapperWithMock.SetConfig(context.Background())
+		require.Error(t, err, "expected error when AwsKms wrapping key ID is not provided")
+	})
 
-	testCases := []struct {
-		Title    string
-		Env      string
-		Config   map[string]string
-		Expected *string
-	}{
-		{
-			// Default will have nil for the config endpoint, and be looked up
-			// dynamically by the SDK
-			Title: "Default",
-		},
-		{
-			Title:    "Environment",
-			Env:      customEndpoint,
-			Expected: aws.String(customEndpoint),
-		},
-		{
-			Title:    "Config",
-			Config:   cfg,
-			Expected: aws.String(customEndpoint),
-		},
-		{
-			// Expect environment to take precedence over configuration
-			Title:    "Env-Config",
-			Env:      customEndpoint2,
-			Config:   cfg,
-			Expected: aws.String(customEndpoint2),
-		},
+	t.Run("Success - Test key ID pulled from environment variables", func(t *testing.T) {
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+		oldKeyId := os.Getenv(EnvAwsKmsWrapperKeyId)
+		os.Setenv(EnvAwsKmsWrapperKeyId, awsTestKeyId)
+		defer os.Setenv(EnvAwsKmsWrapperKeyId, oldKeyId)
+
+		_, err := wrapperWithMock.SetConfig(context.Background())
+		require.NoError(t, err)
+	})
+
+	t.Run("Success - Ignore environment variables", func(t *testing.T) {
+		// Setup environment values to ignore for the following values
+		for _, envVar := range []string{EnvAwsKmsWrapperKeyId, EnvVaultAwsKmsSealKeyId, EnvAwsKmsEndpoint, EnvAwsKmsEndpoint} {
+			oldVal := os.Getenv(envVar)
+			os.Setenv(envVar, "")
+			defer os.Setenv(envVar, oldVal)
+		}
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+
+		config := map[string]string{
+			"disallow_env_vars": "true",
+			"kms_key_id":        "a-key-key",
+			"access_key":        "a-access-key",
+			"secret_key":        "a-secret-key",
+			"endpoint":          "my-endpoint",
+		}
+
+		_, err := wrapperWithMock.SetConfig(context.Background(), wrapping.WithConfigMap(config))
+		require.NoError(t, err)
+
+		require.Equal(t, config["access_key"], wrapperWithMock.accessKey)
+		require.Equal(t, config["secret_key"], wrapperWithMock.secretKey)
+		require.Equal(t, config["kms_key_id"], wrapperWithMock.keyId)
+		require.Equal(t, config["endpoint"], wrapperWithMock.endpoint)
+	})
+
+	t.Run("Success - endpoint set automatically", func(t *testing.T) {
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+		_, err := wrapperWithMock.SetConfig(t.Context(), WithKeyNotRequired(true))
+		require.NoError(t, err)
+
+		c, err := wrapperWithMock.GetAwsKmsClient(t.Context())
+		require.NoError(t, err)
+		require.Nil(t, c.Options().BaseEndpoint)
+	})
+
+	t.Run("Success - custom endpoint set from environment variables", func(t *testing.T) {
+		expectedEndpoint := "https://example.com/0"
+		oldEndpoint := os.Getenv(EnvAwsKmsEndpoint)
+		os.Setenv(EnvAwsKmsEndpoint, expectedEndpoint)
+		defer os.Setenv(EnvAwsKmsEndpoint, oldEndpoint)
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+
+		_, err := wrapperWithMock.SetConfig(t.Context(), WithKeyNotRequired(true))
+		require.NoError(t, err)
+
+		c, err := wrapperWithMock.GetAwsKmsClient(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, expectedEndpoint, *(c.Options().BaseEndpoint))
+	})
+
+	t.Run("Success - custom endpoint set from config", func(t *testing.T) {
+		expectedEndpoint := "https://example.com/1"
+
+		cfg := map[string]string{
+			"endpoint": expectedEndpoint,
+		}
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+
+		_, err := wrapperWithMock.SetConfig(t.Context(), wrapping.WithConfigMap(cfg), WithKeyNotRequired(true))
+		require.NoError(t, err)
+
+		c, err := wrapperWithMock.GetAwsKmsClient(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, expectedEndpoint, *(c.Options().BaseEndpoint))
+	})
+
+	t.Run("Success - custom endpoint set from environment variables taking precedence over config", func(t *testing.T) {
+		expectedEndpoint := "https://example.com/2"
+		oldEndpoint := os.Getenv(EnvAwsKmsEndpoint)
+		os.Setenv(EnvAwsKmsEndpoint, expectedEndpoint)
+		defer os.Setenv(EnvAwsKmsEndpoint, oldEndpoint)
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+
+		cfg := map[string]string{
+			"endpoint": "https://example.com/3",
+		}
+
+		_, err := wrapperWithMock.SetConfig(t.Context(), wrapping.WithConfigMap(cfg), WithKeyNotRequired(true))
+		require.NoError(t, err)
+
+		c, err := wrapperWithMock.GetAwsKmsClient(t.Context())
+		require.NoError(t, err)
+		assert.Equal(t, expectedEndpoint, *(c.Options().BaseEndpoint))
+	})
+}
+
+func TestEncryptAndDecrypt(t *testing.T) {
+	t.Run("Success - mock client", func(t *testing.T) {
+		// Works around lack of AWS_REGION var in CI
+		if os.Getenv(envAwsRegion) == "" {
+			os.Setenv(envAwsRegion, "us-west-2")
+			defer os.Setenv(envAwsRegion, "")
+		}
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+		oldKeyId := os.Getenv(EnvAwsKmsWrapperKeyId)
+		os.Setenv(EnvAwsKmsWrapperKeyId, awsTestKeyId)
+		defer os.Setenv(EnvAwsKmsWrapperKeyId, oldKeyId)
+		encryptionRoundTrip(t, wrapperWithMock)
+	})
+	// To run the concrete enryption test, the following env variables need to be set:
+	//   - AWSKMS_WRAPPER_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID
+	//       - This is the ID of a KMS key in AWS that is symmetric with encrypt & decrypt usage.
+	//   - AWS_ACCESS_KEY_ID
+	//   - AWS_SECRET_ACCESS_KEY
+	//   - AWS_SESSION_TOKEN
+	//   - AWS_REGION
+	//        - Works around https://hashicorp.atlassian.net/browse/ICU-17849
+
+	t.Run("Success - concrete client", func(t *testing.T) {
+		if os.Getenv(EnvAwsKmsWrapperKeyId) == "" && os.Getenv(EnvVaultAwsKmsSealKeyId) == "" {
+			t.Skip("AWSKMS_WRAPPER_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID required for concrete encryption test")
+		}
+		if os.Getenv("AWS_ACCESS_KEY_ID") == "" {
+			t.Skip("AWS_ACCESS_KEY_ID required for concrete encryption test")
+		}
+		if os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
+			t.Skip("AWS_SECRET_ACCESS_KEY required for concrete encryption test")
+		}
+		if os.Getenv("AWS_SESSION_TOKEN") == "" {
+			t.Skip("AWS_SESSION_TOKEN required for concrete encryption test")
+		}
+		if os.Getenv("AWS_REGION") == "" {
+			t.Skip("AWS_REGION required for concrete encryption test")
+		}
+		w := NewWrapper()
+
+		encryptionRoundTrip(t, w)
+	})
+}
+
+// Shared profile test setup:
+// - Create a role in AWS that whatever role/user you're authenticating as has permission to sts::SetSourceIdentity as
+// - Create two profiles in ~/.aws/config
+//   - A source profile that has credentials or some method of logging in
+//   - A sink profile that uses `source_profile=$YOUR_SOURCE_PROFILE` and `role_arn=$YOUR_NEW_ROLE`
+//
+// - Set AWS_PROFILE=$SINK_PROFILE (for shared profile through AWS_PROFILE)
+// - Set TEST_PROFILE=$SINK_PROFILE (for shared profile through WithSharedCredsProfile)
+// - Set AWS_REGION and AWS_KMS_WRAPPER_KEY_ID as above
+func TestSharedProfiles(t *testing.T) {
+	if os.Getenv("AWS_REGION") == "" {
+		t.Skip("AWS_REGION required for shared profiles tests")
+	}
+	if os.Getenv(EnvAwsKmsWrapperKeyId) == "" && os.Getenv(EnvVaultAwsKmsSealKeyId) == "" {
+		t.Skip("AWSKMS_WRAPPER_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID required for shared profiles tests")
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.Title, func(t *testing.T) {
-			s := NewWrapper()
+	t.Run("Success - shared profile from WithSharedCredsProfile", func(t *testing.T) {
+		prof := os.Getenv("TEST_PROFILE")
+		if prof == "" {
+			t.Skip("TEST_PROFILE required for shared profile from WithSharedCredsProfile test")
+		}
+		// Prevent AWS_PROFILE from clobbering this test
+		if old := os.Getenv(envAwsProfile); old != "" {
+			os.Setenv(envAwsProfile, "")
+			defer os.Setenv(envAwsProfile, old)
+		}
 
-			s.client = &mockClient{
-				keyId: aws.String(awsTestKeyId),
-			}
+		w := NewWrapper()
 
-			if tc.Env != "" {
-				if err := os.Setenv(endpointENV, tc.Env); err != nil {
-					t.Fatal(err)
-				}
-			}
+		_, err := w.SetConfig(t.Context(), WithSharedCredsProfile(prof))
+		require.NoError(t, err)
 
-			// cfg starts as nil, and takes a test case value if given. If not,
-			// SetConfig is called with nil and creates it's own config
-			var cfg map[string]string
-			if tc.Config != nil {
-				cfg = tc.Config
-			}
-			if _, err := s.SetConfig(context.Background(), wrapping.WithConfigMap(cfg)); err != nil {
-				t.Fatalf("error setting config: %s", err)
-			}
+		encryptionRoundTrip(t, w)
+	})
 
-			// call GetAwsKmsClient() to get the configured client and verify it's
-			// endpoint
-			k, err := s.GetAwsKmsClient()
-			if err != nil {
-				t.Fatal(err)
-			}
+	t.Run("Success - shared profile from AWS_PROFILE", func(t *testing.T) {
+		// Default awskms config pulls shared creds from AWS_PROFILE if it's set
+		if os.Getenv(envAwsProfile) == "" {
+			t.Skip("AWS_PROFILE required for shared profile from AWS_PROFILE test")
+		}
 
-			if tc.Expected == nil && k.Config.Endpoint != nil {
-				t.Fatalf("Expected nil endpoint, got: (%s)", *k.Config.Endpoint)
-			}
+		w := NewWrapper()
+		_, err := w.SetConfig(t.Context())
+		require.NoError(t, err)
+		encryptionRoundTrip(t, w)
+	})
 
-			if tc.Expected != nil {
-				if k.Config.Endpoint == nil {
-					t.Fatal("expected custom endpoint, but config was nil")
-				}
-				if *k.Config.Endpoint != *tc.Expected {
-					t.Fatalf("expected custom endpoint (%s), got: (%s)", *tc.Expected, *k.Config.Endpoint)
-				}
-			}
+	t.Run("Failure - no shared config", func(t *testing.T) {
+		if old := os.Getenv(envAwsProfile); old != "" {
+			os.Setenv(envAwsProfile, "")
+			defer os.Setenv(envAwsProfile, old)
+		}
 
-			// clear endpoint env after each test
-			if err := os.Unsetenv(endpointENV); err != nil {
-				t.Fatal(err)
-			}
-		})
-	}
+		w := NewWrapper()
+
+		_, err := w.SetConfig(t.Context(), WithSharedCredsProfile("this-profile-definitely-doesn't-exist"))
+		require.Error(t, err)
+	})
+}
+
+func encryptionRoundTrip(t *testing.T, w *Wrapper) {
+	_, err := w.SetConfig(t.Context())
+	require.NoError(t, err)
+
+	expected := []byte("foo")
+	swi, err := w.Encrypt(context.Background(), expected, nil)
+	require.NoError(t, err)
+
+	output, err := w.Decrypt(context.Background(), swi, nil)
+	require.NoError(t, err)
+	assert.Equal(t, expected, output)
 }
