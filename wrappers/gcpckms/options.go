@@ -64,6 +64,8 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withKeyRing = v
 			case "crypto_key":
 				opts.withCryptoKey = v
+			case "universe_domain":
+				opts.withUniverseDomain = v
 			}
 		}
 	}
@@ -99,6 +101,7 @@ type options struct {
 	withRegion         string
 	withKeyRing        string
 	withCryptoKey      string
+	withUniverseDomain string
 }
 
 func getDefaultOptions() options {
@@ -170,6 +173,16 @@ func WithCryptoKey(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withCryptoKey = with
+			return nil
+		})
+	}
+}
+
+// WithUniverseDomain provides a way to specify universe_domain for GCP
+func WithUniverseDomain(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withUniverseDomain = with
 			return nil
 		})
 	}
