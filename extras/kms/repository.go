@@ -187,12 +187,12 @@ func (r *repository) ListScopesMissingDataKey(ctx context.Context, scopeIds []st
 		}
 
 		for rows.Next() {
-			r := row{}
-			if err := reader.ScanRows(rows, &r); err != nil {
+			rowData := row{}
+			if err := reader.ScanRows(rows, &rowData); err != nil {
 				return nil, fmt.Errorf("%s: %w", op, err)
 			}
-			purpose := KeyPurpose(r.Purpose)
-			result[purpose] = append(result[purpose], r.ScopeId)
+			purpose := KeyPurpose(rowData.Purpose)
+			result[purpose] = append(result[purpose], rowData.ScopeId)
 		}
 
 		if err := rows.Err(); err != nil {

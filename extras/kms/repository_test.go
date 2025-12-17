@@ -457,7 +457,7 @@ func TestRepository_ListScopesMissingDataKey(t *testing.T) {
 			repo: testRepo,
 			scopeIds: func() []string {
 				scopes := make([]string, 1500)
-				for i := 0; i < 1500; i++ {
+				for i := range 1500 {
 					scopes[i] = fmt.Sprintf("o_batch_%d", i)
 				}
 				return scopes
