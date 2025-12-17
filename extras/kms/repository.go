@@ -141,6 +141,68 @@ func (r *repository) list(ctx context.Context, resources interface{}, where stri
 	return opts.withReader.SearchWhere(ctx, resources, where, args, dbOpts...)
 }
 
+// ListScopesMissingDataKey returns scope IDs from the provided list
+// that are missing a data key for the specified purpose.
+func (r *repository) ListScopesMissingDataKey(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) (map[KeyPurpose][]string, error) {
+	const (
+		op        = "kms.(repository).ListScopesMissingDataKey"
+		batchSize = 1000
+	)
+	if len(scopeIds) == 0 {
+		return nil, fmt.Errorf("%s: missing scope ids: %w", op, ErrInvalidParameter)
+	}
+	if len(purposes) == 0 {
+		return nil, fmt.Errorf("%s: missing purposes: %w", op, ErrInvalidParameter)
+	}
+
+	opts := getOpts(opt...)
+	reader := r.reader
+	if opts.withReader != nil {
+		reader = opts.withReader
+	}
+
+	query := fmt.Sprintf(scopesMissingDataKeyQuery, r.tableNamePrefix, r.tableNamePrefix)
+	result := make(map[KeyPurpose][]string)
+
+	// Convert purposes to string slice for PostgreSQL
+	purposeStrs := make([]string, len(purposes))
+	for i, p := range purposes {
+		purposeStrs[i] = string(p)
+	}
+
+	// Process in batches
+	for i := 0; i < len(scopeIds); i += batchSize {
+		end := min(i+batchSize, len(scopeIds))
+		batch := scopeIds[i:end]
+
+		rows, err := reader.Query(ctx, query, []any{batch, purposeStrs})
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		defer rows.Close()
+
+		type row struct {
+			Purpose string `gorm:"column:purpose"`
+			ScopeId string `gorm:"column:scope_id"`
+		}
+
+		for rows.Next() {
+			r := row{}
+			if err := reader.ScanRows(rows, &r); err != nil {
+				return nil, fmt.Errorf("%s: %w", op, err)
+			}
+			purpose := KeyPurpose(r.Purpose)
+			result[purpose] = append(result[purpose], r.ScopeId)
+		}
+
+		if err := rows.Err(); err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+	}
+
+	return result, nil
+}
+
 type vetForWriter interface {
 	vetForWrite(ctx context.Context, opType dbw.OpType) error
 }

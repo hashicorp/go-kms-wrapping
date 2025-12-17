@@ -1060,6 +1060,56 @@ func TestKms_ReconcileKeys(t *testing.T) {
 			wantErr:            false,
 			wantUpdatedVersion: true,
 		},
+		{
+			name: "multiple-scopes-mixed-missing-keys",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database", "auth"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// org has root key but missing database and auth keys
+				err := k.CreateKeys(context.Background(), org, nil)
+				require.NoError(t, err)
+				// org2 has root key and database key but missing auth key
+				err = k.CreateKeys(context.Background(), org2, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+			},
+			scopeIds:           []string{org, org2},
+			wantPurpose:        []kms.KeyPurpose{"database", "auth"},
+			wantUpdatedVersion: true,
+		},
+		{
+			name: "large-batch-multiple-scopes",
+			kms: func() *kms.Kms {
+				k, err := kms.New(rw, rw, []kms.KeyPurpose{"database"})
+				require.NoError(t, err)
+				err = k.AddExternalWrapper(testCtx, kms.KeyPurposeRootKey, wrapper)
+				require.NoError(t, err)
+				return k
+			}(),
+			setup: func(k *kms.Kms) {
+				testDeleteWhere(t, db, func() interface{} { i := rootKey{}; return &i }(), "1=1")
+				// Create multiple scopes with root keys but no data keys
+				for i := range 5 {
+					scopeId := fmt.Sprintf("o_batch_%d", i)
+					err := k.CreateKeys(context.Background(), scopeId, nil)
+					require.NoError(t, err)
+				}
+			},
+			scopeIds: func() []string {
+				scopes := make([]string, 5)
+				for i := range 5 {
+					scopes[i] = fmt.Sprintf("o_batch_%d", i)
+				}
+				return scopes
+			}(),
+			wantPurpose:        []kms.KeyPurpose{"database"},
+			wantUpdatedVersion: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

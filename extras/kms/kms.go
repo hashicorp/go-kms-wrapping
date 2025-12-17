@@ -695,30 +695,29 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 		}
 	}
 
+	scopeIdsmap, err := k.repo.ListScopesMissingDataKey(ctx, scopeIds, purposes, opt...)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if len(scopeIdsmap) == 0 {
+		return nil
+	}
+
 	opts := getOpts(opt...)
-	for _, id := range scopeIds {
-		var scopeRootWrapper *multi.PooledWrapper
+	for purpose, missingScopeIds := range scopeIdsmap {
+		for _, id := range missingScopeIds {
+			scopeRootWrapper, _, err := k.loadRoot(ctx, id)
+			if err != nil {
+				return fmt.Errorf("%s: %w", op, err)
+			}
 
-		for _, purpose := range purposes {
-			if _, err := k.GetWrapper(ctx, id, purpose); err != nil {
-				switch {
-				case errors.Is(err, ErrKeyNotFound):
-					if scopeRootWrapper == nil {
-						if scopeRootWrapper, _, err = k.loadRoot(ctx, id); err != nil {
-							return fmt.Errorf("%s: %w", op, err)
-						}
-					}
-					key, err := generateKey(ctx, opts.withRandomReader)
-					if err != nil {
-						return fmt.Errorf("%s: error generating random bytes for %q key in scope %q: %w", op, purpose, id, err)
-					}
+			key, err := generateKey(ctx, opts.withRandomReader)
+			if err != nil {
+				return fmt.Errorf("%s: error generating random bytes for %q key in scope %q: %w", op, purpose, id, err)
+			}
 
-					if _, _, err := k.repo.CreateDataKey(ctx, scopeRootWrapper, purpose, key); err != nil {
-						return fmt.Errorf("%s: error creating %q key in scope %s: %w", op, purpose, id, err)
-					}
-				default:
-					return fmt.Errorf("%s: %w", op, err)
-				}
+			if _, _, err := k.repo.CreateDataKey(ctx, scopeRootWrapper, purpose, key); err != nil {
+				return fmt.Errorf("%s: error creating %q key in scope %s: %w", op, purpose, id, err)
 			}
 		}
 	}

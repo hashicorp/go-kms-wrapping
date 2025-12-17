@@ -32,4 +32,21 @@ where
 	p."table" = 'kms_data_key_version' and
 	p."to" = 'private_id'
 `
+	scopesMissingDataKeyQuery = `
+  select scp.purpose,
+         scp.scope_id
+    from (select s.id      as scope_id,
+                 p.purpose as purpose
+            from unnest($1::text[])   as s(id)
+                 cross join unnest($2::text[]) as p(purpose)
+         ) as scp
+         left join %s_root_key as rk
+           on rk.scope_id = scp.scope_id
+         left join %s_data_key as dk
+           on dk.root_key_id = rk.private_id
+              and dk.purpose = scp.purpose
+   where dk.private_id is null
+order by scp.purpose,
+         scp.scope_id
+`
 )
