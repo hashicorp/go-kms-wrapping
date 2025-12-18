@@ -214,20 +214,21 @@ func (r *repository) ListScopesMissingDataKey(ctx context.Context, scopeIds []st
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", op, err)
 		}
-		defer rows.Close()
 		for rows.Next() {
 			var purpose string
 			var scopeId string
 			if err := rows.Scan(&purpose, &scopeId); err != nil {
+				rows.Close()
 				return nil, fmt.Errorf("%s: failed to scan row: %w", op, err)
 			}
 			keyPurpose := KeyPurpose(purpose)
 			result[keyPurpose] = append(result[keyPurpose], scopeId)
 		}
-
 		if err := rows.Err(); err != nil {
+			rows.Close()
 			return nil, fmt.Errorf("%s: failed to iterate rows: %w", op, err)
 		}
+		rows.Close()
 	}
 
 	return result, nil
