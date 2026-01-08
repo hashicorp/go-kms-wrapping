@@ -479,7 +479,7 @@ func TestRepository_ListScopesMissingDataKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := tc.repo.ListScopesMissingDataKey(testCtx, tc.scopeIds, tc.purposes, tc.opt...)
+			got, err := tc.repo.listScopesMissingDataKey(testCtx, tc.scopeIds, tc.purposes, tc.opt...)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrIs != nil {

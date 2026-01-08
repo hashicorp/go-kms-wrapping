@@ -695,7 +695,7 @@ func (k *Kms) ReconcileKeys(ctx context.Context, scopeIds []string, purposes []K
 		}
 	}
 
-	scopeIdsmap, err := k.repo.ListScopesMissingDataKey(ctx, scopeIds, purposes, opt...)
+	scopeIdsmap, err := k.repo.listScopesMissingDataKey(ctx, scopeIds, purposes, opt...)
 	if err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}

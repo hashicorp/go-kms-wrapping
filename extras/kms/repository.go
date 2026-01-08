@@ -146,9 +146,9 @@ func (r *repository) list(ctx context.Context, resources interface{}, where stri
 // that are missing a data key for the specified purpose.
 // Supported options:
 //   - WithReader
-func (r *repository) ListScopesMissingDataKey(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) (map[KeyPurpose][]string, error) {
+func (r *repository) listScopesMissingDataKey(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) (map[KeyPurpose][]string, error) {
 	const (
-		op        = "kms.(repository).ListScopesMissingDataKey"
+		op        = "kms.(repository).listScopesMissingDataKey"
 		batchSize = 1000
 	)
 	if len(scopeIds) == 0 {
