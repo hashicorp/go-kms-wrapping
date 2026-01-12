@@ -154,7 +154,7 @@ func (k *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 			if keyInfo == nil || keyInfo.KeyMetadata == nil || keyInfo.KeyMetadata.KeyId == nil {
 				return nil, errors.New("no key information returned")
 			}
-			k.currentKeyId.Store(*keyInfo.KeyMetadata.KeyId)
+			k.currentKeyId.Store(*keyInfo.KeyMetadata.Arn)
 		}
 
 		k.client = client

@@ -1,4 +1,4 @@
-module github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v3
+module github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v4
 
 go 1.24.0
 
