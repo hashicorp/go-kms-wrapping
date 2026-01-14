@@ -6,8 +6,10 @@ package awskms
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -151,6 +153,41 @@ func TestSetConfig(t *testing.T) {
 		c, err := wrapperWithMock.GetAwsKmsClient(t.Context())
 		require.NoError(t, err)
 		assert.Equal(t, expectedEndpoint, *(c.Options().BaseEndpoint))
+	})
+
+	t.Run("Success - concrete client", func(t *testing.T) {
+		expectedKeyId := os.Getenv(EnvAwsKmsWrapperKeyId)
+		if expectedKeyId == "" {
+			expectedKeyId = os.Getenv(EnvVaultAwsKmsSealKeyId)
+		}
+		if expectedKeyId == "" {
+			t.Skip("AWSKMS_WRAPPER_KEY_ID or VAULT_AWSKMS_SEAL_KEY_ID required for concrete SetConfig test")
+		}
+		if os.Getenv("AWS_ACCESS_KEY_ID") == "" {
+			t.Skip("AWS_ACCESS_KEY_ID required for concrete SetConfig test")
+		}
+		if os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
+			t.Skip("AWS_SECRET_ACCESS_KEY required for concrete SetConfig test")
+		}
+		if os.Getenv("AWS_SESSION_TOKEN") == "" {
+			t.Skip("AWS_SESSION_TOKEN required for concrete SetConfig test")
+		}
+		if os.Getenv("AWS_REGION") == "" {
+			t.Skip("AWS_REGION required for concrete SetConfig test")
+		}
+		w := NewWrapper()
+
+		_, err := w.SetConfig(t.Context())
+		require.NoError(t, err)
+
+		// KeyId returns the ARN of the key, rather than the ID portion
+		actualKeyId, err := w.KeyId(t.Context())
+		require.NoError(t, err)
+
+		keyArn, err := arn.Parse(actualKeyId)
+		require.NoError(t, err)
+		trimmedActualKeyId, _ := strings.CutPrefix(keyArn.Resource, "key/")
+		assert.Equal(t, expectedKeyId, trimmedActualKeyId)
 	})
 }
 
