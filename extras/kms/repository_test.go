@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -355,4 +356,153 @@ func TestRepository_DefaultLimit(t *testing.T) {
 	testRepo, err := newRepository(rw, rw, withLimit(3))
 	require.NoError(t, err)
 	assert.Equal(t, 3, testRepo.DefaultLimit())
+}
+
+func TestRepository_ListScopesMissingDataKey(t *testing.T) {
+	t.Parallel()
+	testCtx := context.Background()
+	db, _ := TestDb(t)
+	rw := dbw.New(db)
+	wrapper := wrapping.NewTestWrapper([]byte(testDefaultWrapperSecret))
+	testRepo, err := newRepository(rw, rw)
+	require.NoError(t, err)
+
+	// Setup: Create test data
+	const (
+		scope1 = "o_scope1"
+		scope2 = "o_scope2"
+		scope3 = "o_scope3"
+	)
+
+	// Create root keys for scope1 and scope2
+	rk1 := testRootKey(t, db, scope1)
+	_, rkvWrapper1 := testRootKeyVersion(t, db, wrapper, rk1.PrivateId)
+	rk2 := testRootKey(t, db, scope2)
+	_, rkvWrapper2 := testRootKeyVersion(t, db, wrapper, rk2.PrivateId)
+
+	// Create data keys for scope1 (database) and scope2 (auth)
+	dk1 := testDataKey(t, db, rk1.PrivateId, "database")
+	_ = testDataKeyVersion(t, db, rkvWrapper1, dk1.PrivateId, []byte("data-key-1"))
+
+	dk2 := testDataKey(t, db, rk2.PrivateId, "auth")
+	_ = testDataKeyVersion(t, db, rkvWrapper2, dk2.PrivateId, []byte("data-key-2"))
+
+	tests := []struct {
+		name            string
+		repo            *repository
+		scopeIds        []string
+		purposes        []KeyPurpose
+		opt             []Option
+		wantMissing     map[KeyPurpose][]string
+		wantErr         bool
+		wantErrIs       error
+		wantErrContains string
+	}{
+		{
+			name:            "missing-scope-ids",
+			repo:            testRepo,
+			scopeIds:        []string{},
+			purposes:        []KeyPurpose{"database"},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing scope ids",
+		},
+		{
+			name:            "missing-purposes",
+			repo:            testRepo,
+			scopeIds:        []string{scope1},
+			purposes:        []KeyPurpose{},
+			wantErr:         true,
+			wantErrIs:       ErrInvalidParameter,
+			wantErrContains: "missing purposes",
+		},
+		{
+			name:        "all-keys-exist",
+			repo:        testRepo,
+			scopeIds:    []string{scope1},
+			purposes:    []KeyPurpose{"database"},
+			wantMissing: map[KeyPurpose][]string{},
+		},
+		{
+			name:     "missing-data-key-for-purpose",
+			repo:     testRepo,
+			scopeIds: []string{scope1},
+			purposes: []KeyPurpose{"auth"},
+			wantMissing: map[KeyPurpose][]string{
+				"auth": {scope1},
+			},
+		},
+		{
+			name:     "missing-root-key",
+			repo:     testRepo,
+			scopeIds: []string{scope3},
+			purposes: []KeyPurpose{"database", "auth"},
+			wantMissing: map[KeyPurpose][]string{
+				"database": {scope3},
+				"auth":     {scope3},
+			},
+		},
+		{
+			name:     "multiple-scopes-mixed",
+			repo:     testRepo,
+			scopeIds: []string{scope1, scope2, scope3},
+			purposes: []KeyPurpose{"database", "auth"},
+			wantMissing: map[KeyPurpose][]string{
+				"database": {scope2, scope3},
+				"auth":     {scope1, scope3},
+			},
+		},
+		{
+			name: "large-batch-test",
+			repo: testRepo,
+			scopeIds: func() []string {
+				scopes := make([]string, 1500)
+				for i := range 1500 {
+					scopes[i] = fmt.Sprintf("o_batch_%d", i)
+				}
+				return scopes
+			}(),
+			purposes: []KeyPurpose{"database"},
+			wantMissing: map[KeyPurpose][]string{
+				"database": func() []string {
+					scopes := make([]string, 1500)
+					for i := range 1500 {
+						scopes[i] = fmt.Sprintf("o_batch_%d", i)
+					}
+					return scopes
+				}(),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert, require := assert.New(t), require.New(t)
+
+			got, err := tc.repo.listScopesMissingDataKey(testCtx, tc.scopeIds, tc.purposes, tc.opt...)
+			if tc.wantErr {
+				require.Error(err)
+				if tc.wantErrIs != nil {
+					assert.ErrorIs(err, tc.wantErrIs)
+				}
+				if tc.wantErrContains != "" {
+					assert.Contains(err.Error(), tc.wantErrContains)
+				}
+				return
+			}
+			require.NoError(err)
+
+			// Compare results - handle empty map case
+			if len(tc.wantMissing) == 0 {
+				assert.Empty(got, "expected no missing keys")
+			} else {
+				assert.Equal(len(tc.wantMissing), len(got), "number of purposes should match")
+				for purpose, wantScopes := range tc.wantMissing {
+					gotScopes, ok := got[purpose]
+					assert.True(ok, "purpose %s should be in result", purpose)
+					assert.ElementsMatch(wantScopes, gotScopes, "scopes for purpose %s should match", purpose)
+				}
+			}
+		})
+	}
 }

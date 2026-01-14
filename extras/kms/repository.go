@@ -5,6 +5,7 @@ package kms
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -139,6 +140,98 @@ func (r *repository) list(ctx context.Context, resources interface{}, where stri
 		opts.withReader = r.reader
 	}
 	return opts.withReader.SearchWhere(ctx, resources, where, args, dbOpts...)
+}
+
+// ListScopesMissingDataKey returns scope IDs from the provided list
+// that are missing a data key for the specified purpose.
+// Supported options:
+//   - WithReader
+func (r *repository) listScopesMissingDataKey(ctx context.Context, scopeIds []string, purposes []KeyPurpose, opt ...Option) (map[KeyPurpose][]string, error) {
+	const (
+		op        = "kms.(repository).listScopesMissingDataKey"
+		batchSize = 1000
+	)
+	if len(scopeIds) == 0 {
+		return nil, fmt.Errorf("%s: missing scope ids: %w", op, ErrInvalidParameter)
+	}
+	if len(purposes) == 0 {
+		return nil, fmt.Errorf("%s: missing purposes: %w", op, ErrInvalidParameter)
+	}
+
+	// Get database dialect to determine which query to use
+	typ, _, err := r.reader.Dialect()
+	if err != nil {
+		return nil, fmt.Errorf("%s: failed to get db dialect: %w", op, err)
+	}
+
+	var query string
+	switch typ {
+	case dbw.Postgres:
+		query = fmt.Sprintf(postgresScopesMissingDataKeyQuery, r.tableNamePrefix, r.tableNamePrefix)
+	case dbw.Sqlite:
+		query = fmt.Sprintf(sqliteScopesMissingDataKeyQuery, r.tableNamePrefix, r.tableNamePrefix)
+	default:
+		return nil, fmt.Errorf("%s: unsupported DB dialect: %q: %w", op, typ, ErrInvalidParameter)
+	}
+	opts := getOpts(opt...)
+	queryFn := r.reader.Query
+	if opts.withReader != nil {
+		queryFn = opts.withReader.Query
+	}
+	result := make(map[KeyPurpose][]string)
+	purposeStrs := make([]string, len(purposes))
+	for i, p := range purposes {
+		purposeStrs[i] = string(p)
+	}
+	// Define parameter preparation function based on database type
+	var prepareParams func([]string, []string) ([]any, error)
+	switch typ {
+	case dbw.Postgres:
+		prepareParams = func(scopes []string, purps []string) ([]any, error) {
+			return []any{scopes, purps}, nil
+		}
+	case dbw.Sqlite:
+		prepareParams = func(scopes []string, purps []string) ([]any, error) {
+			scopesJSON, err := json.Marshal(scopes)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal scope ids: %w", err)
+			}
+			purposesJSON, err := json.Marshal(purps)
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal purposes: %w", err)
+			}
+			return []any{string(scopesJSON), string(purposesJSON)}, nil
+		}
+	}
+	for i := 0; i < len(scopeIds); i += batchSize {
+		end := min(i+batchSize, len(scopeIds))
+		batch := scopeIds[i:end]
+		params, err := prepareParams(batch, purposeStrs)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		rows, err := queryFn(ctx, query, params)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", op, err)
+		}
+		for rows.Next() {
+			var purpose string
+			var scopeId string
+			if err := rows.Scan(&purpose, &scopeId); err != nil {
+				rows.Close()
+				return nil, fmt.Errorf("%s: failed to scan row: %w", op, err)
+			}
+			keyPurpose := KeyPurpose(purpose)
+			result[keyPurpose] = append(result[keyPurpose], scopeId)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("%s: failed to iterate rows: %w", op, err)
+		}
+		rows.Close()
+	}
+
+	return result, nil
 }
 
 type vetForWriter interface {
