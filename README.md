@@ -46,6 +46,7 @@ as they may have been used for past encryption operations.
   * * Huawei Cloud KMS (uses envelopes)
   * * IBM Key Protect (uses envelopes)
   * * OCI KMS (uses envelopes)
+  * * Naver Cloud KMS (uses envelopes)
   * * Tencent Cloud KMS (uses envelopes)
   * * Vault Transit mount
   * Transparently supports multiple decryption targets, allowing for key rotation
