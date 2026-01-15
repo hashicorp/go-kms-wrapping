@@ -1,4 +1,4 @@
--- Copyright (c) HashiCorp, Inc.
+-- Copyright IBM Corp. 2019, 2025
 -- SPDX-License-Identifier: MPL-2.0
 
 -- kms_version is a one row table to keep the version
