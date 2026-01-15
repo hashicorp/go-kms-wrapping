@@ -27,6 +27,8 @@ const (
 	EnvVaultGcpCkmsSealKeyRing   = "VAULT_GCPCKMS_SEAL_KEY_RING"
 	EnvGcpCkmsWrapperCryptoKey   = "GCPCKMS_WRAPPER_CRYPTO_KEY"
 	EnvVaultGcpCkmsSealCryptoKey = "VAULT_GCPCKMS_SEAL_CRYPTO_KEY"
+	// optional env to override the universe/domain for Google Cloud endpoints
+	EnvVaultGcpCkmsUniverseDomain = "VAULT_GCPCKMS_UNIVERSE_DOMAIN"
 )
 
 const (
@@ -52,6 +54,9 @@ type Wrapper struct {
 
 	currentKeyId   *atomic.Value
 	keyNotRequired bool
+
+	// universe_domain
+	universeDomain string
 
 	client *cloudkms.KeyManagementClient
 }
@@ -149,6 +154,13 @@ func (s *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		// key not required to set config
 	default:
 		return nil, errors.New("'crypto_key' not found for GCP CKMS wrapper configuration")
+	}
+
+	switch {
+	case os.Getenv(EnvVaultGcpCkmsUniverseDomain) != "" && !opts.Options.WithDisallowEnvVars:
+		s.universeDomain = os.Getenv(EnvVaultGcpCkmsUniverseDomain)
+	case opts.withUniverseDomain != "":
+		s.universeDomain = opts.withUniverseDomain
 	}
 
 	// Set the parent name for encrypt/decrypt requests
@@ -311,9 +323,15 @@ func (s *Wrapper) Client() *cloudkms.KeyManagementClient {
 
 // createClient returns a configured GCP KMS client.
 func (s *Wrapper) createClient() (*cloudkms.KeyManagementClient, error) {
-	client, err := cloudkms.NewKeyManagementClient(context.Background(),
+	clientOpts := []option.ClientOption{
 		option.WithCredentialsFile(s.credsPath),
 		option.WithUserAgent(s.userAgent),
+	}
+	if s.universeDomain != "" {
+		clientOpts = append(clientOpts, option.WithUniverseDomain(s.universeDomain))
+	}
+	client, err := cloudkms.NewKeyManagementClient(context.Background(),
+		clientOpts...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create KMS client: %w", err)
