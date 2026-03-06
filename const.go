@@ -15,6 +15,7 @@ const (
 	WrapperTypeGcpCkms         WrapperType = "gcpckms"
 	WrapperTypeHsmAuto         WrapperType = "hsm-auto"
 	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
+	WrapperTypeIbmKp           WrapperType = "ibmkeyprotect"
 	WrapperTypeOciKms          WrapperType = "ocikms"
 	WrapperTypePkcs11          WrapperType = "pkcs11"
 	WrapperTypePooled          WrapperType = "pooled"
