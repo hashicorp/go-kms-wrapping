@@ -17,8 +17,10 @@ const (
 	KmsConfigCryptoEndpoint = "crypto_endpoint"
 	// managementEndpoint config
 	KmsConfigManagementEndpoint = "management_endpoint"
-	// authTypeApiKey config
+	// authTypeApiKey config (deprecated: use auth_type instead)
 	KmsConfigAuthTypeApiKey = "auth_type_api_key"
+	// authType config — one of "api_key", "instance_principal", "workload_identity"
+	KmsConfigAuthType = "auth_type"
 )
 
 // getOpts iterates the inbound Options and returns a struct
@@ -68,6 +70,8 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed parsing "+KmsConfigAuthTypeApiKey+" parameter: %w", err)
 				}
+			case KmsConfigAuthType:
+				opts.withAuthType = v
 			}
 		}
 	}
@@ -98,7 +102,8 @@ type options struct {
 
 	withCryptoEndpoint     string
 	withManagementEndpoint string
-	withAuthTypeApiKey     bool
+	withAuthTypeApiKey     bool   // Deprecated: use withAuthType instead
+	withAuthType           string // One of "api_key", "instance_principal", "workload_identity"
 }
 
 func getDefaultOptions() options {
@@ -125,11 +130,23 @@ func WithManagementEndpoint(with string) wrapping.Option {
 	}
 }
 
-// WithAuthTypeApiKey provides a way to say to use api keys for auth
+// WithAuthTypeApiKey provides a way to say to use api keys for auth.
+// Deprecated: Use WithAuthType instead.
 func WithAuthTypeApiKey(with bool) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withAuthTypeApiKey = with
+			return nil
+		})
+	}
+}
+
+// WithAuthType provides a way to set the authentication type.
+// Valid values are "api_key", "instance_principal", and "workload_identity".
+func WithAuthType(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withAuthType = with
 			return nil
 		})
 	}
