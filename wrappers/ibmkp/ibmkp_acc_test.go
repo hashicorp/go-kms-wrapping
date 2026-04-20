@@ -115,6 +115,20 @@ func TestIbmKp_Lifecycle(t *testing.T) {
 	if subtle.ConstantTimeCompare(input, pt) == 0 {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
+
+	swi, err = s.Encrypt(context.Background(), input, wrapping.WithoutEnvelope())
+	if err != nil {
+		t.Fatalf("error encrypting: %s", err.Error())
+	}
+
+	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope())
+	if err != nil {
+		t.Fatalf("error decrypting: %s", err.Error())
+	}
+
+	if subtle.ConstantTimeCompare(input, pt) == 0 {
+		t.Fatalf("expected %s, got %s", input, pt)
+	}
 }
 
 // checkAndSetEnvVars check and sets the required env vars. It will skip tests that are

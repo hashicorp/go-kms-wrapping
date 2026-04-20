@@ -40,6 +40,20 @@ func TestWrapper_LifeCycle(t *testing.T) {
 	if !reflect.DeepEqual(input, pt) {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
+
+	swi, err = s.Encrypt(context.Background(), input, wrapping.WithoutEnvelope())
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope())
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(input, pt) {
+		t.Fatalf("expected %s, got %s", input, pt)
+	}
 }
 
 func initSeal(t *testing.T) *Wrapper {
