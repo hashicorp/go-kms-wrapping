@@ -1,9 +1,9 @@
 module github.com/hashicorp/go-kms-wrapping/wrappers/ocikms/v2
 
-go 1.23.0
+go 1.24.0
 
 require (
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.17
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21-0.20260306200429-d44e32be3570
 	github.com/oracle/oci-go-sdk/v60 v60.0.0
 	golang.org/x/net v0.38.0
 )
