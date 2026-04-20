@@ -220,35 +220,64 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 		return nil, errors.New("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error wrapping data: %w", err)
-	}
-
-	resp, err := s.client.Encrypt(ctx, &kmspb.EncryptRequest{
-		Name:      s.parentName,
-		Plaintext: env.Key,
-	})
+	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Store current key id value
-	s.currentKeyId.Store(resp.Name)
+	var ret *wrapping.BlobInfo
+	if !opts.WithoutEnvelope {
+		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error wrapping data: %w", err)
+		}
 
-	ret := &wrapping.BlobInfo{
-		Ciphertext: env.Ciphertext,
-		Iv:         env.Iv,
-		KeyInfo: &wrapping.KeyInfo{
-			Mechanism: GcpCkmsEnvelopeAesGcmEncrypt,
-			// Even though we do not use the key id during decryption, store it
-			// to know exactly what version was used in encryption in case we
-			// want to rewrap older entries
-			KeyId:      resp.Name,
-			WrappedKey: resp.Ciphertext,
-		},
+		resp, err := s.client.Encrypt(ctx, &kmspb.EncryptRequest{
+			Name:      s.parentName,
+			Plaintext: env.Key,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// Store current key id value
+		s.currentKeyId.Store(resp.Name)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: env.Ciphertext,
+			Iv:         env.Iv,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: GcpCkmsEnvelopeAesGcmEncrypt,
+				// Even though we do not use the key id during decryption, store it
+				// to know exactly what version was used in encryption in case we
+				// want to rewrap older entries
+				KeyId:      resp.Name,
+				WrappedKey: resp.Ciphertext,
+			},
+		}
+	} else {
+		resp, err := s.client.Encrypt(ctx, &kmspb.EncryptRequest{
+			Name:      s.parentName,
+			Plaintext: plaintext,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// Store current key id value
+		s.currentKeyId.Store(resp.Name)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: resp.Ciphertext,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: GcpCkmsEncrypt,
+				// Even though we do not use the key id during decryption, store it
+				// to know exactly what version was used in encryption in case we
+				// want to rewrap older entries
+				KeyId: resp.Name,
+			},
+		}
 	}
-
 	return ret, nil
 }
 

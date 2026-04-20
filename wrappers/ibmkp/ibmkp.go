@@ -21,6 +21,14 @@ const (
 	EnvIbmKpKeyId      = "IBMCLOUD_KP_KEY_ID"
 )
 
+const (
+	// IbmKpEnvelopeAesGcmEncrypt is when a data encryption key is generated and
+	// the data is encrypted with AES-GCM and the key is encrypted with KMS
+	IbmKpEnvelopeAesGcmEncrypt = iota
+	// IbmKpEncrypt is used to directly encrypt the data with KMS
+	IbmKpEncrypt
+)
+
 // Wrapper represents credentials and Key information for the KMS Key used to
 // encryption and decryption
 type Wrapper struct {
@@ -159,32 +167,55 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error wrapping data: %w", err)
+		return nil, err
 	}
 
+	var ret *wrapping.BlobInfo
 	if k.client == nil {
 		return nil, fmt.Errorf("nil client")
 	}
+	if !opts.WithoutEnvelope {
+		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error wrapping data: %w", err)
+		}
 
-	envelopeKeyBase64 := []byte(base64.StdEncoding.EncodeToString(env.Key))
-	ciphertext, err := k.client.Wrap(ctx, k.keyId, envelopeKeyBase64, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting data: %w", err)
+		envelopeKeyBase64 := []byte(base64.StdEncoding.EncodeToString(env.Key))
+		ciphertext, err := k.client.Wrap(ctx, k.keyId, envelopeKeyBase64, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		k.currentkeyId.Store(k.keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: env.Ciphertext,
+			Iv:         env.Iv,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism:  IbmKpEnvelopeAesGcmEncrypt,
+				KeyId:      k.keyId,
+				WrappedKey: ciphertext,
+			},
+		}
+	} else {
+		plaintextBase64 := []byte(base64.StdEncoding.EncodeToString(plaintext))
+		ciphertext, err := k.client.Wrap(ctx, k.keyId, plaintextBase64, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		k.currentkeyId.Store(k.keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: ciphertext,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: IbmKpEncrypt,
+				KeyId:     k.keyId,
+			},
+		}
 	}
-
-	k.currentkeyId.Store(k.keyId)
-
-	ret := &wrapping.BlobInfo{
-		Ciphertext: env.Ciphertext,
-		Iv:         env.Iv,
-		KeyInfo: &wrapping.KeyInfo{
-			KeyId:      k.keyId,
-			WrappedKey: ciphertext,
-		},
-	}
-
 	return ret, nil
 }
 
@@ -194,29 +225,49 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, errors.New("given input for decryption is nil")
 	}
 
+	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		return nil, errors.New("key info is nil")
+		in.KeyInfo = &wrapping.KeyInfo{
+			Mechanism: IbmKpEnvelopeAesGcmEncrypt,
+		}
 	}
 
-	envelopeKeyBase64, err := k.client.Unwrap(ctx, in.KeyInfo.KeyId, in.KeyInfo.WrappedKey, nil)
-	if err != nil {
-		return nil, err
-	}
+	var plaintext []byte
+	switch in.KeyInfo.Mechanism {
+	case IbmKpEncrypt:
+		plaintextBase64, err := k.client.Unwrap(ctx, in.KeyInfo.KeyId, in.Ciphertext, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+		plaintext, err = base64.StdEncoding.DecodeString(string(plaintextBase64))
+		if err != nil {
+			return nil, err
+		}
 
-	envelopeKey, err := base64.StdEncoding.DecodeString(string(envelopeKeyBase64))
-	if err != nil {
-		return nil, err
-	}
+	case IbmKpEnvelopeAesGcmEncrypt:
+		envelopeKeyBase64, err := k.client.Unwrap(ctx, in.KeyInfo.KeyId, in.KeyInfo.WrappedKey, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+		}
 
-	envInfo := &wrapping.EnvelopeInfo{
-		Key:        envelopeKey,
-		Iv:         in.Iv,
-		Ciphertext: in.Ciphertext,
-	}
+		envelopeKey, err := base64.StdEncoding.DecodeString(string(envelopeKeyBase64))
+		if err != nil {
+			return nil, err
+		}
 
-	plaintext, err := wrapping.EnvelopeDecrypt(envInfo, opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data with envelope: %w", err)
+		envInfo := &wrapping.EnvelopeInfo{
+			Key:        envelopeKey,
+			Iv:         in.Iv,
+			Ciphertext: in.Ciphertext,
+		}
+
+		plaintext, err = wrapping.EnvelopeDecrypt(envInfo, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data with envelope: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid mechanism: %d", in.KeyInfo.Mechanism)
 	}
 
 	return plaintext, nil
