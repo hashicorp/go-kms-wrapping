@@ -157,10 +157,10 @@ func WithoutHMAC() Option {
 }
 
 // WithoutEnvelope requests a 'raw' encryption, rather than an envelope encryption
-func WithoutEnvelope() Option {
+func WithoutEnvelope(rawEncryption bool) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithoutEnvelope = true
+			o.WithoutEnvelope = raw
 			return nil
 		})
 	}
