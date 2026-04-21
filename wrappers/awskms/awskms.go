@@ -274,11 +274,8 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: AwsKmsEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte
