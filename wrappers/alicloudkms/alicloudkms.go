@@ -240,30 +240,58 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	// KeyId is not passed to this call because AliCloud handles this
-	// internally based on the metadata stored with the encrypted data
-	input := kms.CreateDecryptRequest()
-	input.CiphertextBlob = string(in.KeyInfo.WrappedKey)
-	input.Domain = k.domain
-
-	output, err := k.client.Decrypt(input)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+	if in.KeyInfo == nil {
+		return nil, errors.New("key info is nil")
 	}
 
-	keyBytes, err := base64.StdEncoding.DecodeString(output.Plaintext)
-	if err != nil {
-		return nil, err
-	}
+	var plaintext []byte
+	switch in.KeyInfo.Mechanism {
+	case AliCloudKmsEncrypt:
+		// KeyId is not passed to this call because AliCloud handles this
+		// internally based on the metadata stored with the encrypted data
+		input := kms.CreateDecryptRequest()
+		input.CiphertextBlob = string(in.Ciphertext)
+		input.Domain = k.domain
 
-	envInfo := &wrapping.EnvelopeInfo{
-		Key:        keyBytes,
-		Iv:         in.Iv,
-		Ciphertext: in.Ciphertext,
-	}
-	plaintext, err := wrapping.EnvelopeDecrypt(envInfo, opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data: %w", err)
+		output, err := k.client.Decrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+		plaintext, err = base64.StdEncoding.DecodeString(output.Plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("error base64 decoding plaintext: %w", err)
+		}
+
+	case AliCloudKmsEnvelopeAesGcmEncrypt:
+		// KeyId is not passed to this call because AliCloud handles this
+		// internally based on the metadata stored with the encrypted data
+		input := kms.CreateDecryptRequest()
+		input.CiphertextBlob = string(in.KeyInfo.WrappedKey)
+		input.Domain = k.domain
+
+		output, err := k.client.Decrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+		}
+
+		keyBytes, err := base64.StdEncoding.DecodeString(output.Plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("error base64 decoding key: %w", err)
+		}
+
+		envInfo := &wrapping.EnvelopeInfo{
+			Key:        keyBytes,
+			Iv:         in.Iv,
+			Ciphertext: in.Ciphertext,
+		}
+		plaintext, err = wrapping.EnvelopeDecrypt(envInfo, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid mechanism: %d", in.KeyInfo.Mechanism)
 	}
 
 	return plaintext, nil
