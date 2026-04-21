@@ -160,7 +160,7 @@ func WithoutHMAC() Option {
 func WithoutEnvelope(rawEncryption bool) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithoutEnvelope = raw
+			o.WithoutEnvelope = rawEncryption
 			return nil
 		})
 	}
