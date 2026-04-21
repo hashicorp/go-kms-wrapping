@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2019, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package wrapping
@@ -157,10 +157,10 @@ func WithoutHMAC() Option {
 }
 
 // WithoutEnvelope requests a 'raw' encryption, rather than an envelope encryption
-func WithoutEnvelope() Option {
+func WithoutEnvelope(rawEncryption bool) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithoutEnvelope = true
+			o.WithoutEnvelope = rawEncryption
 			return nil
 		})
 	}
