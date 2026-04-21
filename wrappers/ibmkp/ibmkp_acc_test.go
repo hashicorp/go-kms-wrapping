@@ -116,12 +116,12 @@ func TestIbmKp_Lifecycle(t *testing.T) {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
 
-	swi, err = s.Encrypt(context.Background(), input, wrapping.WithoutEnvelope())
+	swi, err = s.Encrypt(context.Background(), input, wrapping.WithoutEnvelope(true))
 	if err != nil {
 		t.Fatalf("error encrypting: %s", err.Error())
 	}
 
-	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope())
+	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope(true))
 	if err != nil {
 		t.Fatalf("error decrypting: %s", err.Error())
 	}
