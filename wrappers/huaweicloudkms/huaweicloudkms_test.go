@@ -6,6 +6,7 @@ package huaweicloudkms
 import (
 	"context"
 	"encoding/base64"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"os"
 	"reflect"
 	"testing"

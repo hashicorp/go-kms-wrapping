@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"os"
 	"reflect"
 	"testing"
