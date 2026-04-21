@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -21,6 +22,14 @@ import (
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
 	EnvHuaweiCloudKmsWrapperKeyId = "HUAWEICLOUDKMS_WRAPPER_KEY_ID"
+)
+
+const (
+	// HuaweiCloudKmsEnvelopeAesGcmEncrypt is when a data encryption key is generated and
+	// the data is encrypted with AES-GCM and the key is encrypted with KMS
+	HuaweiCloudKmsEnvelopeAesGcmEncrypt = iota
+	// HuaweiCloudKmsEncrypt is used to directly encrypt the data with KMS
+	HuaweiCloudKmsEncrypt
 )
 
 // Wrapper is a Wrapper that uses HuaweiCloud's KMS
@@ -111,28 +120,55 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error wrapping data: %w", err)
+		return nil, err
 	}
 
-	output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(env.Key))
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting data: %w", err)
+	var ret *wrapping.BlobInfo
+	if opts.WithoutEnvelope {
+		output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(plaintext))
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		// Store the current key id.
+		keyID := output.KeyId
+		k.currentKeyId.Store(keyID)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: []byte(output.Ciphertext),
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: HuaweiCloudKmsEncrypt,
+				KeyId:     keyID,
+			},
+		}
+	} else {
+		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error wrapping data: %w", err)
+		}
+
+		output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(env.Key))
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		// Store the current key id.
+		keyID := output.KeyId
+		k.currentKeyId.Store(keyID)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: env.Ciphertext,
+			Iv:         env.Iv,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism:  HuaweiCloudKmsEnvelopeAesGcmEncrypt,
+				KeyId:      keyID,
+				WrappedKey: []byte(output.Ciphertext),
+			},
+		}
 	}
-
-	// Store the current key id.
-	keyID := output.KeyId
-	k.currentKeyId.Store(keyID)
-
-	return &wrapping.BlobInfo{
-		Ciphertext: env.Ciphertext,
-		Iv:         env.Iv,
-		KeyInfo: &wrapping.KeyInfo{
-			KeyId:      keyID,
-			WrappedKey: []byte(output.Ciphertext),
-		},
-	}, nil
+	return ret, nil
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
@@ -141,29 +177,50 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	// KeyId is not passed to this call because HuaweiCloud handles this
-	// internally based on the metadata stored with the encrypted data
-	plainText, err := k.client.decrypt(string(in.KeyInfo.WrappedKey))
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+	if in.KeyInfo == nil {
+		return nil, errors.New("key info is nil")
 	}
 
-	keyBytes, err := base64.StdEncoding.DecodeString(plainText)
-	if err != nil {
-		return nil, err
+	var plaintext []byte
+	switch in.KeyInfo.Mechanism {
+	case HuaweiCloudKmsEncrypt:
+		plainText, err := k.client.decrypt(string(in.Ciphertext))
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+		plaintext, err = base64.StdEncoding.DecodeString(plainText)
+		if err != nil {
+			return nil, err
+		}
+
+	case HuaweiCloudKmsEnvelopeAesGcmEncrypt:
+		// KeyId is not passed to this call because HuaweiCloud handles this
+		// internally based on the metadata stored with the encrypted data
+		envelopeKeyStr, err := k.client.decrypt(string(in.KeyInfo.WrappedKey))
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+		}
+
+		envelopeKey, err := base64.StdEncoding.DecodeString(envelopeKeyStr)
+		if err != nil {
+			return nil, err
+		}
+
+		envInfo := &wrapping.EnvelopeInfo{
+			Key:        envelopeKey,
+			Iv:         in.Iv,
+			Ciphertext: in.Ciphertext,
+		}
+		plaintext, err = wrapping.EnvelopeDecrypt(envInfo, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid mechanism: %d", in.KeyInfo.Mechanism)
 	}
 
-	envInfo := &wrapping.EnvelopeInfo{
-		Key:        keyBytes,
-		Iv:         in.Iv,
-		Ciphertext: in.Ciphertext,
-	}
-	pt, err := wrapping.EnvelopeDecrypt(envInfo, opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data: %w", err)
-	}
-
-	return pt, nil
+	return plaintext, nil
 }
 
 func getConfig(name string, values ...string) (string, error) {

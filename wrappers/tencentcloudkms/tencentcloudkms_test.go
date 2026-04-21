@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"os"
 	"reflect"
 	"testing"
@@ -82,6 +83,20 @@ func TestTencentCloudKmsWrapper_Lifecycle(t *testing.T) {
 	}
 
 	pt, err := s.Decrypt(context.Background(), swi)
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(input, pt) {
+		t.Fatalf("expected %s, got %s", input, pt)
+	}
+
+	swi, err = s.Encrypt(context.Background(), input, wrapping.WithoutEnvelope(true))
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope(true))
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}

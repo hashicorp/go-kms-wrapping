@@ -6,6 +6,7 @@ package tencentcloudkms
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -23,6 +24,14 @@ const (
 	PROVIDER_SECURITY_TOKEN = "TENCENTCLOUD_SECURITY_TOKEN"
 	PROVIDER_REGION         = "TENCENTCLOUD_REGION"
 	PROVIDER_KMS_KEY_ID     = "TENCENTCLOUD_KMS_KEY_ID"
+)
+
+const (
+	// TencentCloudKmsEnvelopeAesGcmEncrypt is when a data encryption key is generated and
+	// the data is encrypted with AES-GCM and the key is encrypted with KMS
+	TencentCloudKmsEnvelopeAesGcmEncrypt = iota
+	// TencentCloudKmsEncrypt is used to directly encrypt the data with KMS
+	TencentCloudKmsEncrypt
 )
 
 // Wrapper is a wrapper that uses TencentCloud KMS
@@ -148,7 +157,7 @@ func (k *Wrapper) KeyId(_ context.Context) (string, error) {
 	return k.currentKeyId.Load().(string), nil
 }
 
-// Encrypt is used to encrypt the master key using the the TencentCloud KMS.
+// Encrypt is used to encrypt the master key using the TencentCloud KMS.
 // This returns the ciphertext, and/or any errors from this call.
 // This should be called after the KMS client has been instantiated.
 func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
@@ -156,64 +165,117 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error wrapping data: %w", err)
+		return nil, err
 	}
 
-	input := kms.NewEncryptRequest()
-	input.KeyId = &k.keyId
-	input.Plaintext = common.StringPtr(base64.StdEncoding.EncodeToString(env.Key))
+	var ret *wrapping.BlobInfo
+	if opts.WithoutEnvelope {
+		input := kms.NewEncryptRequest()
+		input.KeyId = &k.keyId
+		input.Plaintext = common.StringPtr(base64.StdEncoding.EncodeToString(plaintext))
 
-	output, err := k.client.Encrypt(input)
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting data: %w", err)
+		output, err := k.client.Encrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		keyId := *output.Response.KeyId
+		k.currentKeyId.Store(keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: []byte(*output.Response.CiphertextBlob),
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: TencentCloudKmsEncrypt,
+				KeyId:     keyId,
+			},
+		}
+	} else {
+		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error wrapping data: %w", err)
+		}
+
+		input := kms.NewEncryptRequest()
+		input.KeyId = &k.keyId
+		input.Plaintext = common.StringPtr(base64.StdEncoding.EncodeToString(env.Key))
+
+		output, err := k.client.Encrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		keyId := *output.Response.KeyId
+		k.currentKeyId.Store(keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: env.Ciphertext,
+			Iv:         env.Iv,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism:  TencentCloudKmsEnvelopeAesGcmEncrypt,
+				KeyId:      keyId,
+				WrappedKey: []byte(*output.Response.CiphertextBlob),
+			},
+		}
 	}
-
-	keyId := *output.Response.KeyId
-	k.currentKeyId.Store(keyId)
-
-	ret := &wrapping.BlobInfo{
-		Ciphertext: env.Ciphertext,
-		Iv:         env.Iv,
-		KeyInfo: &wrapping.KeyInfo{
-			KeyId:      keyId,
-			WrappedKey: []byte(*output.Response.CiphertextBlob),
-		},
-	}
-
 	return ret, nil
 }
 
-// Decrypt is used to decrypt the ciphertext using the the TencentCloud KMS.
+// Decrypt is used to decrypt the ciphertext using the TencentCloud KMS.
 // This should be called after the KMS client has been instantiated.
 func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	input := kms.NewDecryptRequest()
-	input.CiphertextBlob = common.StringPtr(string(in.KeyInfo.WrappedKey))
-
-	output, err := k.client.Decrypt(input)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+	if in.KeyInfo == nil {
+		return nil, errors.New("key info is nil")
 	}
 
-	keyBytes, err := base64.StdEncoding.DecodeString(*output.Response.Plaintext)
-	if err != nil {
-		return nil, err
-	}
+	var plaintext []byte
+	switch in.KeyInfo.Mechanism {
+	case TencentCloudKmsEncrypt:
+		input := kms.NewDecryptRequest()
+		input.CiphertextBlob = common.StringPtr(string(in.Ciphertext))
 
-	envInfo := &wrapping.EnvelopeInfo{
-		Key:        keyBytes,
-		Iv:         in.Iv,
-		Ciphertext: in.Ciphertext,
-	}
+		output, err := k.client.Decrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
 
-	plaintext, err := wrapping.EnvelopeDecrypt(envInfo, opt...)
-	if err != nil {
-		return nil, fmt.Errorf("error decrypting data: %w", err)
+		plaintext, err = base64.StdEncoding.DecodeString(*output.Response.Plaintext)
+		if err != nil {
+			return nil, err
+		}
+
+	case TencentCloudKmsEnvelopeAesGcmEncrypt:
+		input := kms.NewDecryptRequest()
+		input.CiphertextBlob = common.StringPtr(string(in.KeyInfo.WrappedKey))
+
+		output, err := k.client.Decrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
+		}
+
+		keyBytes, err := base64.StdEncoding.DecodeString(*output.Response.Plaintext)
+		if err != nil {
+			return nil, err
+		}
+
+		envInfo := &wrapping.EnvelopeInfo{
+			Key:        keyBytes,
+			Iv:         in.Iv,
+			Ciphertext: in.Ciphertext,
+		}
+
+		plaintext, err = wrapping.EnvelopeDecrypt(envInfo, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error decrypting data: %w", err)
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid mechanism: %d", in.KeyInfo.Mechanism)
 	}
 
 	return plaintext, nil

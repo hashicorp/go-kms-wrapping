@@ -200,6 +200,20 @@ func TestGcpCkmsSeal_Lifecycle(t *testing.T) {
 	if !reflect.DeepEqual(input, pt) {
 		t.Fatalf("expected %s, got %s", input, pt)
 	}
+
+	swi, err = s.Encrypt(context.Background(), input, wrapping.WithoutEnvelope(true))
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope(true))
+	if err != nil {
+		t.Fatalf("err: %s", err.Error())
+	}
+
+	if !reflect.DeepEqual(input, pt) {
+		t.Fatalf("expected %s, got %s", input, pt)
+	}
 }
 
 // checkAndSetEnvVars check and sets the required env vars. It will skip tests that are
