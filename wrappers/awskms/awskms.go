@@ -199,7 +199,36 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	if k.client == nil {
 		return nil, fmt.Errorf("nil client")
 	}
-	if !opts.WithoutEnvelope {
+	if opts.WithoutEnvelope {
+		input := &kms.EncryptInput{
+			KeyId:     &k.keyId,
+			Plaintext: plaintext,
+		}
+		output, err := k.client.Encrypt(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		// Store the current key id
+		//
+		// When using a key alias, this will return the actual underlying key id
+		// used for encryption.  This is helpful if you are looking to reencyrpt
+		// your data when it is not using the latest key id. See these docs relating
+		// to key rotation https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
+		keyId := output.KeyId
+		k.currentKeyId.Store(*keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: output.CiphertextBlob,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: AwsKmsEncrypt,
+				// Even though we do not use the key id during decryption, store it
+				// to know exactly the specific key used in encryption in case we
+				// want to rewrap older entries
+				KeyId: *keyId,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
@@ -233,35 +262,6 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 				// want to rewrap older entries
 				KeyId:      *keyId,
 				WrappedKey: output.CiphertextBlob,
-			},
-		}
-	} else {
-		input := &kms.EncryptInput{
-			KeyId:     &k.keyId,
-			Plaintext: plaintext,
-		}
-		output, err := k.client.Encrypt(ctx, input)
-		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
-		}
-
-		// Store the current key id
-		//
-		// When using a key alias, this will return the actual underlying key id
-		// used for encryption.  This is helpful if you are looking to reencyrpt
-		// your data when it is not using the latest key id. See these docs relating
-		// to key rotation https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html
-		keyId := output.KeyId
-		k.currentKeyId.Store(*keyId)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: output.CiphertextBlob,
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: AwsKmsEncrypt,
-				// Even though we do not use the key id during decryption, store it
-				// to know exactly the specific key used in encryption in case we
-				// want to rewrap older entries
-				KeyId: *keyId,
 			},
 		}
 	}
@@ -300,13 +300,13 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		input := &kms.DecryptInput{
 			CiphertextBlob: in.KeyInfo.WrappedKey,
 		}
-		output, err := k.client.Decrypt(ctx, input)
+		resp, err := k.client.Decrypt(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
 		}
 
 		envInfo := &wrapping.EnvelopeInfo{
-			Key:        output.Plaintext,
+			Key:        resp.Plaintext,
 			Iv:         in.Iv,
 			Ciphertext: in.Ciphertext,
 		}

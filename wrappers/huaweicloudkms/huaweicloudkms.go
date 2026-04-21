@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -125,7 +126,24 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 	}
 
 	var ret *wrapping.BlobInfo
-	if !opts.WithoutEnvelope {
+	if opts.WithoutEnvelope {
+		output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(plaintext))
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		// Store the current key id.
+		keyID := output.KeyId
+		k.currentKeyId.Store(keyID)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: []byte(output.Ciphertext),
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: HuaweiCloudKmsEncrypt,
+				KeyId:     keyID,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
@@ -149,23 +167,6 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 				WrappedKey: []byte(output.Ciphertext),
 			},
 		}
-	} else {
-		output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(plaintext))
-		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
-		}
-
-		// Store the current key id.
-		keyID := output.KeyId
-		k.currentKeyId.Store(keyID)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: []byte(output.Ciphertext),
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: HuaweiCloudKmsEncrypt,
-				KeyId:     keyID,
-			},
-		}
 	}
 	return ret, nil
 }
@@ -176,11 +177,8 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: HuaweiCloudKmsEnvelopeAesGcmEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte
@@ -198,18 +196,18 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 	case HuaweiCloudKmsEnvelopeAesGcmEncrypt:
 		// KeyId is not passed to this call because HuaweiCloud handles this
 		// internally based on the metadata stored with the encrypted data
-		plainText, err := k.client.decrypt(string(in.KeyInfo.WrappedKey))
+		envelopeKeyStr, err := k.client.decrypt(string(in.KeyInfo.WrappedKey))
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
 		}
 
-		keyBytes, err := base64.StdEncoding.DecodeString(plainText)
+		envelopeKey, err := base64.StdEncoding.DecodeString(envelopeKeyStr)
 		if err != nil {
 			return nil, err
 		}
 
 		envInfo := &wrapping.EnvelopeInfo{
-			Key:        keyBytes,
+			Key:        envelopeKey,
 			Iv:         in.Iv,
 			Ciphertext: in.Ciphertext,
 		}

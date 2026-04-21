@@ -23,6 +23,14 @@ const (
 	EnvVaultAliCloudKmsSealKeyId = "VAULT_ALICLOUDKMS_SEAL_KEY_ID"
 )
 
+const (
+	// AliCloudKmsEnvelopeAesGcmEncrypt is when a data encryption key is generated and
+	// the data is encrypted with AES-GCM and the key is encrypted with KMS
+	AliCloudKmsEnvelopeAesGcmEncrypt = iota
+	// AliCloudKmsEncrypt is used to directly encrypt the data with KMS
+	AliCloudKmsEncrypt
+)
+
 // Wrapper is a Wrapper that uses AliCloud's KMS
 type Wrapper struct {
 	client       kmsClient
@@ -164,32 +172,63 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, fmt.Errorf("given plaintext for encryption is nil")
 	}
 
-	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+	opts, err := getOpts(opt...)
 	if err != nil {
-		return nil, fmt.Errorf("error wrapping data: %w", err)
+		return nil, err
 	}
 
-	input := kms.CreateEncryptRequest()
-	input.KeyId = k.keyId
-	input.Plaintext = base64.StdEncoding.EncodeToString(env.Key)
-	input.Domain = k.domain
+	var ret *wrapping.BlobInfo
+	if opts.WithoutEnvelope {
+		input := kms.CreateEncryptRequest()
+		input.KeyId = k.keyId
+		input.Plaintext = base64.StdEncoding.EncodeToString(plaintext)
+		input.Domain = k.domain
 
-	output, err := k.client.Encrypt(input)
-	if err != nil {
-		return nil, fmt.Errorf("error encrypting data: %w", err)
-	}
+		output, err := k.client.Encrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
 
-	// Store the current key id.
-	keyId := output.KeyId
-	k.currentKeyId.Store(keyId)
+		// Store the current key id.
+		keyId := output.KeyId
+		k.currentKeyId.Store(keyId)
 
-	ret := &wrapping.BlobInfo{
-		Ciphertext: env.Ciphertext,
-		Iv:         env.Iv,
-		KeyInfo: &wrapping.KeyInfo{
-			KeyId:      keyId,
-			WrappedKey: []byte(output.CiphertextBlob),
-		},
+		ret = &wrapping.BlobInfo{
+			Ciphertext: []byte(output.CiphertextBlob),
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: AliCloudKmsEncrypt,
+				KeyId:     keyId,
+			},
+		}
+	} else {
+		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+		if err != nil {
+			return nil, fmt.Errorf("error wrapping data: %w", err)
+		}
+
+		input := kms.CreateEncryptRequest()
+		input.KeyId = k.keyId
+		input.Plaintext = base64.StdEncoding.EncodeToString(env.Key)
+		input.Domain = k.domain
+
+		output, err := k.client.Encrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		// Store the current key id.
+		keyId := output.KeyId
+		k.currentKeyId.Store(keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: env.Ciphertext,
+			Iv:         env.Iv,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism:  AliCloudKmsEnvelopeAesGcmEncrypt,
+				KeyId:      keyId,
+				WrappedKey: []byte(output.CiphertextBlob),
+			},
+		}
 	}
 
 	return ret, nil

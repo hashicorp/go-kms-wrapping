@@ -6,6 +6,7 @@ package tencentcloudkms
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -156,7 +157,7 @@ func (k *Wrapper) KeyId(_ context.Context) (string, error) {
 	return k.currentKeyId.Load().(string), nil
 }
 
-// Encrypt is used to encrypt the master key using the the TencentCloud KMS.
+// Encrypt is used to encrypt the master key using the TencentCloud KMS.
 // This returns the ciphertext, and/or any errors from this call.
 // This should be called after the KMS client has been instantiated.
 func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.Option) (*wrapping.BlobInfo, error) {
@@ -170,7 +171,27 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 	}
 
 	var ret *wrapping.BlobInfo
-	if !opts.WithoutEnvelope {
+	if opts.WithoutEnvelope {
+		input := kms.NewEncryptRequest()
+		input.KeyId = &k.keyId
+		input.Plaintext = common.StringPtr(base64.StdEncoding.EncodeToString(plaintext))
+
+		output, err := k.client.Encrypt(input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		keyId := *output.Response.KeyId
+		k.currentKeyId.Store(keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: []byte(*output.Response.CiphertextBlob),
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: TencentCloudKmsEncrypt,
+				KeyId:     keyId,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
@@ -197,42 +218,19 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 				WrappedKey: []byte(*output.Response.CiphertextBlob),
 			},
 		}
-	} else {
-		input := kms.NewEncryptRequest()
-		input.KeyId = &k.keyId
-		input.Plaintext = common.StringPtr(base64.StdEncoding.EncodeToString(plaintext))
-
-		output, err := k.client.Encrypt(input)
-		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
-		}
-
-		keyId := *output.Response.KeyId
-		k.currentKeyId.Store(keyId)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: []byte(*output.Response.CiphertextBlob),
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: TencentCloudKmsEncrypt,
-				KeyId:     keyId,
-			},
-		}
 	}
 	return ret, nil
 }
 
-// Decrypt is used to decrypt the ciphertext using the the TencentCloud KMS.
+// Decrypt is used to decrypt the ciphertext using the TencentCloud KMS.
 // This should be called after the KMS client has been instantiated.
 func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapping.Option) ([]byte, error) {
 	if in == nil {
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: TencentCloudKmsEnvelopeAesGcmEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte

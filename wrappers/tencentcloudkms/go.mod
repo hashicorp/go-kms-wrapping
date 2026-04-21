@@ -3,7 +3,7 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/tencentcloudkms/v2
 go 1.24.0
 
 require (
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21-0.20260306200429-d44e32be3570
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.604
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/kms v1.0.604
 )

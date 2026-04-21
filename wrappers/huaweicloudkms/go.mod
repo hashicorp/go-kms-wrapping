@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21-0.20260306200429-d44e32be3570
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21
 	github.com/huaweicloud/golangsdk v0.0.0-20210831081626-d823fe11ceba
 )
 

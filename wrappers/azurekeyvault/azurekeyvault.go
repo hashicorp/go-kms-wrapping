@@ -231,7 +231,31 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	}
 
 	var ret *wrapping.BlobInfo
-	if !opts.WithoutEnvelope {
+	if opts.WithoutEnvelope {
+		// Encrypt the plaintext directly using Key Vault
+		algo := azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
+		params := azkeys.KeyOperationsParameters{
+			Algorithm: &algo,
+			Value:     plaintext,
+		}
+		// Wrap key with the latest version for the key name
+		resp, err := v.client.WrapKey(ctx, v.keyName, "", params, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		// Store the current key version
+		keyVersion := ParseKeyVersion(resp.KID.Version())
+		v.currentKeyId.Store(keyVersion)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: resp.Result,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: AzureKeyVaultEncrypt,
+				KeyId:     keyVersion,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping dat: %w", err)
@@ -261,30 +285,6 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 				WrappedKey: resp.Result,
 			},
 		}
-	} else {
-		// Encrypt the plaintext directly using Key Vault
-		algo := azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
-		params := azkeys.KeyOperationsParameters{
-			Algorithm: &algo,
-			Value:     plaintext,
-		}
-		// Wrap key with the latest version for the key name
-		resp, err := v.client.WrapKey(ctx, v.keyName, "", params, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		// Store the current key version
-		keyVersion := ParseKeyVersion(resp.KID.Version())
-		v.currentKeyId.Store(keyVersion)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: resp.Result,
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: AzureKeyVaultEncrypt,
-				KeyId:     keyVersion,
-			},
-		}
 	}
 	return ret, nil
 }
@@ -295,27 +295,17 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, errors.New("given input for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: AzureKeyVaultEnvelopeAesGcmEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte
 	switch in.KeyInfo.Mechanism {
 	case AzureKeyVaultEncrypt:
-		// Unwrap the plaintext directly
-		wrappedBytes, err := base64.RawURLEncoding.DecodeString(string(in.Ciphertext))
-		if err != nil {
-			// legacy unwrap as the key used to be stored base64 encoded and this is now handled in the json marshalling
-			// if it fails, the key is not encoded and can be used directly
-			wrappedBytes = in.Ciphertext
-		}
 		algo := azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
 		params := azkeys.KeyOperationsParameters{
 			Algorithm: &algo,
-			Value:     wrappedBytes,
+			Value:     in.Ciphertext,
 		}
 
 		resp, err := v.client.UnwrapKey(ctx, v.keyName, in.KeyInfo.KeyId, params, nil)
@@ -325,19 +315,19 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		plaintext = resp.Result
 
 	case AzureKeyVaultEnvelopeAesGcmEncrypt:
-		// Unwrap the key
-		wrappedBytes, err := base64.RawURLEncoding.DecodeString(string(in.KeyInfo.WrappedKey))
+		wrappedKeyBytes, err := base64.RawURLEncoding.DecodeString(string(in.KeyInfo.WrappedKey))
 		if err != nil {
 			// legacy unwrap as the key used to be stored base64 encoded and this is now handled in the json marshalling
 			// if it fails, the key is not encoded and can be used directly
-			wrappedBytes = in.KeyInfo.WrappedKey
+			wrappedKeyBytes = in.KeyInfo.WrappedKey
 		}
 		algo := azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
 		params := azkeys.KeyOperationsParameters{
 			Algorithm: &algo,
-			Value:     wrappedBytes,
+			Value:     wrappedKeyBytes,
 		}
 
+		// Unwrap the key
 		resp, err := v.client.UnwrapKey(ctx, v.keyName, in.KeyInfo.KeyId, params, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)

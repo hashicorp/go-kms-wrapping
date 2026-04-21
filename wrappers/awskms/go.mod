@@ -10,7 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.45.6
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21-0.20260306200429-d44e32be3570
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21
 	github.com/hashicorp/go-secure-stdlib/awsutil/v2 v2.1.1
 	github.com/stretchr/testify v1.11.1
 )

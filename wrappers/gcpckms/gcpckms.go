@@ -226,7 +226,29 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	}
 
 	var ret *wrapping.BlobInfo
-	if !opts.WithoutEnvelope {
+	if opts.WithoutEnvelope {
+		resp, err := s.client.Encrypt(ctx, &kmspb.EncryptRequest{
+			Name:      s.parentName,
+			Plaintext: plaintext,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// Store current key id value
+		s.currentKeyId.Store(resp.Name)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: resp.Ciphertext,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: GcpCkmsEncrypt,
+				// Even though we do not use the key id during decryption, store it
+				// to know exactly what version was used in encryption in case we
+				// want to rewrap older entries
+				KeyId: resp.Name,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
@@ -255,28 +277,6 @@ func (s *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 				WrappedKey: resp.Ciphertext,
 			},
 		}
-	} else {
-		resp, err := s.client.Encrypt(ctx, &kmspb.EncryptRequest{
-			Name:      s.parentName,
-			Plaintext: plaintext,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		// Store current key id value
-		s.currentKeyId.Store(resp.Name)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: resp.Ciphertext,
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: GcpCkmsEncrypt,
-				// Even though we do not use the key id during decryption, store it
-				// to know exactly what version was used in encryption in case we
-				// want to rewrap older entries
-				KeyId: resp.Name,
-			},
-		}
 	}
 	return ret, nil
 }
@@ -287,11 +287,8 @@ func (s *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, fmt.Errorf("given ciphertext for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: GcpCkmsEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte

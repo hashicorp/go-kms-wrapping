@@ -167,7 +167,45 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	if k.cryptoClient == nil {
 		return nil, errors.New("nil client")
 	}
-	if !opts.WithoutEnvelope {
+
+	if opts.WithoutEnvelope {
+		// OCI KMS required base64 encrypted plain text before sending to the service
+		encodedPlaintext := base64.StdEncoding.EncodeToString(plaintext)
+
+		// Build Encrypt Request
+		requestMetadata := k.getRequestMetadata()
+		encryptedDataDetails := keymanagement.EncryptDataDetails{
+			KeyId:     &k.keyId,
+			Plaintext: &encodedPlaintext,
+		}
+
+		input := keymanagement.EncryptRequest{
+			EncryptDataDetails: encryptedDataDetails,
+			RequestMetadata:    requestMetadata,
+		}
+		output, err := k.cryptoClient.Encrypt(ctx, input)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		// Note: It is potential a timing issue if the key gets rotated between this
+		// getCurrentKeyVersion operation and above Encrypt operation
+		keyVersion, err := k.getCurrentKeyVersion()
+		if err != nil {
+			return nil, fmt.Errorf("error getting current key version: %w", err)
+		}
+		// Update key version
+		k.currentKeyId.Store(keyVersion)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: []byte(*output.Ciphertext),
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: OciKmsEncrypt,
+				// Storing current key version in case we want to re-wrap older entries
+				KeyId: keyVersion,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
@@ -211,43 +249,6 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 				WrappedKey: []byte(*output.Ciphertext),
 			},
 		}
-	} else {
-		// OCI KMS required base64 encrypted plain text before sending to the service
-		encodedPlaintext := base64.StdEncoding.EncodeToString(plaintext)
-
-		// Build Encrypt Request
-		requestMetadata := k.getRequestMetadata()
-		encryptedDataDetails := keymanagement.EncryptDataDetails{
-			KeyId:     &k.keyId,
-			Plaintext: &encodedPlaintext,
-		}
-
-		input := keymanagement.EncryptRequest{
-			EncryptDataDetails: encryptedDataDetails,
-			RequestMetadata:    requestMetadata,
-		}
-		output, err := k.cryptoClient.Encrypt(ctx, input)
-		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
-		}
-
-		// Note: It is potential a timing issue if the key gets rotated between this
-		// getCurrentKeyVersion operation and above Encrypt operation
-		keyVersion, err := k.getCurrentKeyVersion()
-		if err != nil {
-			return nil, fmt.Errorf("error getting current key version: %w", err)
-		}
-		// Update key version
-		k.currentKeyId.Store(keyVersion)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: []byte(*output.Ciphertext),
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: OciKmsEncrypt,
-				// Storing current key version in case we want to re-wrap older entries
-				KeyId: keyVersion,
-			},
-		}
 	}
 	return ret, nil
 }
@@ -257,11 +258,8 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, fmt.Errorf("given input for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: OciKmsEnvelopeAesGcmEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte

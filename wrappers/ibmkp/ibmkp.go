@@ -176,7 +176,23 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	if k.client == nil {
 		return nil, fmt.Errorf("nil client")
 	}
-	if !opts.WithoutEnvelope {
+	if opts.WithoutEnvelope {
+		plaintextBase64 := []byte(base64.StdEncoding.EncodeToString(plaintext))
+		ciphertext, err := k.client.Wrap(ctx, k.keyId, plaintextBase64, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error encrypting data: %w", err)
+		}
+
+		k.currentkeyId.Store(k.keyId)
+
+		ret = &wrapping.BlobInfo{
+			Ciphertext: ciphertext,
+			KeyInfo: &wrapping.KeyInfo{
+				Mechanism: IbmKpEncrypt,
+				KeyId:     k.keyId,
+			},
+		}
+	} else {
 		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error wrapping data: %w", err)
@@ -199,22 +215,6 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 				WrappedKey: ciphertext,
 			},
 		}
-	} else {
-		plaintextBase64 := []byte(base64.StdEncoding.EncodeToString(plaintext))
-		ciphertext, err := k.client.Wrap(ctx, k.keyId, plaintextBase64, nil)
-		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
-		}
-
-		k.currentkeyId.Store(k.keyId)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: ciphertext,
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism: IbmKpEncrypt,
-				KeyId:     k.keyId,
-			},
-		}
 	}
 	return ret, nil
 }
@@ -225,11 +225,8 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, errors.New("given input for decryption is nil")
 	}
 
-	// Default to mechanism used before key info was stored
 	if in.KeyInfo == nil {
-		in.KeyInfo = &wrapping.KeyInfo{
-			Mechanism: IbmKpEnvelopeAesGcmEncrypt,
-		}
+		return nil, errors.New("key info is nil")
 	}
 
 	var plaintext []byte
