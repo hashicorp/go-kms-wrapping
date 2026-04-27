@@ -61,7 +61,23 @@ type Wrapper struct {
 type KmsApi interface {
 	Encrypt(ctx context.Context, input *kms.EncryptInput, opts ...func(*kms.Options)) (*kms.EncryptOutput, error)
 	Decrypt(ctx context.Context, input *kms.DecryptInput, opts ...func(*kms.Options)) (*kms.DecryptOutput, error)
-	DescribeKey(ctx context.Context, inpput *kms.DescribeKeyInput, opts ...func(*kms.Options)) (*kms.DescribeKeyOutput, error)
+	DescribeKey(ctx context.Context, input *kms.DescribeKeyInput, opts ...func(*kms.Options)) (*kms.DescribeKeyOutput, error)
+	CreateAlias(ctx context.Context, input *kms.CreateAliasInput, opts ...func(*kms.Options)) (*kms.CreateAliasOutput, error)
+	UpdateAlias(ctx context.Context, input *kms.UpdateAliasInput, opts ...func(*kms.Options)) (*kms.UpdateAliasOutput, error)
+	DeleteAlias(ctx context.Context, input *kms.DeleteAliasInput, opts ...func(*kms.Options)) (*kms.DeleteAliasOutput, error)
+	ListAliases(ctx context.Context, input *kms.ListAliasesInput, opts ...func(*kms.Options)) (*kms.ListAliasesOutput, error)
+	ScheduleKeyDeletion(ctx context.Context, input *kms.ScheduleKeyDeletionInput, opts ...func(*kms.Options)) (*kms.ScheduleKeyDeletionOutput, error)
+	EnableKey(ctx context.Context, input *kms.EnableKeyInput, opts ...func(*kms.Options)) (*kms.EnableKeyOutput, error)
+	DisableKey(ctx context.Context, input *kms.DisableKeyInput, opts ...func(*kms.Options)) (*kms.DisableKeyOutput, error)
+	GetParametersForImport(ctx context.Context, input *kms.GetParametersForImportInput, opts ...func(*kms.Options)) (*kms.GetParametersForImportOutput, error)
+	ImportKeyMaterial(ctx context.Context, input *kms.ImportKeyMaterialInput, opts ...func(*kms.Options)) (*kms.ImportKeyMaterialOutput, error)
+	CreateKey(ctx context.Context, input *kms.CreateKeyInput, opts ...func(*kms.Options)) (*kms.CreateKeyOutput, error)
+	ReplicateKey(ctx context.Context, input *kms.ReplicateKeyInput, opts ...func(*kms.Options)) (*kms.ReplicateKeyOutput, error)
+	GetPublicKey(ctx context.Context, input *kms.GetPublicKeyInput, opts ...func(*kms.Options)) (*kms.GetPublicKeyOutput, error)
+	Sign(ctx context.Context, input *kms.SignInput, opts ...func(*kms.Options)) (*kms.SignOutput, error)
+	Verify(ctx context.Context, input *kms.VerifyInput, opts ...func(*kms.Options)) (*kms.VerifyOutput, error)
+	GenerateMac(ctx context.Context, input *kms.GenerateMacInput, opts ...func(*kms.Options)) (*kms.GenerateMacOutput, error)
+	GenerateRandom(ctx context.Context, input *kms.GenerateRandomInput, opts ...func(*kms.Options)) (*kms.GenerateRandomOutput, error)
 }
 
 // Ensure that we are implementing Wrapper
