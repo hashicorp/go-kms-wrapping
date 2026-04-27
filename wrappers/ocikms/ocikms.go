@@ -12,9 +12,9 @@ import (
 	"time"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/oracle/oci-go-sdk/v60/common"
-	"github.com/oracle/oci-go-sdk/v60/common/auth"
-	"github.com/oracle/oci-go-sdk/v60/keymanagement"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/auth"
+	"github.com/oracle/oci-go-sdk/v65/keymanagement"
 )
 
 const (
@@ -31,8 +31,21 @@ const (
 	KMSMaximumNumberOfRetries = 5
 )
 
+const (
+	// Authentication type values for the auth_type configuration option.
+	AuthTypeAPIKey            = "api_key"
+	AuthTypeInstancePrincipal = "instance_principal"
+	AuthTypeWorkloadIdentity  = "workload_identity"
+
+	// Environment variable that, when set to "true", indicates the pod is
+	// running with OKE Workload Identity and the SDK should use the
+	// OkeWorkloadIdentityConfigurationProvider.
+	EnvOciWorkloadIdentity = "OCI_RESOURCE_PRINCIPAL_WORKLOAD_IDENTITY"
+)
+
 type Wrapper struct {
-	authTypeAPIKey bool   // true for user principal, false for instance principal, default is false
+	authTypeAPIKey bool   // Deprecated: kept for backward compatibility
+	authType       string // One of the AuthType* constants; takes precedence over authTypeAPIKey
 	keyId          string // OCI KMS keyId
 
 	cryptoEndpoint     string // OCI KMS crypto endpoint
@@ -97,6 +110,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	k.authTypeAPIKey = opts.withAuthTypeApiKey
+	k.authType = opts.withAuthType
 
 	// Check and set OCI KMS crypto client
 	if k.cryptoClient == nil {
@@ -128,11 +142,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	wrapConfig.Metadata[KmsConfigKeyId] = k.keyId
 	wrapConfig.Metadata[KmsConfigCryptoEndpoint] = k.cryptoEndpoint
 	wrapConfig.Metadata[KmsConfigManagementEndpoint] = k.managementEndpoint
-	if k.authTypeAPIKey {
-		wrapConfig.Metadata["principal_type"] = "user"
-	} else {
-		wrapConfig.Metadata["principal_type"] = "instance"
-	}
+	wrapConfig.Metadata["principal_type"] = k.resolvedAuthType()
 
 	return wrapConfig, nil
 }
@@ -237,17 +247,50 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	return plaintext, nil
 }
 
+// resolvedAuthType returns the effective auth type by considering the new
+// auth_type option, the legacy auth_type_api_key boolean, and the
+// OCI_RESOURCE_PRINCIPAL_WORKLOAD_IDENTITY environment variable.
+func (k *Wrapper) resolvedAuthType() string {
+	// Explicit auth_type takes highest precedence.
+	if k.authType != "" {
+		return k.authType
+	}
+	// Legacy boolean: true → api_key, false (default) → auto-detect.
+	if k.authTypeAPIKey {
+		return AuthTypeAPIKey
+	}
+	// Auto-detect: if the workload identity env var is set, use it.
+	if os.Getenv(EnvOciWorkloadIdentity) == "true" {
+		return AuthTypeWorkloadIdentity
+	}
+	return AuthTypeInstancePrincipal
+}
+
 func (k *Wrapper) getConfigProvider() (common.ConfigurationProvider, error) {
 	var cp common.ConfigurationProvider
 	var err error
-	if k.authTypeAPIKey {
+
+	switch k.resolvedAuthType() {
+	case AuthTypeAPIKey:
 		cp = common.DefaultConfigProvider()
-	} else {
+
+	case AuthTypeWorkloadIdentity:
+		cp, err = auth.OkeWorkloadIdentityConfigurationProvider()
+		if err != nil {
+			return nil, fmt.Errorf("failed creating OkeWorkloadIdentityConfigurationProvider: %w", err)
+		}
+
+	case AuthTypeInstancePrincipal:
 		cp, err = auth.InstancePrincipalConfigurationProvider()
 		if err != nil {
 			return nil, fmt.Errorf("failed creating InstancePrincipalConfigurationProvider: %w", err)
 		}
+
+	default:
+		return nil, fmt.Errorf("unsupported auth_type %q; valid values are %q, %q, %q",
+			k.resolvedAuthType(), AuthTypeAPIKey, AuthTypeInstancePrincipal, AuthTypeWorkloadIdentity)
 	}
+
 	return cp, nil
 }
 
