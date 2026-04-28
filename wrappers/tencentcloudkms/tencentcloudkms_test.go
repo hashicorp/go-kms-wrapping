@@ -96,7 +96,7 @@ func TestTencentCloudKmsWrapper_Lifecycle(t *testing.T) {
 		t.Fatalf("err: %s", err.Error())
 	}
 
-	pt, err = s.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope(true))
+	pt, err = s.Decrypt(context.Background(), swi)
 	if err != nil {
 		t.Fatalf("err: %s", err.Error())
 	}

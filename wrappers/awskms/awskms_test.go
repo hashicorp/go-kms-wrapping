@@ -314,7 +314,7 @@ func encryptionRoundTrip(t *testing.T, w *Wrapper) {
 	swi, err = w.Encrypt(context.Background(), expected, wrapping.WithoutEnvelope(true))
 	require.NoError(t, err)
 
-	output, err = w.Decrypt(context.Background(), swi, wrapping.WithoutEnvelope(true))
+	output, err = w.Decrypt(context.Background(), swi)
 	require.NoError(t, err)
 	assert.Equal(t, expected, output)
 
