@@ -7,7 +7,7 @@ replace github.com/hashicorp/go-kms-wrapping/v2 => ../..
 require (
 	github.com/IBM/keyprotect-go-client v0.15.1
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.18
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21
 	github.com/stretchr/testify v1.11.1
 )
 

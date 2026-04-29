@@ -9,7 +9,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/hashicorp/go-hclog v1.5.0
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.17
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.47.0
 )
