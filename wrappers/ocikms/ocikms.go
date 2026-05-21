@@ -367,13 +367,27 @@ func (k *Wrapper) getOciKmsManagementClient() (*keymanagement.KmsManagementClien
 	return &kmsManagementClient, nil
 }
 
+// shouldRetryOn5xx is the retry predicate used by getRequestMetadata. It
+// returns true only when the OCI SDK reports an error accompanied by a real
+// HTTP response with a 5xx status code.
+//
+// When the OCI SDK fails before any HTTP round-trip occurs (for example when
+// an Instance/Resource Principal signer cannot be built), it produces
+// OCIOperationResponse{Error: <signer error>, Response: nil}. Guarding
+// against the nil OCIResponse and a nil *http.Response from HTTPResponse()
+// keeps the retry policy from panicking and lets the original error bubble
+// up to the caller.
+func shouldRetryOn5xx(r common.OCIOperationResponse) bool {
+	if r.Error == nil || r.Response == nil {
+		return false
+	}
+	httpResp := r.Response.HTTPResponse()
+	return httpResp != nil && httpResp.StatusCode >= 500
+}
+
 // Request metadata includes retry policy
 func (k *Wrapper) getRequestMetadata() common.RequestMetadata {
-	// Only retry for 5xx errors
-	retryOn5xxFunc := func(r common.OCIOperationResponse) bool {
-		return r.Error != nil && r.Response.HTTPResponse().StatusCode >= 500
-	}
-	return getRequestMetadataWithCustomizedRetryPolicy(retryOn5xxFunc)
+	return getRequestMetadataWithCustomizedRetryPolicy(shouldRetryOn5xx)
 }
 
 func getRequestMetadataWithCustomizedRetryPolicy(fn func(r common.OCIOperationResponse) bool) common.RequestMetadata {
