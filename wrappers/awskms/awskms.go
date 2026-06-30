@@ -331,6 +331,9 @@ func (k *Wrapper) GetAwsKmsClient(ctx context.Context) (*kms.Client, error) {
 
 // GetAwsKmsClient returns an instance of the KMS client in a different region than the wrapper config
 func (k *Wrapper) GetAwsKmsClientInRegion(ctx context.Context, region string) (*kms.Client, error) {
+	if region == "" {
+		region = k.region
+	}
 	credsConfig := &awsutil.CredentialsConfig{
 		AccessKey:            k.accessKey,
 		SecretKey:            k.secretKey,
