@@ -326,6 +326,11 @@ func (k *Wrapper) Client() KmsApi {
 
 // GetAwsKmsClient returns an instance of the KMS client.
 func (k *Wrapper) GetAwsKmsClient(ctx context.Context) (*kms.Client, error) {
+	return k.GetAwsKmsClientInRegion(ctx, k.region)
+}
+
+// GetAwsKmsClient returns an instance of the KMS client in a different region than the wrapper config
+func (k *Wrapper) GetAwsKmsClientInRegion(ctx context.Context, region string) (*kms.Client, error) {
 	credsConfig := &awsutil.CredentialsConfig{
 		AccessKey:            k.accessKey,
 		SecretKey:            k.secretKey,
@@ -335,7 +340,7 @@ func (k *Wrapper) GetAwsKmsClient(ctx context.Context) (*kms.Client, error) {
 		RoleARN:              k.roleArn,
 		RoleSessionName:      k.roleSessionName,
 		WebIdentityTokenFile: k.webIdentityTokenFile,
-		Region:               k.region,
+		Region:               region,
 		Logger:               k.logger,
 		HTTPClient:           cleanhttp.DefaultClient(),
 	}
