@@ -355,7 +355,7 @@ func (k *Wrapper) GetAwsKmsClientInRegion(ctx context.Context, region string) (*
 
 	clientOpts := []func(*config.LoadOptions) error{
 		config.WithCredentialsProvider(creds.Credentials),
-		config.WithRegion(k.region),
+		config.WithRegion(region),
 		config.WithHTTPClient(cleanhttp.DefaultClient()),
 	}
 
