@@ -238,6 +238,26 @@ func TestEncryptAndDecrypt(t *testing.T) {
 	})
 }
 
+func TestGetClientInRegion(t *testing.T) {
+	os.Setenv(envAwsRegion, "us-west-2")
+	wrapperWithMock := NewWrapper()
+	wrapperWithMock.client = &mockClient{
+		keyId: awsTestKeyId,
+	}
+
+	cli, err := wrapperWithMock.GetAwsKmsClient(t.Context())
+	require.NoError(t, err)
+	require.Equal(t, "us-west-2", cli.Options().Region)
+
+	cli, err = wrapperWithMock.GetAwsKmsClientInRegion(t.Context(), "")
+	require.NoError(t, err)
+	require.Equal(t, "us-west-2", cli.Options().Region)
+
+	cli, err = wrapperWithMock.GetAwsKmsClientInRegion(t.Context(), "us-east-2")
+	require.NoError(t, err)
+	require.Equal(t, "us-east-2", cli.Options().Region)
+}
+
 // Shared profile test setup:
 // - Create a role in AWS that whatever role/user you're authenticating as has permission to sts::SetSourceIdentity as
 // - Create two profiles in ~/.aws/config
