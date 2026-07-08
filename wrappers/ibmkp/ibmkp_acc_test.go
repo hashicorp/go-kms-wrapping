@@ -1,3 +1,5 @@
+// Copyright IBM Corp. 2019, 2026
+
 package ibmkp
 
 // These tests execute real calls. They require:
