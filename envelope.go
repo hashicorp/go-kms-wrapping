@@ -6,7 +6,6 @@ package wrapping
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"errors"
 	fmt "fmt"
 
 	uuid "github.com/hashicorp/go-uuid"
@@ -39,20 +38,21 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 			return nil, fmt.Errorf("invalid IV provided: expected 12 bytes, got %d", len(opts.WithIv))
 		}
 		iv = opts.WithIv
-	} else {
-		iv, err = uuid.GenerateRandomBytes(12)
-		if err != nil {
-			return nil, err
-		}
 	}
 
-	aead, err := aeadEncrypter(key)
+	aead, err := aeadEncrypter(key, opts.WithIv != nil)
 	if err != nil {
 		return nil, err
 	}
 
+	ciphertext := aead.Seal(nil, iv, plaintext, opts.WithAad)
+	if opts.WithIv == nil {
+		iv = ciphertext[:12]
+		ciphertext = ciphertext[12:]
+	}
+
 	return &EnvelopeInfo{
-		Ciphertext: aead.Seal(nil, iv, plaintext, opts.WithAad),
+		Ciphertext: ciphertext,
 		Key:        key,
 		Iv:         iv,
 	}, nil
@@ -77,24 +77,34 @@ func EnvelopeDecrypt(data *EnvelopeInfo, opt ...Option) ([]byte, error) {
 		return nil, err
 	}
 
-	aead, err := aeadEncrypter(data.Key)
+	aead, err := aeadEncrypter(data.Key, false)
 	if err != nil {
 		return nil, err
 	}
-
-	return aead.Open(nil, data.Iv, data.Ciphertext, opts.WithAad)
+	ciphertext := append(data.Iv, data.Ciphertext...)
+	return aead.Open(nil, nil, ciphertext, opts.WithAad)
 }
 
-func aeadEncrypter(key []byte) (cipher.AEAD, error) {
+func aeadEncrypter(key []byte, withIV bool) (cipher.AEAD, error) {
+
 	aesCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
 
+	if withIV {
+		gcm, err := cipher.NewGCM(aesCipher)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize GCM mode: %w", err)
+		}
+
+		return gcm, nil
+	}
+
 	// Create the GCM mode AEAD
-	gcm, err := cipher.NewGCM(aesCipher)
+	gcm, err := cipher.NewGCMWithRandomNonce(aesCipher)
 	if err != nil {
-		return nil, errors.New("failed to initialize GCM mode")
+		return nil, fmt.Errorf("failed to initialize GCM mode: %w", err)
 	}
 
 	return gcm, nil
