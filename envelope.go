@@ -11,6 +11,8 @@ import (
 	uuid "github.com/hashicorp/go-uuid"
 )
 
+const nonceSize = 12
+
 // EnvelopeEncrypt takes in plaintext and envelope encrypts it, generating an
 // EnvelopeInfo value.  An empty plaintext is a valid parameter and will not cause
 // an error.  Also note: if you provide a plaintext of []byte(""),
@@ -34,8 +36,8 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 
 	var iv []byte
 	if opts.WithIv != nil {
-		if len(opts.WithIv) != 12 {
-			return nil, fmt.Errorf("invalid IV provided: expected 12 bytes, got %d", len(opts.WithIv))
+		if len(opts.WithIv) != nonceSize {
+			return nil, fmt.Errorf("invalid IV provided: expected %d bytes, got %d", nonceSize, len(opts.WithIv))
 		}
 		iv = opts.WithIv
 	}
@@ -47,8 +49,8 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 
 	ciphertext := aead.Seal(nil, iv, plaintext, opts.WithAad)
 	if opts.WithIv == nil {
-		iv = ciphertext[:12]
-		ciphertext = ciphertext[12:]
+		iv = ciphertext[:nonceSize]
+		ciphertext = ciphertext[nonceSize:]
 	}
 
 	return &EnvelopeInfo{
