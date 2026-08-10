@@ -17,6 +17,7 @@ const (
 	WrapperTypeHuaweiCloudKms  WrapperType = "huaweicloudkms"
 	WrapperTypeIbmKp           WrapperType = "ibmkeyprotect"
 	WrapperTypeOciKms          WrapperType = "ocikms"
+	WrapperTypeNcloudKms       WrapperType = "ncloudkms"
 	WrapperTypePkcs11          WrapperType = "pkcs11"
 	WrapperTypePooled          WrapperType = "pooled"
 	WrapperTypeShamir          WrapperType = "shamir"
