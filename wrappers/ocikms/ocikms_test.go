@@ -2,11 +2,14 @@
 package ocikms
 
 import (
+	"errors"
+	"net/http"
 	"os"
 	"reflect"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"golang.org/x/net/context"
 )
 
@@ -77,4 +80,67 @@ func initSeal(t *testing.T) *Wrapper {
 	}
 
 	return s
+}
+
+type stubOCIResponse struct {
+	status  int
+	nilHTTP bool
+}
+
+func (s stubOCIResponse) HTTPResponse() *http.Response {
+	if s.nilHTTP {
+		return nil
+	}
+	return &http.Response{StatusCode: s.status}
+}
+
+func TestShouldRetryOn5xx(t *testing.T) {
+	errFakeSigner := errors.New("failed to construct authentication signer")
+
+	t.Run("nil response does not panic", func(t *testing.T) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				t.Fatalf("shouldRetryOn5xx panicked: %v", rec)
+			}
+		}()
+		got := shouldRetryOn5xx(common.OCIOperationResponse{Error: errFakeSigner, Response: nil})
+		if got {
+			t.Fatal("expected no retry when Response is nil")
+		}
+	})
+
+	cases := []struct {
+		name string
+		resp common.OCIOperationResponse
+		want bool
+	}{
+		{
+			name: "no error",
+			resp: common.OCIOperationResponse{Response: stubOCIResponse{status: 500}},
+			want: false,
+		},
+		{
+			name: "error with 500",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: stubOCIResponse{status: 500}},
+			want: true,
+		},
+		{
+			name: "error with 400",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: stubOCIResponse{status: 400}},
+			want: false,
+		},
+		{
+			name: "error with nil HTTP response",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: stubOCIResponse{nilHTTP: true}},
+			want: false,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := shouldRetryOn5xx(tc.resp)
+			if got != tc.want {
+				t.Fatalf("shouldRetryOn5xx() = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }
