@@ -12,6 +12,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
 	"github.com/hashicorp/go-hclog"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -204,6 +205,9 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 			KeyId:     &k.keyId,
 			Plaintext: plaintext,
 		}
+		if alg := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding); alg != "" {
+			input.EncryptionAlgorithm = alg
+		}
 		output, err := k.client.Encrypt(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting data: %w", err)
@@ -279,10 +283,19 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	}
 
 	var plaintext []byte
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
 	switch in.KeyInfo.Mechanism {
 	case AwsKmsEncrypt:
 		input := &kms.DecryptInput{
+			KeyId:     &k.keyId,
 			CiphertextBlob: in.Ciphertext,
+		}
+		if alg := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding); alg != "" {
+			input.EncryptionAlgorithm = alg
 		}
 
 		output, err := k.client.Decrypt(ctx, input)
@@ -317,6 +330,18 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	}
 
 	return plaintext, nil
+}
+
+// encryptionAlgorithmSpec maps the wrapping EncryptionAlgorithm to the AWS KMS EncryptionAlgorithmSpec.
+func encryptionAlgorithmSpec(alg wrapping.RSAEncryptionPadding) types.EncryptionAlgorithmSpec {
+	switch alg {
+	case wrapping.RSAEncryptionPadding_OaepSha1:
+		return types.EncryptionAlgorithmSpecRsaesOaepSha1
+	case wrapping.RSAEncryptionPadding_OaepSha256:
+		return types.EncryptionAlgorithmSpecRsaesOaepSha256
+	default:
+		return ""
+	}
 }
 
 // Client returns the AWS KMS client used by the wrapper.

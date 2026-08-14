@@ -233,7 +233,7 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	var ret *wrapping.BlobInfo
 	if opts.WithoutEnvelope {
 		// Encrypt the plaintext directly using Key Vault
-		algo := azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
+		algo := encryptionAlgorithmAzure(opts.WithRsaEncryptionPadding)
 		params := azkeys.KeyOperationsParameters{
 			Algorithm: &algo,
 			Value:     plaintext,
@@ -299,10 +299,15 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 		return nil, errors.New("key info is nil")
 	}
 
+	opts, err := getOpts(opt...)
+	if err != nil {
+		return nil, err
+	}
+
 	var plaintext []byte
 	switch in.KeyInfo.Mechanism {
 	case AzureKeyVaultEncrypt:
-		algo := azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
+		algo := encryptionAlgorithmAzure(opts.WithRsaEncryptionPadding)
 		params := azkeys.KeyOperationsParameters{
 			Algorithm: &algo,
 			Value:     in.Ciphertext,
@@ -348,6 +353,20 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	}
 
 	return plaintext, nil
+}
+
+// encryptionAlgorithmAzure maps the wrapping EncryptionAlgorithm to the Azure Key Vault
+// JSONWebKeyEncryptionAlgorithm. Defaults to RSA-OAEP-256 when the algorithm is unset.
+func encryptionAlgorithmAzure(alg wrapping.RSAEncryptionPadding) azkeys.JSONWebKeyEncryptionAlgorithm {
+	switch alg {
+	case wrapping.RSAEncryptionPadding_OaepSha1:
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP
+	case wrapping.RSAEncryptionPadding_OaepSha256:
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSA15
+	default:
+		// EncryptionAlgorithm_RsaOaepSha256 and the zero value both map to RSA-OAEP-256
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
+	}
 }
 
 func (v *Wrapper) buildBaseURL() string {
