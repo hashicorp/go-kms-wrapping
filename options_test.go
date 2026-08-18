@@ -102,6 +102,13 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts)
 		assert.True(opts.WithDisallowEnvVars)
 	})
+	t.Run("WithEncryptionAlgorithm", func(t *testing.T) {
+		assert, require := assert.New(t), require.New(t)
+		opts, err := GetOpts(WithEncryptionAlgorithm(EncryptionAlgorithm_RsaOaepSha256))
+		require.NoError(err)
+		require.NotNil(opts)
+		assert.Equal(EncryptionAlgorithm_RsaOaepSha256, opts.WithEncryptionAlgorithm)
+	})
 }
 
 func testOptionWithError(t *testing.T) Option {

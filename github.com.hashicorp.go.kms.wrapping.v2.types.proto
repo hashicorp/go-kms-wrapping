@@ -149,6 +149,9 @@ message Options {
 
   // WithoutEnvelope specifies that encryption should be over the plaintext rather than using an envelope encryption pattern
   bool without_envelope = 110;
+
+  // WithEncryptionAlgorithm specifies the RSA encryption algorithm to use (optional)
+  EncryptionAlgorithm with_encryption_algorithm = 120;
 }
 
 // SigInfo contains information about a cryptographic signature
@@ -204,4 +207,12 @@ enum KeyPurpose {
   Wrap = 5;
   Unwrap = 6;
   MAC = 7;
+}
+
+// EncryptionAlgorithm defines the RSA encryption padding scheme and hash algorithm
+enum EncryptionAlgorithm {
+  Unknown_EncryptionAlgorithm = 0;
+  RsaOaepSha1 = 1;
+  RsaOaepSha256 = 2;
+  RsaPkcs1v15 = 3;
 }

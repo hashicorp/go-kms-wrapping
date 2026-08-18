@@ -166,6 +166,16 @@ func WithoutEnvelope(rawEncryption bool) Option {
 	}
 }
 
+// WithEncryptionAlgorithm specifies the RSA encryption algorithm (padding scheme + hash) to use
+func WithEncryptionAlgorithm(alg EncryptionAlgorithm) Option {
+	return func() interface{} {
+		return OptionFunc(func(o *Options) error {
+			o.WithEncryptionAlgorithm = alg
+			return nil
+		})
+	}
+}
+
 // ParsePaths is a helper function to take each string pointer argument and call parseutil.ParsePath,
 // replacing the contents of the target string with the result if no error occurs.  The function exits
 // early if it encounters an error.  In that case no passed fields will have been modified.
