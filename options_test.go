@@ -102,12 +102,12 @@ func Test_GetOpts(t *testing.T) {
 		require.NotNil(opts)
 		assert.True(opts.WithDisallowEnvVars)
 	})
-	t.Run("WithEncryptionAlgorithm", func(t *testing.T) {
+	t.Run("WithRsaEncryptionPadding", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
-		opts, err := GetOpts(WithEncryptionAlgorithm(EncryptionAlgorithm_RsaOaepSha256))
+		opts, err := GetOpts(WithRsaEncryptionPadding(RSAEncryptionPadding_OaepSha256))
 		require.NoError(err)
 		require.NotNil(opts)
-		assert.Equal(EncryptionAlgorithm_RsaOaepSha256, opts.WithEncryptionAlgorithm)
+		assert.Equal(RSAEncryptionPadding_OaepSha256, opts.WithRsaEncryptionPadding)
 	})
 }
 

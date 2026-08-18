@@ -166,11 +166,11 @@ func WithoutEnvelope(rawEncryption bool) Option {
 	}
 }
 
-// WithEncryptionAlgorithm specifies the RSA encryption algorithm (padding scheme + hash) to use
-func WithEncryptionAlgorithm(alg EncryptionAlgorithm) Option {
+// WithRSAEncryptionPadding specifies the RSA encryption algorithm (padding scheme + hash) to use
+func WithRsaEncryptionPadding(alg RSAEncryptionPadding) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
-			o.WithEncryptionAlgorithm = alg
+			o.WithRsaEncryptionPadding = alg
 			return nil
 		})
 	}
