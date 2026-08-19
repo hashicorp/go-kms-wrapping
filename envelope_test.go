@@ -260,7 +260,7 @@ func Test_aeadEncrypter(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			assert, require := assert.New(t), require.New(t)
 
-			got, err := aeadEncrypter(tc.key)
+			got, err := aeadEncrypter(tc.key, false)
 			if tc.wantErr {
 				require.Error(err)
 				if tc.wantErrContains != "" {

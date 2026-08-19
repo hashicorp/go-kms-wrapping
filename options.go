@@ -5,6 +5,7 @@ package wrapping
 
 import (
 	"errors"
+
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
@@ -86,6 +87,11 @@ func WithKeyType(keyType KeyType) Option {
 }
 
 // WithRandomBytes provides a common way to pass in entropy
+//
+// Without this option, the library will use a secure cryptographic source of
+// entropy from the stdlib. This option cannot be used with the Go Cryptographic
+// Module for FIPS compliance and operations will return errors if
+// GODEBUG=fips140=only
 func WithRandomBytes(b []byte) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
@@ -106,7 +112,12 @@ func WithConfigMap(with map[string]string) Option {
 	}
 }
 
-// WithIV provides
+// WithIV provides a specific IV for an operation.
+//
+// Without this option, the library will use a secure cryptographic source of
+// entropy from the stdlib to generate an IV. This option cannot be used with
+// the Go Cryptographic Module for FIPS compliance and operations will return
+// errors if GODEBUG=fips140=only
 func WithIV(with []byte) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {
