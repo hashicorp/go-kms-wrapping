@@ -2,15 +2,13 @@ module github.com/hashicorp/go-kms-wrapping/wrappers/awskms/v4
 
 go 1.24.0
 
-replace github.com/hashicorp/go-kms-wrapping/v2 => ../..
-
 require (
 	github.com/aws/aws-sdk-go-v2 v1.39.2
 	github.com/aws/aws-sdk-go-v2/config v1.31.12
 	github.com/aws/aws-sdk-go-v2/service/kms v1.45.6
 	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/hashicorp/go-kms-wrapping/v2 v2.0.21
+	github.com/hashicorp/go-kms-wrapping/v2 v2.0.24
 	github.com/hashicorp/go-secure-stdlib/awsutil/v2 v2.1.1
 	github.com/stretchr/testify v1.11.1
 )
