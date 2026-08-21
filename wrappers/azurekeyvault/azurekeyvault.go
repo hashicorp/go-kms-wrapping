@@ -233,7 +233,10 @@ func (v *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 	var ret *wrapping.BlobInfo
 	if opts.WithoutEnvelope {
 		// Encrypt the plaintext directly using Key Vault
-		algo := encryptionAlgorithmAzure(opts.WithRsaEncryptionPadding)
+		algo, err := encryptionAlgorithmAzure(opts.WithRsaEncryptionPadding)
+		if err != nil {
+			return nil, err
+		}
 		params := azkeys.KeyOperationsParameters{
 			Algorithm: &algo,
 			Value:     plaintext,
@@ -307,7 +310,10 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	var plaintext []byte
 	switch in.KeyInfo.Mechanism {
 	case AzureKeyVaultEncrypt:
-		algo := encryptionAlgorithmAzure(opts.WithRsaEncryptionPadding)
+		algo, err := encryptionAlgorithmAzure(opts.WithRsaEncryptionPadding)
+		if err != nil {
+			return nil, err
+		}
 		params := azkeys.KeyOperationsParameters{
 			Algorithm: &algo,
 			Value:     in.Ciphertext,
@@ -356,17 +362,17 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 }
 
 // encryptionAlgorithmAzure maps the wrapping RSAEncryptionPadding to the Azure Key Vault
-// JSONWebKeyEncryptionAlgorithm. Defaults to RSA-OAEP-256 when the algorithm is unset.
-func encryptionAlgorithmAzure(alg wrapping.RSAEncryptionPadding) azkeys.JSONWebKeyEncryptionAlgorithm {
+// JSONWebKeyEncryptionAlgorithm.
+func encryptionAlgorithmAzure(alg wrapping.RSAEncryptionPadding) (azkeys.JSONWebKeyEncryptionAlgorithm, error) {
 	switch alg {
 	case wrapping.RSAEncryptionPadding_OaepSha1:
-		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP, nil
 	case wrapping.RSAEncryptionPadding_Pkcs1v15:
-		return azkeys.JSONWebKeyEncryptionAlgorithmRSA15
-	case wrapping.RSAEncryptionPadding_OaepSha256:
-		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSA15, nil
+	case wrapping.RSAEncryptionPadding_OaepSha256, wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding:
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256, nil
 	default:
-		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
+		return "", fmt.Errorf("unsupported RSA encryption algorithm: %v", alg)
 	}
 }
 
