@@ -205,7 +205,11 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 			KeyId:     &k.keyId,
 			Plaintext: plaintext,
 		}
-		if alg := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding); alg != "" {
+		alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
+		if err != nil {
+			return nil, err
+		}
+		if alg != "" {
 			input.EncryptionAlgorithm = alg
 		}
 		output, err := k.client.Encrypt(ctx, input)
@@ -294,7 +298,11 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 			KeyId:     &k.keyId,
 			CiphertextBlob: in.Ciphertext,
 		}
-		if alg := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding); alg != "" {
+		alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
+		if err != nil {
+			return nil, err
+		}
+		if alg != "" {
 			input.EncryptionAlgorithm = alg
 		}
 
@@ -332,15 +340,17 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	return plaintext, nil
 }
 
-// encryptionAlgorithmSpec maps the wrapping EncryptionAlgorithm to the AWS KMS EncryptionAlgorithmSpec.
-func encryptionAlgorithmSpec(alg wrapping.RSAEncryptionPadding) types.EncryptionAlgorithmSpec {
+// encryptionAlgorithmSpec maps the wrapping RSAEncryptionPadding to the AWS KMS EncryptionAlgorithmSpec.
+func encryptionAlgorithmSpec(alg wrapping.RSAEncryptionPadding) (types.EncryptionAlgorithmSpec, error) {
 	switch alg {
 	case wrapping.RSAEncryptionPadding_OaepSha1:
-		return types.EncryptionAlgorithmSpecRsaesOaepSha1
+		return types.EncryptionAlgorithmSpecRsaesOaepSha1, nil
 	case wrapping.RSAEncryptionPadding_OaepSha256:
-		return types.EncryptionAlgorithmSpecRsaesOaepSha256
+		return types.EncryptionAlgorithmSpecRsaesOaepSha256, nil
+	case wrapping.RSAEncryptionPadding_Pkcs1v15:
+		return "", fmt.Errorf("pkcs1v15 padding is not supported")
 	default:
-		return ""
+		return "", nil
 	}
 }
 
