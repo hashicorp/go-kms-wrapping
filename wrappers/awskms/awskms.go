@@ -206,11 +206,13 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 			Plaintext: plaintext,
 		}
 
-		alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
-		if err != nil {
-			return nil, err
+		if opts.WithRsaEncryptionPadding != wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding {
+			alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
+			if err != nil {
+				return nil, err
+			}
+			input.EncryptionAlgorithm = alg
 		}
-		input.EncryptionAlgorithm = alg
 		output, err := k.client.Encrypt(ctx, input)
 		if err != nil {
 			return nil, fmt.Errorf("error encrypting data: %w", err)
@@ -297,11 +299,13 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 			KeyId:     &k.keyId,
 			CiphertextBlob: in.Ciphertext,
 		}
-		alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
-		if err != nil {
-			return nil, err
+		if opts.WithRsaEncryptionPadding != wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding {
+			alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
+			if err != nil {
+				return nil, err
+			}
+			input.EncryptionAlgorithm = alg
 		}
-		input.EncryptionAlgorithm = alg
 
 		output, err := k.client.Decrypt(ctx, input)
 		if err != nil {
@@ -344,10 +348,8 @@ func encryptionAlgorithmSpec(alg wrapping.RSAEncryptionPadding) (types.Encryptio
 		return types.EncryptionAlgorithmSpecRsaesOaepSha1, nil
 	case wrapping.RSAEncryptionPadding_OaepSha256:
 		return types.EncryptionAlgorithmSpecRsaesOaepSha256, nil
-	case wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding:
-		return types.EncryptionAlgorithmSpecSymmetricDefault, nil // AWS KMS default algo
 	default:
-		return "", fmt.Errorf("unsupported RSA encryption algorithm: %v", alg)
+		return "", fmt.Errorf("unsupported RSA encryption padding: %v", alg)
 	}
 }
 
