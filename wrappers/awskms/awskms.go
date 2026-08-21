@@ -205,6 +205,7 @@ func (k *Wrapper) Encrypt(ctx context.Context, plaintext []byte, opt ...wrapping
 			KeyId:     &k.keyId,
 			Plaintext: plaintext,
 		}
+
 		alg, err := encryptionAlgorithmSpec(opts.WithRsaEncryptionPadding)
 		if err != nil {
 			return nil, err
@@ -337,13 +338,14 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 }
 
 // encryptionAlgorithmSpec maps the wrapping RSAEncryptionPadding to the AWS KMS EncryptionAlgorithmSpec.
-// Returns an error if the algorithm is unset or cannot be mapped.
 func encryptionAlgorithmSpec(alg wrapping.RSAEncryptionPadding) (types.EncryptionAlgorithmSpec, error) {
 	switch alg {
 	case wrapping.RSAEncryptionPadding_OaepSha1:
 		return types.EncryptionAlgorithmSpecRsaesOaepSha1, nil
 	case wrapping.RSAEncryptionPadding_OaepSha256:
 		return types.EncryptionAlgorithmSpecRsaesOaepSha256, nil
+	case wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding:
+		return types.EncryptionAlgorithmSpecSymmetricDefault, nil // AWS KMS default algo
 	default:
 		return "", fmt.Errorf("unsupported RSA encryption algorithm: %v", alg)
 	}
