@@ -372,7 +372,7 @@ func encryptionAlgorithmAzure(alg wrapping.RSAEncryptionPadding) (azkeys.JSONWeb
 	case wrapping.RSAEncryptionPadding_OaepSha256, wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding:
 		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256, nil
 	default:
-		return "", fmt.Errorf("unsupported RSA encryption algorithm: %v", alg)
+		return "", fmt.Errorf("unsupported RSA encryption padding: %v", alg)
 	}
 }
 
