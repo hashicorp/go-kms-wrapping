@@ -363,8 +363,9 @@ func encryptionAlgorithmAzure(alg wrapping.RSAEncryptionPadding) azkeys.JSONWebK
 		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP
 	case wrapping.RSAEncryptionPadding_Pkcs1v15:
 		return azkeys.JSONWebKeyEncryptionAlgorithmRSA15
+	case wrapping.RSAEncryptionPadding_OaepSha256:
+		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
 	default:
-		// EncryptionAlgorithm_RsaOaepSha256 and the zero value both map to RSA-OAEP-256
 		return azkeys.JSONWebKeyEncryptionAlgorithmRSAOAEP256
 	}
 }
