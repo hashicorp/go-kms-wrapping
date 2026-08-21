@@ -362,7 +362,7 @@ func (v *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 }
 
 // encryptionAlgorithmAzure maps the wrapping RSAEncryptionPadding to the Azure Key Vault
-// JSONWebKeyEncryptionAlgorithm.
+// JSONWebKeyEncryptionAlgorithm. Defaults to RSA-OAEP-256 when the algorithm is unset/unknown.
 func encryptionAlgorithmAzure(alg wrapping.RSAEncryptionPadding) (azkeys.JSONWebKeyEncryptionAlgorithm, error) {
 	switch alg {
 	case wrapping.RSAEncryptionPadding_OaepSha1:
