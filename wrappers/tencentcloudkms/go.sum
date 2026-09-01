@@ -24,6 +24,8 @@ github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.604 h1:BiuY
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.604/go.mod h1:7sCQWVkxcsR38nffDW057DRGk8mUjK1Ing/EFOK8s8Y=
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/kms v1.0.604 h1:LItsuG1cD+8e/9Z5MBNci2WJpYeNI0j00FN8UU5A3xw=
 github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/kms v1.0.604/go.mod h1:0NPGaAgj1qcvy3w0wEVhe3hMmDB0ptM+CqzXDu9r658=
+github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.604 h1:4AulxOLAOI/SuBxBwPPiwPE9OeGM2e1UMZNsbfhizqQ=
+github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts v1.0.604/go.mod h1:w+DBpcgJn2iFZURqvsmkDHbd1w5/q0YwSPDSt2+9MRY=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/protobuf v1.33.0 h1:uNO2rsAINq/JlFpSdYEKIZ0uKD/R9cpdv0T+yoGwGmI=
