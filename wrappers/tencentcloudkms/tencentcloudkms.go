@@ -210,19 +210,10 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	return wrapConfig, nil
 }
 
-// assumeRole exchanges the configured base credentials for temporary
-// credentials by calling STS AssumeRole for k.roleArn. The returned credential
-// is what should be used to construct the KMS client.
-//
-// The base credentials (access_key/secret_key, or whatever was resolved from
-// the environment) only need permission to call sts:AssumeRole on the target
-// role; the KMS permissions live on the assumed role itself.
-func (k *Wrapper) assumeRole(baseCred common.CredentialIface, cpf *profile.ClientProfile) (*common.Credential, error) {
-	stsClient, err := sts.NewClient(baseCred, k.region, cpf)
-	if err != nil {
-		return nil, fmt.Errorf("error initializing TencentCloud STS client: %w", err)
-	}
-
+// buildAssumeRoleRequest assembles the STS AssumeRole request from the
+// wrapper's configuration. It is kept separate from assumeRole so that the
+// parameter assembly can be unit tested without any network access.
+func (k *Wrapper) buildAssumeRoleRequest() *sts.AssumeRoleRequest {
 	sessionName := k.roleSessionName
 	if sessionName == "" {
 		sessionName = defaultRoleSessionName
@@ -237,8 +228,23 @@ func (k *Wrapper) assumeRole(baseCred common.CredentialIface, cpf *profile.Clien
 	if k.roleDurationSeconds != 0 {
 		req.DurationSeconds = common.Uint64Ptr(k.roleDurationSeconds)
 	}
+	return req
+}
 
-	resp, err := stsClient.AssumeRole(req)
+// assumeRole exchanges the configured base credentials for temporary
+// credentials by calling STS AssumeRole for k.roleArn. The returned credential
+// is what should be used to construct the KMS client.
+//
+// The base credentials (access_key/secret_key, or whatever was resolved from
+// the environment) only need permission to call sts:AssumeRole on the target
+// role; the KMS permissions live on the assumed role itself.
+func (k *Wrapper) assumeRole(baseCred common.CredentialIface, cpf *profile.ClientProfile) (*common.Credential, error) {
+	stsClient, err := sts.NewClient(baseCred, k.region, cpf)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing TencentCloud STS client: %w", err)
+	}
+
+	resp, err := stsClient.AssumeRole(k.buildAssumeRoleRequest())
 	if err != nil {
 		return nil, fmt.Errorf("error assuming TencentCloud role %q: %w", k.roleArn, err)
 	}
