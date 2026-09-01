@@ -183,7 +183,7 @@ func WithSessionToken(with string) wrapping.Option {
 // WithEndpoint provides a way to override the KMS service endpoint, for
 // example to reach KMS over a VPC endpoint or in a dedicated cloud
 // environment. The value is a host (optionally host:port) such as
-// "kms.internal.tencentcloudapi.com"; it applies to the KMS client only and
+// "kms.tencentcloudapi.com"; it applies to the KMS client only and
 // does not affect STS calls made when assuming a role.
 func WithEndpoint(with string) wrapping.Option {
 	return func() interface{} {

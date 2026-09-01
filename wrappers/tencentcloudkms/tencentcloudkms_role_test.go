@@ -319,7 +319,7 @@ func TestBuildAssumeRoleRequest(t *testing.T) {
 // TestEndpointConfig verifies the endpoint override can be supplied through the
 // config map, the option function, and the environment.
 func TestEndpointConfig(t *testing.T) {
-	const wantEndpoint = "kms.internal.tencentcloudapi.com"
+	const wantEndpoint = "kms.tencentcloudapi.com"
 
 	t.Run("from config map", func(t *testing.T) {
 		w := newTestWrapper()
@@ -400,7 +400,7 @@ func TestNewClientProfile(t *testing.T) {
 	})
 
 	t.Run("with endpoint", func(t *testing.T) {
-		const ep = "kms.internal.tencentcloudapi.com"
+		const ep = "kms.tencentcloudapi.com"
 		cpf := newClientProfile(ep)
 		if cpf.HttpProfile.Endpoint != ep {
 			t.Errorf("Endpoint = %q, want %q", cpf.HttpProfile.Endpoint, ep)
@@ -408,7 +408,7 @@ func TestNewClientProfile(t *testing.T) {
 	})
 
 	t.Run("profiles are independent", func(t *testing.T) {
-		kmsProfile := newClientProfile("kms.internal.tencentcloudapi.com")
+		kmsProfile := newClientProfile("kms.tencentcloudapi.com")
 		stsProfile := newClientProfile("")
 		if stsProfile.HttpProfile.Endpoint != "" {
 			t.Errorf("STS profile picked up the KMS endpoint: %q", stsProfile.HttpProfile.Endpoint)
