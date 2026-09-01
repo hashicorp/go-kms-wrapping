@@ -316,6 +316,109 @@ func TestBuildAssumeRoleRequest(t *testing.T) {
 	})
 }
 
+// TestEndpointConfig verifies the endpoint override can be supplied through the
+// config map, the option function, and the environment.
+func TestEndpointConfig(t *testing.T) {
+	const wantEndpoint = "kms.internal.tencentcloudapi.com"
+
+	t.Run("from config map", func(t *testing.T) {
+		w := newTestWrapper()
+		info, err := w.SetConfig(context.Background(), baseOpts(
+			wrapping.WithConfigMap(map[string]string{"endpoint": wantEndpoint}),
+		)...)
+		if err != nil {
+			t.Fatalf("SetConfig: %v", err)
+		}
+		if w.endpoint != wantEndpoint {
+			t.Errorf("endpoint = %q, want %q", w.endpoint, wantEndpoint)
+		}
+		if got := info.Metadata["endpoint"]; got != wantEndpoint {
+			t.Errorf("metadata endpoint = %q, want %q", got, wantEndpoint)
+		}
+	})
+
+	t.Run("from option func", func(t *testing.T) {
+		w := newTestWrapper()
+		if _, err := w.SetConfig(context.Background(), baseOpts(WithEndpoint(wantEndpoint))...); err != nil {
+			t.Fatalf("SetConfig: %v", err)
+		}
+		if w.endpoint != wantEndpoint {
+			t.Errorf("endpoint = %q, want %q", w.endpoint, wantEndpoint)
+		}
+	})
+
+	t.Run("from env var", func(t *testing.T) {
+		t.Setenv(PROVIDER_KMS_ENDPOINT, wantEndpoint)
+		w := newTestWrapper()
+		if _, err := w.SetConfig(context.Background(),
+			wrapping.WithKeyId(tencentCloudTestKeyID),
+			WithAccessKey("ak"), WithSecretKey("sk"),
+		); err != nil {
+			t.Fatalf("SetConfig: %v", err)
+		}
+		if w.endpoint != wantEndpoint {
+			t.Errorf("endpoint = %q, want %q", w.endpoint, wantEndpoint)
+		}
+	})
+
+	t.Run("env var ignored when disallowed", func(t *testing.T) {
+		t.Setenv(PROVIDER_KMS_ENDPOINT, wantEndpoint)
+		w := newTestWrapper()
+		if _, err := w.SetConfig(context.Background(), baseOpts()...); err != nil {
+			t.Fatalf("SetConfig: %v", err)
+		}
+		if w.endpoint != "" {
+			t.Errorf("endpoint = %q, want empty (env vars disallowed)", w.endpoint)
+		}
+	})
+
+	t.Run("omitted from metadata when unset", func(t *testing.T) {
+		w := newTestWrapper()
+		info, err := w.SetConfig(context.Background(), baseOpts()...)
+		if err != nil {
+			t.Fatalf("SetConfig: %v", err)
+		}
+		if _, ok := info.Metadata["endpoint"]; ok {
+			t.Error("metadata should not contain an endpoint key when unset")
+		}
+	})
+}
+
+// TestNewClientProfile checks that the endpoint override only lands on the
+// profile when one was requested. This matters because the STS client is built
+// with an empty endpoint so that assuming a role is never redirected to the
+// KMS endpoint.
+func TestNewClientProfile(t *testing.T) {
+	t.Run("without endpoint", func(t *testing.T) {
+		cpf := newClientProfile("")
+		if cpf.HttpProfile.Endpoint != "" {
+			t.Errorf("Endpoint = %q, want empty", cpf.HttpProfile.Endpoint)
+		}
+		if cpf.HttpProfile.ReqMethod != "POST" {
+			t.Errorf("ReqMethod = %q, want POST", cpf.HttpProfile.ReqMethod)
+		}
+	})
+
+	t.Run("with endpoint", func(t *testing.T) {
+		const ep = "kms.internal.tencentcloudapi.com"
+		cpf := newClientProfile(ep)
+		if cpf.HttpProfile.Endpoint != ep {
+			t.Errorf("Endpoint = %q, want %q", cpf.HttpProfile.Endpoint, ep)
+		}
+	})
+
+	t.Run("profiles are independent", func(t *testing.T) {
+		kmsProfile := newClientProfile("kms.internal.tencentcloudapi.com")
+		stsProfile := newClientProfile("")
+		if stsProfile.HttpProfile.Endpoint != "" {
+			t.Errorf("STS profile picked up the KMS endpoint: %q", stsProfile.HttpProfile.Endpoint)
+		}
+		if kmsProfile == stsProfile {
+			t.Error("expected distinct profile instances")
+		}
+	})
+}
+
 // TestNoRoleConfigured is a regression guard: with no role settings the wrapper
 // must behave exactly as before, i.e. never attempt an AssumeRole.
 func TestNoRoleConfigured(t *testing.T) {

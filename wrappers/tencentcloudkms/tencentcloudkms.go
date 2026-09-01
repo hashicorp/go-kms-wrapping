@@ -25,6 +25,7 @@ const (
 	PROVIDER_SECURITY_TOKEN  = "TENCENTCLOUD_SECURITY_TOKEN"
 	PROVIDER_REGION          = "TENCENTCLOUD_REGION"
 	PROVIDER_KMS_KEY_ID      = "TENCENTCLOUD_KMS_KEY_ID"
+	PROVIDER_KMS_ENDPOINT    = "TENCENTCLOUD_KMS_ENDPOINT"
 	PROVIDER_ROLE_ARN        = "TENCENTCLOUD_ROLE_ARN"
 	PROVIDER_ROLE_SESSION_NM = "TENCENTCLOUD_ROLE_SESSION_NAME"
 	PROVIDER_ROLE_EXTERN_ID  = "TENCENTCLOUD_ROLE_EXTERNAL_ID"
@@ -49,6 +50,10 @@ type Wrapper struct {
 	secretKey    string
 	sessionToken string
 	region       string
+
+	// Optional override for the KMS service endpoint, e.g. to reach KMS through
+	// a VPC endpoint. It applies to the KMS client only, never to STS.
+	endpoint string
 
 	// Optional CAM role to assume. When roleArn is set, the accessKey/secretKey
 	// above are treated as the base credentials used to call STS AssumeRole, and
@@ -135,6 +140,13 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
+	case os.Getenv(PROVIDER_KMS_ENDPOINT) != "" && !opts.Options.WithDisallowEnvVars:
+		k.endpoint = os.Getenv(PROVIDER_KMS_ENDPOINT)
+	case opts.withEndpoint != "":
+		k.endpoint = opts.withEndpoint
+	}
+
+	switch {
 	case os.Getenv(PROVIDER_ROLE_ARN) != "" && !opts.Options.WithDisallowEnvVars:
 		k.roleArn = os.Getenv(PROVIDER_ROLE_ARN)
 	case opts.withRoleArn != "":
@@ -165,24 +177,22 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	if k.client == nil {
-		cpf := profile.NewClientProfile()
-		cpf.HttpProfile.ReqMethod = "POST"
-		cpf.HttpProfile.ReqTimeout = 300
-		cpf.Language = "en-US"
-
 		credential := common.NewTokenCredential(k.accessKey, k.secretKey, k.sessionToken)
 
 		// If a CAM role is configured, exchange the base credentials for
-		// temporary credentials via STS AssumeRole and use those for KMS.
+		// temporary credentials via STS AssumeRole and use those for KMS. Note
+		// that STS gets its own client profile: any endpoint override applies
+		// to KMS only, and reusing the KMS profile here would send the STS
+		// request to the KMS endpoint.
 		if k.roleArn != "" {
-			assumed, err := k.assumeRole(credential, cpf)
+			assumed, err := k.assumeRole(credential, newClientProfile(""))
 			if err != nil {
 				return nil, err
 			}
 			credential = assumed
 		}
 
-		client, err := kms.NewClient(credential, k.region, cpf)
+		client, err := kms.NewClient(credential, k.region, newClientProfile(k.endpoint))
 		if err != nil {
 			return nil, fmt.Errorf("error initializing TencentCloud KMS client: %w", err)
 		}
@@ -206,8 +216,25 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	wrapConfig.Metadata = make(map[string]string)
 	wrapConfig.Metadata["region"] = k.region
 	wrapConfig.Metadata["kms_key_id"] = k.keyId
+	if k.endpoint != "" {
+		wrapConfig.Metadata["endpoint"] = k.endpoint
+	}
 
 	return wrapConfig, nil
+}
+
+// newClientProfile builds the client profile shared by the KMS and STS
+// clients. If endpoint is non-empty the resulting profile targets that
+// endpoint instead of the default service domain.
+func newClientProfile(endpoint string) *profile.ClientProfile {
+	cpf := profile.NewClientProfile()
+	cpf.HttpProfile.ReqMethod = "POST"
+	cpf.HttpProfile.ReqTimeout = 300
+	cpf.Language = "en-US"
+	if endpoint != "" {
+		cpf.HttpProfile.Endpoint = endpoint
+	}
+	return cpf
 }
 
 // buildAssumeRoleRequest assembles the STS AssumeRole request from the

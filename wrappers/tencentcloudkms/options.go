@@ -81,6 +81,8 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withSecretKey = v
 			case "session_token":
 				opts.withSessionToken = v
+			case "endpoint":
+				opts.withEndpoint = v
 			case "role_arn":
 				opts.withRoleArn = v
 			case "role_session_name":
@@ -125,6 +127,7 @@ type options struct {
 	withAccessKey           string
 	withSecretKey           string
 	withSessionToken        string
+	withEndpoint            string
 	withRoleArn             string
 	withRoleSessionName     string
 	withRoleExternalId      string
@@ -172,6 +175,20 @@ func WithSessionToken(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withSessionToken = with
+			return nil
+		})
+	}
+}
+
+// WithEndpoint provides a way to override the KMS service endpoint, for
+// example to reach KMS over a VPC endpoint or in a dedicated cloud
+// environment. The value is a host (optionally host:port) such as
+// "kms.internal.tencentcloudapi.com"; it applies to the KMS client only and
+// does not affect STS calls made when assuming a role.
+func WithEndpoint(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withEndpoint = with
 			return nil
 		})
 	}
