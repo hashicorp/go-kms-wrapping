@@ -53,10 +53,10 @@ type Wrapper struct {
 	// Optional CAM role to assume. When roleArn is set, the accessKey/secretKey
 	// above are treated as the base credentials used to call STS AssumeRole, and
 	// the temporary credentials returned are what actually talk to KMS.
-	roleArn              string
-	roleSessionName      string
-	roleExternalId       string
-	roleDurationSeconds  uint64
+	roleArn             string
+	roleSessionName     string
+	roleExternalId      string
+	roleDurationSeconds uint64
 
 	keyId        string
 	currentKeyId *atomic.Value
@@ -88,8 +88,13 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		return nil, err
 	}
 
+	// Note: when WithDisallowEnvVars is set (which is what Vault does, since it
+	// resolves env vars into the config map itself) we deliberately ignore the
+	// environment here. This matches the behaviour of the other cloud wrappers
+	// (see alicloudkms and awskms) and prevents env vars from silently
+	// overriding an explicitly supplied configuration.
 	switch {
-	case os.Getenv(PROVIDER_KMS_KEY_ID) != "":
+	case os.Getenv(PROVIDER_KMS_KEY_ID) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(PROVIDER_KMS_KEY_ID)
 	case opts.WithKeyId != "":
 		k.keyId = opts.WithKeyId
@@ -98,14 +103,14 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_REGION) != "":
+	case os.Getenv(PROVIDER_REGION) != "" && !opts.Options.WithDisallowEnvVars:
 		k.region = os.Getenv(PROVIDER_REGION)
 	case opts.withRegion != "":
 		k.region = opts.withRegion
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_SECRET_ID) != "":
+	case os.Getenv(PROVIDER_SECRET_ID) != "" && !opts.Options.WithDisallowEnvVars:
 		k.accessKey = os.Getenv(PROVIDER_SECRET_ID)
 	case opts.withAccessKey != "":
 		k.accessKey = opts.withAccessKey
@@ -114,7 +119,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_SECRET_KEY) != "":
+	case os.Getenv(PROVIDER_SECRET_KEY) != "" && !opts.Options.WithDisallowEnvVars:
 		k.secretKey = os.Getenv(PROVIDER_SECRET_KEY)
 	case opts.withSecretKey != "":
 		k.secretKey = opts.withSecretKey
@@ -123,41 +128,40 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_SECURITY_TOKEN) != "":
+	case os.Getenv(PROVIDER_SECURITY_TOKEN) != "" && !opts.Options.WithDisallowEnvVars:
 		k.sessionToken = os.Getenv(PROVIDER_SECURITY_TOKEN)
 	case opts.withSessionToken != "":
 		k.sessionToken = opts.withSessionToken
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_ROLE_ARN) != "":
+	case os.Getenv(PROVIDER_ROLE_ARN) != "" && !opts.Options.WithDisallowEnvVars:
 		k.roleArn = os.Getenv(PROVIDER_ROLE_ARN)
 	case opts.withRoleArn != "":
 		k.roleArn = opts.withRoleArn
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_ROLE_SESSION_NM) != "":
+	case os.Getenv(PROVIDER_ROLE_SESSION_NM) != "" && !opts.Options.WithDisallowEnvVars:
 		k.roleSessionName = os.Getenv(PROVIDER_ROLE_SESSION_NM)
 	case opts.withRoleSessionName != "":
 		k.roleSessionName = opts.withRoleSessionName
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_ROLE_EXTERN_ID) != "":
+	case os.Getenv(PROVIDER_ROLE_EXTERN_ID) != "" && !opts.Options.WithDisallowEnvVars:
 		k.roleExternalId = os.Getenv(PROVIDER_ROLE_EXTERN_ID)
 	case opts.withRoleExternalId != "":
 		k.roleExternalId = opts.withRoleExternalId
 	}
 
-	if durStr := os.Getenv(PROVIDER_ROLE_DURATION); durStr != "" {
+	k.roleDurationSeconds = opts.withRoleDurationSeconds
+	if durStr := os.Getenv(PROVIDER_ROLE_DURATION); durStr != "" && !opts.Options.WithDisallowEnvVars {
 		d, err := parseRoleDurationSeconds(durStr)
 		if err != nil {
 			return nil, err
 		}
 		k.roleDurationSeconds = d
-	} else {
-		k.roleDurationSeconds = opts.withRoleDurationSeconds
 	}
 
 	if k.client == nil {

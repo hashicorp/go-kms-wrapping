@@ -121,14 +121,14 @@ type OptionFunc func(*options) error
 type options struct {
 	*wrapping.Options
 
-	withRegion          string
-	withAccessKey       string
-	withSecretKey       string
-	withSessionToken    string
-	withRoleArn              string
-	withRoleSessionName      string
-	withRoleExternalId       string
-	withRoleDurationSeconds  uint64
+	withRegion              string
+	withAccessKey           string
+	withSecretKey           string
+	withSessionToken        string
+	withRoleArn             string
+	withRoleSessionName     string
+	withRoleExternalId      string
+	withRoleDurationSeconds uint64
 }
 
 func getDefaultOptions() options {
