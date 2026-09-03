@@ -182,7 +182,7 @@ func (s *Wrapper) SetAesGcmKeyBytes(key []byte) error {
 		return err
 	}
 
-	aead, err := cipher.NewGCM(aesCipher)
+	aead, err := cipher.NewGCMWithRandomNonce(aesCipher)
 	if err != nil {
 		return err
 	}
@@ -226,20 +226,29 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, err
 	}
 
-	if opts.WithRandomReader == nil {
-		opts.WithRandomReader = rand.Reader
+	var iv []byte
+	aead := s.aead
+
+	if opts.WithRandomReader != rand.Reader {
+		aesCipher, err := aes.NewCipher(s.keyBytes)
+		if err != nil {
+			return nil, err
+		}
+		aead, err = cipher.NewGCM(aesCipher)
+		if err != nil {
+			return nil, err
+		}
+		iv = make([]byte, 12)
+		n, err := opts.WithRandomReader.Read(iv)
+		if err != nil {
+			return nil, err
+		}
+		if n != 12 {
+			return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", 12, n)
+		}
 	}
 
-	iv := make([]byte, 12)
-	n, err := opts.WithRandomReader.Read(iv)
-	if err != nil {
-		return nil, err
-	}
-	if n != 12 {
-		return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", 12, n)
-	}
-
-	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
+	ciphertext := aead.Seal(nil, iv, plaintext, opts.WithAad)
 
 	return &wrapping.BlobInfo{
 		Ciphertext: append(iv, ciphertext...),
@@ -269,9 +278,7 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, err
 	}
 
-	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
-
-	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
+	plaintext, err := s.aead.Open(nil, nil, in.Ciphertext, opts.WithAad)
 	if err != nil {
 		return nil, err
 	}
