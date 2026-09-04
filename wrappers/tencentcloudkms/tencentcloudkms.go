@@ -15,16 +15,26 @@ import (
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
 	kms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/kms/v20190118"
+	sts "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sts/v20180813"
 )
 
 // These constants are TencentCloud accepted env vars
 const (
-	PROVIDER_SECRET_ID      = "TENCENTCLOUD_SECRET_ID"
-	PROVIDER_SECRET_KEY     = "TENCENTCLOUD_SECRET_KEY"
-	PROVIDER_SECURITY_TOKEN = "TENCENTCLOUD_SECURITY_TOKEN"
-	PROVIDER_REGION         = "TENCENTCLOUD_REGION"
-	PROVIDER_KMS_KEY_ID     = "TENCENTCLOUD_KMS_KEY_ID"
+	PROVIDER_SECRET_ID       = "TENCENTCLOUD_SECRET_ID"
+	PROVIDER_SECRET_KEY      = "TENCENTCLOUD_SECRET_KEY"
+	PROVIDER_SECURITY_TOKEN  = "TENCENTCLOUD_SECURITY_TOKEN"
+	PROVIDER_REGION          = "TENCENTCLOUD_REGION"
+	PROVIDER_KMS_KEY_ID      = "TENCENTCLOUD_KMS_KEY_ID"
+	PROVIDER_KMS_ENDPOINT    = "TENCENTCLOUD_KMS_ENDPOINT"
+	PROVIDER_ROLE_ARN        = "TENCENTCLOUD_ROLE_ARN"
+	PROVIDER_ROLE_SESSION_NM = "TENCENTCLOUD_ROLE_SESSION_NAME"
+	PROVIDER_ROLE_EXTERN_ID  = "TENCENTCLOUD_ROLE_EXTERNAL_ID"
+	PROVIDER_ROLE_DURATION   = "TENCENTCLOUD_ROLE_DURATION_SECONDS"
 )
+
+// defaultRoleSessionName is used when a role is assumed but no session name
+// was supplied by the caller.
+const defaultRoleSessionName = "go-kms-wrapping-session"
 
 const (
 	// TencentCloudKmsEnvelopeAesGcmEncrypt is when a data encryption key is generated and
@@ -40,6 +50,18 @@ type Wrapper struct {
 	secretKey    string
 	sessionToken string
 	region       string
+
+	// Optional override for the KMS service endpoint, e.g. to reach KMS through
+	// a VPC endpoint. It applies to the KMS client only, never to STS.
+	endpoint string
+
+	// Optional CAM role to assume. When roleArn is set, the accessKey/secretKey
+	// above are treated as the base credentials used to call STS AssumeRole, and
+	// the temporary credentials returned are what actually talk to KMS.
+	roleArn             string
+	roleSessionName     string
+	roleExternalId      string
+	roleDurationSeconds uint64
 
 	keyId        string
 	currentKeyId *atomic.Value
@@ -71,8 +93,13 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		return nil, err
 	}
 
+	// Note: when WithDisallowEnvVars is set (which is what Vault does, since it
+	// resolves env vars into the config map itself) we deliberately ignore the
+	// environment here. This matches the behaviour of the other cloud wrappers
+	// (see alicloudkms and awskms) and prevents env vars from silently
+	// overriding an explicitly supplied configuration.
 	switch {
-	case os.Getenv(PROVIDER_KMS_KEY_ID) != "":
+	case os.Getenv(PROVIDER_KMS_KEY_ID) != "" && !opts.Options.WithDisallowEnvVars:
 		k.keyId = os.Getenv(PROVIDER_KMS_KEY_ID)
 	case opts.WithKeyId != "":
 		k.keyId = opts.WithKeyId
@@ -81,14 +108,14 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_REGION) != "":
+	case os.Getenv(PROVIDER_REGION) != "" && !opts.Options.WithDisallowEnvVars:
 		k.region = os.Getenv(PROVIDER_REGION)
 	case opts.withRegion != "":
 		k.region = opts.withRegion
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_SECRET_ID) != "":
+	case os.Getenv(PROVIDER_SECRET_ID) != "" && !opts.Options.WithDisallowEnvVars:
 		k.accessKey = os.Getenv(PROVIDER_SECRET_ID)
 	case opts.withAccessKey != "":
 		k.accessKey = opts.withAccessKey
@@ -97,7 +124,7 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_SECRET_KEY) != "":
+	case os.Getenv(PROVIDER_SECRET_KEY) != "" && !opts.Options.WithDisallowEnvVars:
 		k.secretKey = os.Getenv(PROVIDER_SECRET_KEY)
 	case opts.withSecretKey != "":
 		k.secretKey = opts.withSecretKey
@@ -106,20 +133,66 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	switch {
-	case os.Getenv(PROVIDER_SECURITY_TOKEN) != "":
+	case os.Getenv(PROVIDER_SECURITY_TOKEN) != "" && !opts.Options.WithDisallowEnvVars:
 		k.sessionToken = os.Getenv(PROVIDER_SECURITY_TOKEN)
 	case opts.withSessionToken != "":
 		k.sessionToken = opts.withSessionToken
 	}
 
-	if k.client == nil {
-		cpf := profile.NewClientProfile()
-		cpf.HttpProfile.ReqMethod = "POST"
-		cpf.HttpProfile.ReqTimeout = 300
-		cpf.Language = "en-US"
+	switch {
+	case os.Getenv(PROVIDER_KMS_ENDPOINT) != "" && !opts.Options.WithDisallowEnvVars:
+		k.endpoint = os.Getenv(PROVIDER_KMS_ENDPOINT)
+	case opts.withEndpoint != "":
+		k.endpoint = opts.withEndpoint
+	}
 
+	switch {
+	case os.Getenv(PROVIDER_ROLE_ARN) != "" && !opts.Options.WithDisallowEnvVars:
+		k.roleArn = os.Getenv(PROVIDER_ROLE_ARN)
+	case opts.withRoleArn != "":
+		k.roleArn = opts.withRoleArn
+	}
+
+	switch {
+	case os.Getenv(PROVIDER_ROLE_SESSION_NM) != "" && !opts.Options.WithDisallowEnvVars:
+		k.roleSessionName = os.Getenv(PROVIDER_ROLE_SESSION_NM)
+	case opts.withRoleSessionName != "":
+		k.roleSessionName = opts.withRoleSessionName
+	}
+
+	switch {
+	case os.Getenv(PROVIDER_ROLE_EXTERN_ID) != "" && !opts.Options.WithDisallowEnvVars:
+		k.roleExternalId = os.Getenv(PROVIDER_ROLE_EXTERN_ID)
+	case opts.withRoleExternalId != "":
+		k.roleExternalId = opts.withRoleExternalId
+	}
+
+	k.roleDurationSeconds = opts.withRoleDurationSeconds
+	if durStr := os.Getenv(PROVIDER_ROLE_DURATION); durStr != "" && !opts.Options.WithDisallowEnvVars {
+		d, err := parseRoleDurationSeconds(durStr)
+		if err != nil {
+			return nil, err
+		}
+		k.roleDurationSeconds = d
+	}
+
+	if k.client == nil {
 		credential := common.NewTokenCredential(k.accessKey, k.secretKey, k.sessionToken)
-		client, err := kms.NewClient(credential, k.region, cpf)
+
+		// If a CAM role is configured, exchange the base credentials for
+		// temporary credentials via STS AssumeRole and use those for KMS. Note
+		// that STS gets its own client profile: any endpoint override applies
+		// to KMS only, and reusing the KMS profile here would send the STS
+		// request to the KMS endpoint.
+		if k.roleArn != "" {
+			assumed, err := k.assumeRole(credential, newClientProfile(""))
+			if err != nil {
+				return nil, err
+			}
+			credential = assumed
+		}
+
+		client, err := kms.NewClient(credential, k.region, newClientProfile(k.endpoint))
 		if err != nil {
 			return nil, fmt.Errorf("error initializing TencentCloud KMS client: %w", err)
 		}
@@ -143,8 +216,81 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	wrapConfig.Metadata = make(map[string]string)
 	wrapConfig.Metadata["region"] = k.region
 	wrapConfig.Metadata["kms_key_id"] = k.keyId
+	if k.endpoint != "" {
+		wrapConfig.Metadata["endpoint"] = k.endpoint
+	}
 
 	return wrapConfig, nil
+}
+
+// newClientProfile builds the client profile shared by the KMS and STS
+// clients. If endpoint is non-empty the resulting profile targets that
+// endpoint instead of the default service domain.
+func newClientProfile(endpoint string) *profile.ClientProfile {
+	cpf := profile.NewClientProfile()
+	cpf.HttpProfile.ReqMethod = "POST"
+	cpf.HttpProfile.ReqTimeout = 300
+	cpf.Language = "en-US"
+	if endpoint != "" {
+		cpf.HttpProfile.Endpoint = endpoint
+	}
+	return cpf
+}
+
+// buildAssumeRoleRequest assembles the STS AssumeRole request from the
+// wrapper's configuration. It is kept separate from assumeRole so that the
+// parameter assembly can be unit tested without any network access.
+func (k *Wrapper) buildAssumeRoleRequest() *sts.AssumeRoleRequest {
+	sessionName := k.roleSessionName
+	if sessionName == "" {
+		sessionName = defaultRoleSessionName
+	}
+
+	req := sts.NewAssumeRoleRequest()
+	req.RoleArn = common.StringPtr(k.roleArn)
+	req.RoleSessionName = common.StringPtr(sessionName)
+	if k.roleExternalId != "" {
+		req.ExternalId = common.StringPtr(k.roleExternalId)
+	}
+	if k.roleDurationSeconds != 0 {
+		req.DurationSeconds = common.Uint64Ptr(k.roleDurationSeconds)
+	}
+	return req
+}
+
+// assumeRole exchanges the configured base credentials for temporary
+// credentials by calling STS AssumeRole for k.roleArn. The returned credential
+// is what should be used to construct the KMS client.
+//
+// The base credentials (access_key/secret_key, or whatever was resolved from
+// the environment) only need permission to call sts:AssumeRole on the target
+// role; the KMS permissions live on the assumed role itself.
+func (k *Wrapper) assumeRole(baseCred common.CredentialIface, cpf *profile.ClientProfile) (*common.Credential, error) {
+	stsClient, err := sts.NewClient(baseCred, k.region, cpf)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing TencentCloud STS client: %w", err)
+	}
+
+	resp, err := stsClient.AssumeRole(k.buildAssumeRoleRequest())
+	if err != nil {
+		return nil, fmt.Errorf("error assuming TencentCloud role %q: %w", k.roleArn, err)
+	}
+	if resp.Response == nil || resp.Response.Credentials == nil {
+		return nil, errors.New("no credentials returned from TencentCloud STS AssumeRole")
+	}
+
+	creds := resp.Response.Credentials
+	if creds.TmpSecretId == nil || creds.TmpSecretKey == nil || creds.Token == nil {
+		return nil, errors.New("incomplete credentials returned from TencentCloud STS AssumeRole")
+	}
+
+	// Stash the temporary credentials on the wrapper so any later client
+	// re-creation is consistent with what was used here.
+	k.accessKey = *creds.TmpSecretId
+	k.secretKey = *creds.TmpSecretKey
+	k.sessionToken = *creds.Token
+
+	return common.NewTokenCredential(k.accessKey, k.secretKey, k.sessionToken), nil
 }
 
 // Type returns the type for this particular wrapper implementation
