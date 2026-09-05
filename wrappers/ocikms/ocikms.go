@@ -369,9 +369,13 @@ func (k *Wrapper) getOciKmsManagementClient() (*keymanagement.KmsManagementClien
 
 // Request metadata includes retry policy
 func (k *Wrapper) getRequestMetadata() common.RequestMetadata {
-	// Only retry for 5xx errors
+	// Only retry for 5xx errors. Response may be nil when auth fails before HTTP.
 	retryOn5xxFunc := func(r common.OCIOperationResponse) bool {
-		return r.Error != nil && r.Response.HTTPResponse().StatusCode >= 500
+		if r.Error == nil || r.Response == nil {
+			return false
+		}
+		httpResp := r.Response.HTTPResponse()
+		return httpResp != nil && httpResp.StatusCode >= 500
 	}
 	return getRequestMetadataWithCustomizedRetryPolicy(retryOn5xxFunc)
 }
