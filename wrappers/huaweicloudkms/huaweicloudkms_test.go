@@ -94,6 +94,19 @@ func TestHuaweiCloudKmsWrapper_Lifecycle(t *testing.T) {
 	}
 }
 
+func TestIsProjectId(t *testing.T) {
+	for in, want := range map[string]bool{
+		"":                                 false,
+		"ap-southeast-3":                   false,
+		"0d0466b0e7274d9cb35df84bb474a37f": true,
+		"0d0466b0e7274d9cb35df84bb474a37g": false,
+	} {
+		if got := isProjectId(in); got != want {
+			t.Errorf("isProjectId(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
+
 func TestHuaweiCloudKmsWrapper_SetConfigWithoutClient(t *testing.T) {
 	// Without an injected client SetConfig must build one, so credentials
 	// and region become required and an unknown region must fail cleanly.
@@ -104,6 +117,16 @@ func TestHuaweiCloudKmsWrapper_SetConfigWithoutClient(t *testing.T) {
 	}))
 	if err == nil || !strings.Contains(err.Error(), "'region' not found") {
 		t.Fatalf("expected missing region error, got %v", err)
+	}
+
+	// No AK/SK falls back to the SDK provider chain, which must fail here
+	// (no env, no profile, no metadata service) rather than panic.
+	t.Setenv("HOME", t.TempDir())
+	_, err = NewWrapper().SetConfig(context.Background(), wrapping.WithConfigMap(map[string]string{
+		"region": "tr-west-1",
+	}))
+	if err == nil || !strings.Contains(err.Error(), "credentials") {
+		t.Fatalf("expected credential chain error, got %v", err)
 	}
 
 	_, err = NewWrapper().SetConfig(context.Background(), wrapping.WithConfigMap(map[string]string{

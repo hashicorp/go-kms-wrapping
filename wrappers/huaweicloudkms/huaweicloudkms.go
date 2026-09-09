@@ -9,10 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync/atomic"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/provider"
 	coreregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
 	kms "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/kms/v2"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/kms/v2/model"
@@ -90,14 +93,11 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 		// Project ID is optional: the SDK resolves it via IAM when empty.
 		k.project = firstNonEmpty(env("HUAWEICLOUD_PROJECT"), opts.withProject)
 
-		accessKey, err := getConfig("access_key", env("HUAWEICLOUD_ACCESS_KEY"), opts.withAccessKey)
-		if err != nil {
-			return nil, err
-		}
-		secretKey, err := getConfig("secret_key", env("HUAWEICLOUD_SECRET_KEY"), opts.withSecretKey)
-		if err != nil {
-			return nil, err
-		}
+		// AK/SK are optional: without them the SDK's default provider chain is
+		// used (HUAWEICLOUD_SDK_AK/SK env, ~/.huaweicloud/credentials profile,
+		// ECS agency metadata, CCE pod identity).
+		accessKey := firstNonEmpty(env("HUAWEICLOUD_ACCESS_KEY"), opts.withAccessKey)
+		secretKey := firstNonEmpty(env("HUAWEICLOUD_SECRET_KEY"), opts.withSecretKey)
 		identityEndpoint := firstNonEmpty(env("HUAWEICLOUD_IDENTITY_ENDPOINT"), opts.withIdentityEndpoint)
 		endpoint := firstNonEmpty(env("HUAWEICLOUD_KMS_ENDPOINT"), opts.withEndpoint)
 
@@ -127,8 +127,10 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	wrapConfig := new(wrapping.WrapperConfig)
 	wrapConfig.Metadata = make(map[string]string)
 	wrapConfig.Metadata["region"] = k.region
-	wrapConfig.Metadata["project"] = k.project
 	wrapConfig.Metadata["kms_key_id"] = k.keyId
+	if k.project != "" {
+		wrapConfig.Metadata["project"] = k.project
+	}
 
 	return wrapConfig, nil
 }
@@ -271,6 +273,18 @@ func (k *Wrapper) kmsDecrypt(ciphertext []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
+func isProjectId(s string) bool {
+	if len(s) != 32 {
+		return false
+	}
+	for _, c := range s {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return false
+		}
+	}
+	return true
+}
+
 func getConfig(name string, values ...string) (string, error) {
 	if v := firstNonEmpty(values...); v != "" {
 		return v, nil
@@ -288,14 +302,23 @@ func firstNonEmpty(values ...string) string {
 }
 
 func buildKmsClient(regionId, projectId, accessKey, secretKey, identityEndpoint, endpoint string) (*kms.KmsClient, error) {
-	credBuilder := basic.NewCredentialsBuilder().WithAk(accessKey).WithSk(secretKey)
-	if projectId != "" {
-		credBuilder = credBuilder.WithProjectId(projectId)
+	var cred auth.ICredential
+	var err error
+	if accessKey == "" && secretKey == "" {
+		cred, err = provider.BasicCredentialProviderChain().GetCredentials()
+	} else {
+		credBuilder := basic.NewCredentialsBuilder().WithAk(accessKey).WithSk(secretKey)
+		// The old golangsdk wrapper took a project *name* here (usually equal to
+		// the region). SDK v3 wants the project ID and can look it up from IAM
+		// by region, so only pass values that actually look like an ID.
+		if isProjectId(projectId) {
+			credBuilder = credBuilder.WithProjectId(projectId)
+		}
+		if identityEndpoint != "" {
+			credBuilder = credBuilder.WithIamEndpointOverride(identityEndpoint)
+		}
+		cred, err = credBuilder.SafeBuild()
 	}
-	if identityEndpoint != "" {
-		credBuilder = credBuilder.WithIamEndpointOverride(identityEndpoint)
-	}
-	cred, err := credBuilder.SafeBuild()
 	if err != nil {
 		return nil, fmt.Errorf("error building HuaweiCloud credentials: %w", err)
 	}
