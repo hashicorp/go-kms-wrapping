@@ -189,6 +189,31 @@ func TestSetConfig(t *testing.T) {
 		trimmedActualKeyId, _ := strings.CutPrefix(keyArn.Resource, "key/")
 		assert.Equal(t, expectedKeyId, trimmedActualKeyId)
 	})
+
+	t.Run("Success - role external ID", func(t *testing.T) {
+		// Setup environment values to ignore for the following values
+		wrapperWithMock := NewWrapper()
+		wrapperWithMock.client = &mockClient{
+			keyId: awsTestKeyId,
+		}
+
+		config := map[string]string{
+			"kms_key_id":       "a-key-key",
+			"access_key":       "a-access-key",
+			"secret_key":       "a-secret-key",
+			"role_arn":         "arn:aws:iam::1234567890:role/test-role",
+			"role_external_id": "a-role-external-id",
+		}
+
+		_, err := wrapperWithMock.SetConfig(context.Background(), wrapping.WithConfigMap(config))
+		require.NoError(t, err)
+
+		require.Equal(t, config["access_key"], wrapperWithMock.accessKey)
+		require.Equal(t, config["secret_key"], wrapperWithMock.secretKey)
+		require.Equal(t, config["kms_key_id"], wrapperWithMock.keyId)
+		require.Equal(t, config["role_arn"], wrapperWithMock.roleArn)
+		require.Equal(t, config["role_external_id"], wrapperWithMock.roleExternalId)
+	})
 }
 
 func TestEncryptAndDecrypt(t *testing.T) {

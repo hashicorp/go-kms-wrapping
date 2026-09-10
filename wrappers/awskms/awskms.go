@@ -47,6 +47,7 @@ type Wrapper struct {
 	sharedCredsFilename  string
 	sharedCredsProfile   string
 	roleArn              string
+	roleExternalId       string
 	roleSessionName      string
 	webIdentityTokenFile string
 	keyNotRequired       bool
@@ -125,6 +126,7 @@ func (k *Wrapper) SetConfig(ctx context.Context, opt ...wrapping.Option) (*wrapp
 	k.webIdentityTokenFile = opts.withWebIdentityTokenFile
 	k.roleSessionName = opts.withRoleSessionName
 	k.roleArn = opts.withRoleArn
+	k.roleExternalId = opts.withRoleExternalId
 
 	if !opts.withDisallowEnvVars {
 		ep := os.Getenv(EnvAwsKmsEndpoint)
@@ -296,7 +298,7 @@ func (k *Wrapper) Decrypt(ctx context.Context, in *wrapping.BlobInfo, opt ...wra
 	switch in.KeyInfo.Mechanism {
 	case AwsKmsEncrypt:
 		input := &kms.DecryptInput{
-			KeyId:     &k.keyId,
+			KeyId:          &k.keyId,
 			CiphertextBlob: in.Ciphertext,
 		}
 		if opts.WithRsaEncryptionPadding != wrapping.RSAEncryptionPadding_Unknown_RSAEncryptionPadding {
@@ -375,6 +377,7 @@ func (k *Wrapper) GetAwsKmsClientInRegion(ctx context.Context, region string) (*
 		Filename:             k.sharedCredsFilename,
 		Profile:              k.sharedCredsProfile,
 		RoleARN:              k.roleArn,
+		RoleExternalId:       k.roleExternalId,
 		RoleSessionName:      k.roleSessionName,
 		WebIdentityTokenFile: k.webIdentityTokenFile,
 		Region:               region,

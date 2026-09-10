@@ -81,6 +81,8 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withRoleSessionName = v
 			case "role_arn":
 				opts.withRoleArn = v
+			case "role_external_id":
+				opts.withRoleExternalId = v
 			}
 		}
 	}
@@ -121,6 +123,7 @@ type options struct {
 	withWebIdentityTokenFile string
 	withRoleSessionName      string
 	withRoleArn              string
+	withRoleExternalId       string
 
 	withLogger hclog.Logger
 }
@@ -239,11 +242,21 @@ func WithRoleSessionName(with string) wrapping.Option {
 	}
 }
 
-// WithRoleArn provides a way to chose the role ARN
+// WithRoleArn provides a way to choose the role ARN
 func WithRoleArn(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withRoleArn = with
+			return nil
+		})
+	}
+}
+
+// WithRoleArn provides a way to choose the role external ID
+func WithRoleExternalId(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withRoleExternalId = with
 			return nil
 		})
 	}
