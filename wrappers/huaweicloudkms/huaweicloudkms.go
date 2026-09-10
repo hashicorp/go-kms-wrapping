@@ -5,23 +5,27 @@ package huaweicloudkms
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"sync/atomic"
 
-	"github.com/hashicorp/go-cleanhttp"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
-	"github.com/huaweicloud/golangsdk"
-	huaweisdk "github.com/huaweicloud/golangsdk/openstack"
-	kmsKeys "github.com/huaweicloud/golangsdk/openstack/kms/v1/keys"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/provider"
+	coreregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/region"
+	kms "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/kms/v2"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/kms/v2/model"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/kms/v2/region"
 )
 
 // These constants contain the accepted env vars; the Vault one is for backwards compat
 const (
-	EnvHuaweiCloudKmsWrapperKeyId = "HUAWEICLOUDKMS_WRAPPER_KEY_ID"
+	EnvHuaweiCloudKmsWrapperKeyId   = "HUAWEICLOUDKMS_WRAPPER_KEY_ID"
+	EnvVaultHuaweiCloudKmsSealKeyId = "VAULT_HUAWEICLOUDKMS_SEAL_KEY_ID"
 )
 
 const (
@@ -35,6 +39,8 @@ const (
 // Wrapper is a Wrapper that uses HuaweiCloud's KMS
 type Wrapper struct {
 	client       kmsClient
+	region       string
+	project      string
 	keyId        string
 	currentKeyId *atomic.Value
 }
@@ -57,25 +63,45 @@ func NewWrapper() *Wrapper {
 // Order of precedence HuaweiCloud values:
 // * Environment variable
 // * Value from Vault configuration file
-// * Instance metadata role (access key and secret key)
 func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrapping.WrapperConfig, error) {
 	opts, err := getOpts(opt...)
 	if err != nil {
 		return nil, err
 	}
 
+	env := func(name string) string {
+		if opts.WithDisallowEnvVars {
+			return ""
+		}
+		return os.Getenv(name)
+	}
+
 	// Check and set KeyId
-	keyId, err := getConfig(
-		"kms_key_id",
-		os.Getenv(EnvHuaweiCloudKmsWrapperKeyId),
+	k.keyId, err = getConfig("kms_key_id",
+		env(EnvHuaweiCloudKmsWrapperKeyId),
+		env(EnvVaultHuaweiCloudKmsSealKeyId),
 		opts.WithKeyId)
 	if err != nil {
 		return nil, err
 	}
-	k.keyId = keyId
 
 	if k.client == nil {
-		client, err := buildKMSClient(opts)
+		k.region, err = getConfig("region", env("HUAWEICLOUD_REGION"), opts.withRegion)
+		if err != nil {
+			return nil, err
+		}
+		// Project ID is optional: the SDK resolves it via IAM when empty.
+		k.project = firstNonEmpty(env("HUAWEICLOUD_PROJECT"), opts.withProject)
+
+		// AK/SK are optional: without them the SDK's default provider chain is
+		// used (HUAWEICLOUD_SDK_AK/SK env, ~/.huaweicloud/credentials profile,
+		// ECS agency metadata, CCE pod identity).
+		accessKey := firstNonEmpty(env("HUAWEICLOUD_ACCESS_KEY"), opts.withAccessKey)
+		secretKey := firstNonEmpty(env("HUAWEICLOUD_SECRET_KEY"), opts.withSecretKey)
+		identityEndpoint := firstNonEmpty(env("HUAWEICLOUD_IDENTITY_ENDPOINT"), opts.withIdentityEndpoint)
+		endpoint := firstNonEmpty(env("HUAWEICLOUD_KMS_ENDPOINT"), opts.withEndpoint)
+
+		client, err := buildKmsClient(k.region, k.project, accessKey, secretKey, identityEndpoint, endpoint)
 		if err != nil {
 			return nil, err
 		}
@@ -83,21 +109,28 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 	}
 
 	// Test the client connection using provided key ID
-	keyInfo, err := k.client.describeKey(k.keyId)
+	keyInfo, err := k.client.ListKeyDetail(&model.ListKeyDetailRequest{
+		Body: &model.OperateKeyRequestBody{KeyId: k.keyId},
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error fetching HuaweiCloud KMS key information: %w", err)
+	}
+	if keyInfo == nil || keyInfo.KeyInfo == nil || keyInfo.KeyInfo.KeyId == nil || *keyInfo.KeyInfo.KeyId == "" {
+		return nil, errors.New("no key information returned")
 	}
 
 	// Store the current key id. If using a key alias, this will point to the actual
 	// unique key that that was used for this encrypt operation.
-	k.currentKeyId.Store(keyInfo.KeyID)
+	k.currentKeyId.Store(*keyInfo.KeyInfo.KeyId)
 
 	// Map that holds non-sensitive configuration info
 	wrapConfig := new(wrapping.WrapperConfig)
 	wrapConfig.Metadata = make(map[string]string)
-	wrapConfig.Metadata["region"] = k.client.getRegion()
-	wrapConfig.Metadata["project"] = k.client.getProject()
+	wrapConfig.Metadata["region"] = k.region
 	wrapConfig.Metadata["kms_key_id"] = k.keyId
+	if k.project != "" {
+		wrapConfig.Metadata["project"] = k.project
+	}
 
 	return wrapConfig, nil
 }
@@ -125,50 +158,37 @@ func (k *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, err
 	}
 
-	var ret *wrapping.BlobInfo
 	if opts.WithoutEnvelope {
-		output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(plaintext))
+		keyId, ciphertext, err := k.kmsEncrypt(plaintext)
 		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
+			return nil, err
 		}
-
-		// Store the current key id.
-		keyID := output.KeyId
-		k.currentKeyId.Store(keyID)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: []byte(output.Ciphertext),
+		return &wrapping.BlobInfo{
+			Ciphertext: ciphertext,
 			KeyInfo: &wrapping.KeyInfo{
 				Mechanism: HuaweiCloudKmsEncrypt,
-				KeyId:     keyID,
+				KeyId:     keyId,
 			},
-		}
-	} else {
-		env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
-		if err != nil {
-			return nil, fmt.Errorf("error wrapping data: %w", err)
-		}
-
-		output, err := k.client.encrypt(k.keyId, base64.StdEncoding.EncodeToString(env.Key))
-		if err != nil {
-			return nil, fmt.Errorf("error encrypting data: %w", err)
-		}
-
-		// Store the current key id.
-		keyID := output.KeyId
-		k.currentKeyId.Store(keyID)
-
-		ret = &wrapping.BlobInfo{
-			Ciphertext: env.Ciphertext,
-			Iv:         env.Iv,
-			KeyInfo: &wrapping.KeyInfo{
-				Mechanism:  HuaweiCloudKmsEnvelopeAesGcmEncrypt,
-				KeyId:      keyID,
-				WrappedKey: []byte(output.Ciphertext),
-			},
-		}
+		}, nil
 	}
-	return ret, nil
+
+	env, err := wrapping.EnvelopeEncrypt(plaintext, opt...)
+	if err != nil {
+		return nil, fmt.Errorf("error wrapping data: %w", err)
+	}
+	keyId, wrappedKey, err := k.kmsEncrypt(env.Key)
+	if err != nil {
+		return nil, err
+	}
+	return &wrapping.BlobInfo{
+		Ciphertext: env.Ciphertext,
+		Iv:         env.Iv,
+		KeyInfo: &wrapping.KeyInfo{
+			Mechanism:  HuaweiCloudKmsEnvelopeAesGcmEncrypt,
+			KeyId:      keyId,
+			WrappedKey: wrappedKey,
+		},
+	}, nil
 }
 
 // Decrypt is used to decrypt the ciphertext. This should be called after Init.
@@ -181,197 +201,148 @@ func (k *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, errors.New("key info is nil")
 	}
 
-	var plaintext []byte
 	switch in.KeyInfo.Mechanism {
 	case HuaweiCloudKmsEncrypt:
-		plainText, err := k.client.decrypt(string(in.Ciphertext))
+		plaintext, err := k.kmsDecrypt(in.Ciphertext)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}
-		plaintext, err = base64.StdEncoding.DecodeString(plainText)
-		if err != nil {
-			return nil, err
-		}
+		return plaintext, nil
 
 	case HuaweiCloudKmsEnvelopeAesGcmEncrypt:
-		// KeyId is not passed to this call because HuaweiCloud handles this
-		// internally based on the metadata stored with the encrypted data
-		envelopeKeyStr, err := k.client.decrypt(string(in.KeyInfo.WrappedKey))
+		envelopeKey, err := k.kmsDecrypt(in.KeyInfo.WrappedKey)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data encryption key: %w", err)
 		}
-
-		envelopeKey, err := base64.StdEncoding.DecodeString(envelopeKeyStr)
-		if err != nil {
-			return nil, err
-		}
-
-		envInfo := &wrapping.EnvelopeInfo{
+		plaintext, err := wrapping.EnvelopeDecrypt(&wrapping.EnvelopeInfo{
 			Key:        envelopeKey,
 			Iv:         in.Iv,
 			Ciphertext: in.Ciphertext,
-		}
-		plaintext, err = wrapping.EnvelopeDecrypt(envInfo, opt...)
+		}, opt...)
 		if err != nil {
 			return nil, fmt.Errorf("error decrypting data: %w", err)
 		}
+		return plaintext, nil
 
 	default:
 		return nil, fmt.Errorf("invalid mechanism: %d", in.KeyInfo.Mechanism)
 	}
+}
 
+// kmsEncrypt encrypts plaintext with the configured CMK. KMS only accepts
+// text, so the bytes are base64 encoded first. Returns the key id used and
+// the ciphertext as KMS returns it.
+func (k *Wrapper) kmsEncrypt(plaintext []byte) (string, []byte, error) {
+	out, err := k.client.EncryptData(&model.EncryptDataRequest{
+		Body: &model.EncryptDataRequestBody{
+			KeyId:     k.keyId,
+			PlainText: base64.StdEncoding.EncodeToString(plaintext),
+		},
+	})
+	if err != nil {
+		return "", nil, fmt.Errorf("error encrypting data: %w", err)
+	}
+	if out == nil || out.CipherText == nil {
+		return "", nil, errors.New("no ciphertext returned")
+	}
+
+	keyId := k.keyId
+	if out.KeyId != nil && *out.KeyId != "" {
+		keyId = *out.KeyId
+	}
+	k.currentKeyId.Store(keyId)
+	return keyId, []byte(*out.CipherText), nil
+}
+
+// kmsDecrypt is the inverse of kmsEncrypt. KeyId is not passed because
+// HuaweiCloud resolves it from the ciphertext metadata.
+func (k *Wrapper) kmsDecrypt(ciphertext []byte) ([]byte, error) {
+	out, err := k.client.DecryptData(&model.DecryptDataRequest{
+		Body: &model.DecryptDataRequestBody{CipherText: string(ciphertext)},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if out == nil || out.PlainText == nil {
+		return nil, errors.New("no plaintext returned")
+	}
+	plaintext, err := base64.StdEncoding.DecodeString(*out.PlainText)
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding plaintext: %w", err)
+	}
 	return plaintext, nil
 }
 
-func getConfig(name string, values ...string) (string, error) {
-	for _, v := range values {
-		if "" != v {
-			return v, nil
+func isProjectId(s string) bool {
+	if len(s) != 32 {
+		return false
+	}
+	for _, c := range s {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return false
 		}
 	}
+	return true
+}
 
+func getConfig(name string, values ...string) (string, error) {
+	if v := firstNonEmpty(values...); v != "" {
+		return v, nil
+	}
 	return "", fmt.Errorf("'%s' not found for HuaweiCloud kms wrapper configuration", name)
 }
 
-func buildKMSClient(opts *options) (kmsClient, error) {
-	// Check and set region.
-	region, err := getConfig("region", os.Getenv("HUAWEICLOUD_REGION"), opts.withRegion)
-	if err != nil {
-		return nil, err
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
 	}
-
-	// Check and set project.
-	project, err := getConfig("project", os.Getenv("HUAWEICLOUD_PROJECT"), opts.withProject)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check and set access key.
-	accessKey, err := getConfig("access_key", os.Getenv("HUAWEICLOUD_ACCESS_KEY"), opts.withAccessKey)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check and set project.
-	secretKey, err := getConfig("secret_key", os.Getenv("HUAWEICLOUD_SECRET_KEY"), opts.withSecretKey)
-	if err != nil {
-		return nil, err
-	}
-
-	// Check and set endpoint.
-	endpoint, _ := getConfig(
-		"identity_endpoint",
-		os.Getenv("HUAWEICLOUD_IDENTITY_ENDPOINT"),
-		opts.withIdentityEndpoint,
-	)
-
-	option := golangsdk.AKSKAuthOptions{
-		Region:           region,
-		ProjectName:      project,
-		AccessKey:        accessKey,
-		SecretKey:        secretKey,
-		IdentityEndpoint: endpoint,
-	}
-
-	client, err := buildServiceClient(option)
-	if err != nil {
-		return nil, err
-	}
-
-	return &kmsClientImpl{region: region, project: project, client: client}, nil
+	return ""
 }
 
-func buildServiceClient(option golangsdk.AKSKAuthOptions) (*golangsdk.ServiceClient, error) {
-	client, err := huaweisdk.NewClient(option.IdentityEndpoint)
+func buildKmsClient(regionId, projectId, accessKey, secretKey, identityEndpoint, endpoint string) (*kms.KmsClient, error) {
+	var cred auth.ICredential
+	var err error
+	if accessKey == "" && secretKey == "" {
+		cred, err = provider.BasicCredentialProviderChain().GetCredentials()
+	} else {
+		credBuilder := basic.NewCredentialsBuilder().WithAk(accessKey).WithSk(secretKey)
+		// The old golangsdk wrapper took a project *name* here (usually equal to
+		// the region). SDK v3 wants the project ID and can look it up from IAM
+		// by region, so only pass values that actually look like an ID.
+		if isProjectId(projectId) {
+			credBuilder = credBuilder.WithProjectId(projectId)
+		}
+		if identityEndpoint != "" {
+			credBuilder = credBuilder.WithIamEndpointOverride(identityEndpoint)
+		}
+		cred, err = credBuilder.SafeBuild()
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error building HuaweiCloud credentials: %w", err)
 	}
 
-	transport := cleanhttp.DefaultTransport()
-	transport.TLSClientConfig = &tls.Config{}
-	client.HTTPClient.Transport = transport
-
-	err = huaweisdk.Authenticate(client, option)
-	if err != nil {
-		return nil, err
+	// An explicit endpoint lets unlisted regions work without an SDK upgrade.
+	var reg *coreregion.Region
+	if endpoint != "" {
+		reg = coreregion.NewRegion(regionId, endpoint)
+	} else if reg, err = region.SafeValueOf(regionId); err != nil {
+		return nil, fmt.Errorf("error resolving HuaweiCloud KMS region %q: %w", regionId, err)
 	}
 
-	return huaweisdk.NewKMSV1(client, golangsdk.EndpointOpts{
-		Region:       option.Region,
-		Availability: golangsdk.AvailabilityPublic,
-	})
-}
-
-type encryptResponse struct {
-	KeyId      string `json:"key_id"`
-	Ciphertext string `json:"cipher_text"`
+	hcClient, err := kms.KmsClientBuilder().
+		WithRegion(reg).
+		WithCredential(cred).
+		SafeBuild()
+	if err != nil {
+		return nil, fmt.Errorf("error building HuaweiCloud KMS client: %w", err)
+	}
+	return kms.NewKmsClient(hcClient), nil
 }
 
 type kmsClient interface {
-	getRegion() string
-	getProject() string
-	describeKey(keyID string) (*kmsKeys.Key, error)
-	encrypt(keyID, plainText string) (encryptResponse, error)
-	decrypt(cipherText string) (string, error)
-}
-
-type kmsClientImpl struct {
-	region  string
-	project string
-	client  *golangsdk.ServiceClient
-}
-
-func (c *kmsClientImpl) getRegion() string {
-	return c.region
-}
-
-func (c *kmsClientImpl) getProject() string {
-	return c.project
-}
-
-func (c *kmsClientImpl) describeKey(keyID string) (*kmsKeys.Key, error) {
-	return kmsKeys.Get(c.client, keyID).ExtractKeyInfo()
-}
-
-func (c *kmsClientImpl) encrypt(keyID, plainText string) (encryptResponse, error) {
-	url := c.client.ServiceURL(c.client.ProjectID, "kms", "encrypt-data")
-	r := golangsdk.Result{}
-	_, r.Err = c.client.Post(
-		url,
-		&map[string]interface{}{"key_id": keyID, "plain_text": plainText},
-		&r.Body,
-		&golangsdk.RequestOpts{
-			OkCodes:     []int{200},
-			MoreHeaders: map[string]string{"Content-Type": "application/json"},
-		})
-
-	resp := encryptResponse{}
-	err := r.ExtractInto(&resp)
-	if err != nil {
-		return resp, fmt.Errorf("error encrypting data: %s", err)
-	}
-	return resp, nil
-}
-
-func (c *kmsClientImpl) decrypt(cipherText string) (string, error) {
-	url := c.client.ServiceURL(c.client.ProjectID, "kms", "decrypt-data")
-	r := golangsdk.Result{}
-	_, r.Err = c.client.Post(
-		url,
-		&map[string]interface{}{"cipher_text": cipherText},
-		&r.Body,
-		&golangsdk.RequestOpts{
-			OkCodes:     []int{200},
-			MoreHeaders: map[string]string{"Content-Type": "application/json"},
-		})
-
-	var resp struct {
-		PlainText string `json:"plain_text"`
-	}
-	err := r.ExtractInto(&resp)
-	if err != nil {
-		return "", fmt.Errorf("error decrypting data: %s", err)
-	}
-
-	return resp.PlainText, nil
+	ListKeyDetail(request *model.ListKeyDetailRequest) (*model.ListKeyDetailResponse, error)
+	EncryptData(request *model.EncryptDataRequest) (*model.EncryptDataResponse, error)
+	DecryptData(request *model.DecryptDataRequest) (*model.DecryptDataResponse, error)
 }

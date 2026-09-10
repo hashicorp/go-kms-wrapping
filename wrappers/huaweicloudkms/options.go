@@ -56,6 +56,8 @@ func getOpts(opt ...wrapping.Option) (*options, error) {
 				opts.withSecretKey = v
 			case "identity_endpoint":
 				opts.withIdentityEndpoint = v
+			case "endpoint":
+				opts.withEndpoint = v
 			}
 		}
 	}
@@ -89,12 +91,11 @@ type options struct {
 	withAccessKey        string
 	withSecretKey        string
 	withIdentityEndpoint string
+	withEndpoint         string
 }
 
 func getDefaultOptions() options {
-	return options{
-		withIdentityEndpoint: "https://iam.myhwclouds.com:443/v3",
-	}
+	return options{}
 }
 
 // WithRegion provides a way to chose the region
@@ -107,7 +108,8 @@ func WithRegion(with string) wrapping.Option {
 	}
 }
 
-// WithProject provides a way to chose the project
+// WithProject provides a way to chose the project ID. Optional: the SDK
+// looks it up from IAM for the region when unset.
 func WithProject(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
@@ -132,6 +134,17 @@ func WithSecretKey(with string) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {
 			o.withSecretKey = with
+			return nil
+		})
+	}
+}
+
+// WithEndpoint provides a way to override the KMS endpoint, e.g. for a
+// region the SDK does not list yet
+func WithEndpoint(with string) wrapping.Option {
+	return func() interface{} {
+		return OptionFunc(func(o *options) error {
+			o.withEndpoint = with
 			return nil
 		})
 	}
