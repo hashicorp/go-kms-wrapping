@@ -5,6 +5,7 @@ package wrapping
 
 import (
 	"errors"
+
 	"github.com/hashicorp/go-secure-stdlib/parseutil"
 )
 
@@ -106,7 +107,7 @@ func WithConfigMap(with map[string]string) Option {
 	}
 }
 
-// WithIV provides
+// WithIV provides a 12-byte initialization vector for an operation
 func WithIV(with []byte) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {

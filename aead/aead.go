@@ -269,6 +269,9 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, err
 	}
 
+	if len(in.Ciphertext) < 12 {
+		return nil, fmt.Errorf("invalid ciphertext length %d, must be at least 12 bytes", len(in.Ciphertext))
+	}
 	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
 
 	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
