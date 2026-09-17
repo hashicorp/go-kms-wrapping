@@ -230,16 +230,39 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		opts.WithRandomReader = rand.Reader
 	}
 
-	iv := make([]byte, 12)
-	n, err := opts.WithRandomReader.Read(iv)
-	if err != nil {
-		return nil, err
+	// AEADs with NonceSize() == 0 (e.g. cipher.NewGCMWithRandomNonce) manage
+	// the nonce internally; passing a non-nil slice causes a panic. For all
+	// other AEADs we generate an explicit nonce and prepend it to the output,
+	// unless the caller supplied one via WithIV.
+	var ciphertext []byte
+	var iv []byte
+	ns := s.aead.NonceSize()
+	switch {
+	case ns == 0 && len(opts.WithIv) > 0:
+		// AEAD manages its own nonce; a caller-supplied IV is contradictory.
+		return nil, fmt.Errorf("AEAD manages its own nonce internally, WithIV must not be set")
+	case ns == 0:
+		// AEAD generates and prepends the nonce itself (e.g. NewGCMWithRandomNonce).
+		ciphertext = s.aead.Seal(nil, nil, plaintext, opts.WithAad)
+	case len(opts.WithIv) > 0:
+		// Caller supplied an explicit nonce; validate it matches the AEAD's required size.
+		if len(opts.WithIv) != ns {
+			return nil, fmt.Errorf("invalid IV length %d, AEAD requires %d bytes", len(opts.WithIv), ns)
+		}
+		iv = opts.WithIv
+		ciphertext = s.aead.Seal(nil, iv, plaintext, opts.WithAad)
+	default:
+		// No IV supplied; generate a random nonce.
+		iv = make([]byte, ns)
+		n, err := opts.WithRandomReader.Read(iv)
+		if err != nil {
+			return nil, err
+		}
+		if n != ns {
+			return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", ns, n)
+		}
+		ciphertext = s.aead.Seal(nil, iv, plaintext, opts.WithAad)
 	}
-	if n != 12 {
-		return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", 12, n)
-	}
-
-	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
 
 	return &wrapping.BlobInfo{
 		Ciphertext: append(iv, ciphertext...),
@@ -269,10 +292,19 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, err
 	}
 
-	if len(in.Ciphertext) < 12 {
-		return nil, fmt.Errorf("invalid ciphertext length %d, must be at least 12 bytes", len(in.Ciphertext))
+	// AEADs with NonceSize() == 0 manage the nonce internally; pass nil and
+	// the full ciphertext. For explicit-nonce AEADs, slice the prepended nonce
+	// off the front.
+	var iv, ciphertext []byte
+	ns := s.aead.NonceSize()
+	if ns == 0 {
+		ciphertext = in.Ciphertext
+	} else {
+		if len(in.Ciphertext) < ns {
+			return nil, fmt.Errorf("invalid ciphertext length %d, must be at least %d bytes", len(in.Ciphertext), ns)
+		}
+		iv, ciphertext = in.Ciphertext[:ns], in.Ciphertext[ns:]
 	}
-	iv, ciphertext := in.Ciphertext[:12], in.Ciphertext[12:]
 
 	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
 	if err != nil {

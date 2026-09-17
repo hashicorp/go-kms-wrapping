@@ -5,6 +5,8 @@ package aead
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"testing"
@@ -134,4 +136,123 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	subDecVal, err = subBad.Decrypt(context.Background(), subEncBlob)
 	require.Error(err)
 	require.Nil(subDecVal)
+}
+
+// newTestKey generates a random 32-byte AES key for use in tests.
+func newTestKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	return key
+}
+
+// newTestWrapper returns a Wrapper configured with a fresh random key.
+func newTestWrapper(t *testing.T) *Wrapper {
+	t.Helper()
+	w := NewWrapper()
+	require.NoError(t, w.SetAesGcmKeyBytes(newTestKey(t)))
+	return w
+}
+
+// Test_Encrypt_WithIV covers all four nonce-handling cases in Encrypt.
+func Test_Encrypt_WithIV(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("explicit nonce via WithIV", func(t *testing.T) {
+		w := newTestWrapper(t)
+		iv := make([]byte, 12)
+		_, err := rand.Read(iv)
+		require.NoError(t, err)
+
+		blob, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV(iv))
+		require.NoError(t, err)
+		// The prepended nonce in the blob should match what we supplied.
+		require.Equal(t, iv, blob.Ciphertext[:12])
+
+		plain, err := w.Decrypt(ctx, blob)
+		require.NoError(t, err)
+		require.Equal(t, "hello", string(plain))
+	})
+
+	t.Run("WithIV wrong length returns error", func(t *testing.T) {
+		w := newTestWrapper(t)
+		_, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV([]byte("short")))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid IV length")
+	})
+
+	t.Run("random nonce generated when WithIV not set", func(t *testing.T) {
+		w := newTestWrapper(t)
+		blob, err := w.Encrypt(ctx, []byte("hello"))
+		require.NoError(t, err)
+		// Ciphertext must be longer than the 12-byte nonce prefix.
+		require.Greater(t, len(blob.Ciphertext), 12)
+
+		plain, err := w.Decrypt(ctx, blob)
+		require.NoError(t, err)
+		require.Equal(t, "hello", string(plain))
+	})
+}
+
+// Test_SetAead_RandomNonce covers the NonceSize()==0 path (cipher.NewGCMWithRandomNonce).
+func Test_SetAead_RandomNonce(t *testing.T) {
+	ctx := context.Background()
+
+	newRandomNonceAead := func(t *testing.T) cipher.AEAD {
+		t.Helper()
+		block, err := aes.NewCipher(newTestKey(t))
+		require.NoError(t, err)
+		aead, err := cipher.NewGCMWithRandomNonce(block)
+		require.NoError(t, err)
+		return aead
+	}
+
+	t.Run("encrypt and decrypt round-trip", func(t *testing.T) {
+		w := NewWrapper()
+		w.SetAead(newRandomNonceAead(t))
+
+		blob, err := w.Encrypt(ctx, []byte("hello"))
+		require.NoError(t, err)
+
+		plain, err := w.Decrypt(ctx, blob)
+		require.NoError(t, err)
+		require.Equal(t, "hello", string(plain))
+	})
+
+	t.Run("WithIV rejected when NonceSize is 0", func(t *testing.T) {
+		w := NewWrapper()
+		w.SetAead(newRandomNonceAead(t))
+
+		_, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV(make([]byte, 12)))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "WithIV must not be set")
+	})
+
+	t.Run("decrypt with mismatched AEAD nonce size fails", func(t *testing.T) {
+		// Use the same key for both wrappers; the only difference is the nonce
+		// size used by each AEAD.
+		key := newTestKey(t)
+
+		// Encrypt with a 24-byte-nonce GCM variant. The wrapper prepends the
+		// 24-byte nonce to the ciphertext in BlobInfo.Ciphertext.
+		wEnc := NewWrapper()
+		block, err := aes.NewCipher(key)
+		require.NoError(t, err)
+		largeNonceAead, err := cipher.NewGCMWithNonceSize(block, 24)
+		require.NoError(t, err)
+		wEnc.SetAead(largeNonceAead)
+
+		blob, err := wEnc.Encrypt(ctx, []byte("hello"))
+		require.NoError(t, err)
+
+		// Attempt to decrypt with standard cipher.NewGCM (NonceSize == 12).
+		// It slices only 12 bytes as the nonce, leaving the remaining 12 bytes
+		// of the actual nonce inside the "ciphertext" and decrypt fails.
+		wDec := NewWrapper()
+		require.NoError(t, wDec.SetAesGcmKeyBytes(key))
+
+		_, err = wDec.Decrypt(ctx, blob)
+		require.Error(t, err)
+	})
 }
