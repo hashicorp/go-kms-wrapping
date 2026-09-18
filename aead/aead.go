@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"slices"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"golang.org/x/crypto/hkdf"
@@ -237,7 +238,7 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		if len(opts.WithIv) != ns {
 			return nil, fmt.Errorf("invalid IV length %d, AEAD requires %d bytes", len(opts.WithIv), ns)
 		}
-		iv = append([]byte(nil), opts.WithIv...)
+		iv = slices.Clone(opts.WithIv)
 	} else {
 		// No IV supplied; generate a random nonce.
 		iv = make([]byte, ns)
