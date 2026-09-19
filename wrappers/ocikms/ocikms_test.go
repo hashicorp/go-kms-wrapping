@@ -2,11 +2,14 @@
 package ocikms
 
 import (
+	"errors"
+	"net/http"
 	"os"
 	"reflect"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"golang.org/x/net/context"
 )
 
@@ -77,4 +80,70 @@ func initSeal(t *testing.T) *Wrapper {
 	}
 
 	return s
+}
+
+type stubOCIResponse struct {
+	status  int
+	nilHTTP bool
+}
+
+func (s stubOCIResponse) HTTPResponse() *http.Response {
+	if s.nilHTTP {
+		return nil
+	}
+	return &http.Response{StatusCode: s.status}
+}
+
+func TestGetRequestMetadata_RetryOn5xx(t *testing.T) {
+	errFakeSigner := errors.New("failed to construct authentication signer")
+	policy := NewWrapper().getRequestMetadata().RetryPolicy
+	if policy == nil || policy.ShouldRetryOperation == nil {
+		t.Fatal("expected retry policy with ShouldRetryOperation")
+	}
+
+	cases := []struct {
+		name string
+		resp common.OCIOperationResponse
+		want bool
+	}{
+		{
+			name: "nil response does not panic",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: nil},
+			want: false,
+		},
+		{
+			name: "no error",
+			resp: common.OCIOperationResponse{Response: stubOCIResponse{status: 500}},
+			want: false,
+		},
+		{
+			name: "error with 500",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: stubOCIResponse{status: 500}},
+			want: true,
+		},
+		{
+			name: "error with 400",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: stubOCIResponse{status: 400}},
+			want: false,
+		},
+		{
+			name: "error with nil HTTP response",
+			resp: common.OCIOperationResponse{Error: errFakeSigner, Response: stubOCIResponse{nilHTTP: true}},
+			want: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					t.Fatalf("ShouldRetryOperation panicked: %v", rec)
+				}
+			}()
+			got := policy.ShouldRetryOperation(tc.resp)
+			if got != tc.want {
+				t.Fatalf("ShouldRetryOperation() = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }
