@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"slices"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 	"golang.org/x/crypto/hkdf"
@@ -182,7 +183,7 @@ func (s *Wrapper) SetAesGcmKeyBytes(key []byte) error {
 		return err
 	}
 
-	aead, err := cipher.NewGCMWithRandomNonce(aesCipher)
+	aead, err := cipher.NewGCM(aesCipher)
 	if err != nil {
 		return err
 	}
@@ -226,29 +227,30 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, err
 	}
 
-	var iv []byte
-	aead := s.aead
+	if opts.WithRandomReader == nil {
+		opts.WithRandomReader = rand.Reader
+	}
 
-	if opts.WithRandomReader != rand.Reader {
-		aesCipher, err := aes.NewCipher(s.keyBytes)
-		if err != nil {
-			return nil, err
+	ns := s.aead.NonceSize()
+	var iv []byte
+	if opts.WithIv != nil {
+		// Caller supplied an explicit IV; validate it matches the AEAD's required size.
+		if len(opts.WithIv) != ns {
+			return nil, fmt.Errorf("invalid IV length %d, AEAD requires %d bytes", len(opts.WithIv), ns)
 		}
-		aead, err = cipher.NewGCM(aesCipher)
-		if err != nil {
-			return nil, err
-		}
-		iv = make([]byte, 12)
+		iv = slices.Clone(opts.WithIv)
+	} else {
+		// No IV supplied; generate a random nonce.
+		iv = make([]byte, ns)
 		n, err := opts.WithRandomReader.Read(iv)
 		if err != nil {
 			return nil, err
 		}
-		if n != 12 {
-			return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", 12, n)
+		if n != ns {
+			return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", ns, n)
 		}
 	}
-
-	ciphertext := aead.Seal(nil, iv, plaintext, opts.WithAad)
+	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
 
 	return &wrapping.BlobInfo{
 		Ciphertext: append(iv, ciphertext...),
@@ -278,7 +280,13 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 		return nil, err
 	}
 
-	plaintext, err := s.aead.Open(nil, nil, in.Ciphertext, opts.WithAad)
+	ns := s.aead.NonceSize()
+	if len(in.Ciphertext) < ns {
+		return nil, fmt.Errorf("invalid ciphertext length %d, must be at least %d bytes", len(in.Ciphertext), ns)
+	}
+	iv, ciphertext := in.Ciphertext[:ns], in.Ciphertext[ns:]
+
+	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
 	if err != nil {
 		return nil, err
 	}

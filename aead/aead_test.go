@@ -135,3 +135,60 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	require.Error(err)
 	require.Nil(subDecVal)
 }
+
+// newTestKey generates a random 32-byte AES key for use in tests.
+func newTestKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	return key
+}
+
+// newTestWrapper returns a Wrapper configured with a fresh random key.
+func newTestWrapper(t *testing.T) *Wrapper {
+	t.Helper()
+	w := NewWrapper()
+	require.NoError(t, w.SetAesGcmKeyBytes(newTestKey(t)))
+	return w
+}
+
+// Test_Encrypt_WithIV covers all four nonce-handling cases in Encrypt.
+func Test_Encrypt_WithIV(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("explicit nonce via WithIV", func(t *testing.T) {
+		w := newTestWrapper(t)
+		iv := make([]byte, 12)
+		_, err := rand.Read(iv)
+		require.NoError(t, err)
+
+		blob, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV(iv))
+		require.NoError(t, err)
+		// The prepended nonce in the blob should match what we supplied.
+		require.Equal(t, iv, blob.Ciphertext[:12])
+
+		plain, err := w.Decrypt(ctx, blob)
+		require.NoError(t, err)
+		require.Equal(t, "hello", string(plain))
+	})
+
+	t.Run("WithIV wrong length returns error", func(t *testing.T) {
+		w := newTestWrapper(t)
+		_, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV([]byte("short")))
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid IV length")
+	})
+
+	t.Run("random nonce generated when WithIV not set", func(t *testing.T) {
+		w := newTestWrapper(t)
+		blob, err := w.Encrypt(ctx, []byte("hello"))
+		require.NoError(t, err)
+		// Ciphertext must be longer than the 12-byte nonce prefix.
+		require.Greater(t, len(blob.Ciphertext), 12)
+
+		plain, err := w.Decrypt(ctx, blob)
+		require.NoError(t, err)
+		require.Equal(t, "hello", string(plain))
+	})
+}
