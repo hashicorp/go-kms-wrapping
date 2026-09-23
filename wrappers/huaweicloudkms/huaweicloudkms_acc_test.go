@@ -17,7 +17,8 @@ import (
 // To run this test, the following env variables need to be set:
 //   - VAULT_HUAWEICLOUDKMS_SEAL_KEY_ID or HUAWEICLOUDKMS_WRAPPER_KEY_ID
 //   - HUAWEICLOUD_REGION
-//   - HUAWEICLOUD_PROJECT
+//   - HUAWEICLOUD_PROJECT (optional project ID)
+//   - HUAWEICLOUD_KMS_ENDPOINT (optional, for regions the SDK does not list)
 //   - HUAWEICLOUD_ACCESS_KEY
 //   - HUAWEICLOUD_SECRET_KEY
 func TestAccHuaweiCloudKmsWrapper_Lifecycle(t *testing.T) {
