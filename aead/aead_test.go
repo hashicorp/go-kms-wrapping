@@ -164,6 +164,11 @@ func Test_Encrypt_WithIV(t *testing.T) {
 		require.NoError(t, err)
 
 		blob, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV(iv))
+		if w.aead.NonceSize() == 0 {
+			require.Nil(t, blob)
+			require.ErrorContains(t, err, "explicit IV is not supported")
+			return
+		}
 		require.NoError(t, err)
 		// The prepended nonce in the blob should match what we supplied.
 		require.Equal(t, iv, blob.Ciphertext[:12])
@@ -176,6 +181,10 @@ func Test_Encrypt_WithIV(t *testing.T) {
 	t.Run("WithIV wrong length returns error", func(t *testing.T) {
 		w := newTestWrapper(t)
 		_, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV([]byte("short")))
+		if w.aead.NonceSize() == 0 {
+			require.ErrorContains(t, err, "explicit IV is not supported")
+			return
+		}
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid IV length")
 	})
