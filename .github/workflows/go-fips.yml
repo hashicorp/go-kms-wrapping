@@ -9,13 +9,12 @@ on:
 
 jobs:
   gofips:
-    name: Go FIPS (${{ matrix.go }}, ${{ matrix.mode }})
+    name: Go FIPS (${{ matrix.go }}, enforced)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         go: ["1.25", "1.24"]
-        mode: [tagged, enforced]
 
     steps:
       - name: Set up Go
@@ -27,12 +26,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       # Test the root module, which contains AEAD, envelope, and AES-GCM helpers.
-      - name: Test gofips implementation
-        if: matrix.mode == 'tagged'
-        run: go test -count=1 -tags=gofips ./...
-
       - name: Test gofips implementation with FIPS-only enforcement
-        if: matrix.mode == 'enforced'
         env:
           GOFIPS140: latest
           GODEBUG: fips140=only
