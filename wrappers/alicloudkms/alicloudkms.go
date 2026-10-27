@@ -12,7 +12,8 @@ import (
 	"sync/atomic"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
-	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/providers"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
 )
@@ -96,31 +97,47 @@ func (k *Wrapper) SetConfig(_ context.Context, opt ...wrapping.Option) (*wrappin
 			k.domain = opts.withDomain
 		}
 
-		// Build the optional, configuration-based piece of the credential chain.
-		credConfig := &providers.Configuration{
-			AccessKeyID:     opts.withAccessKey,
-			AccessKeySecret: opts.withSecretKey,
-		}
-		if credConfig.AccessKeySecret == "" {
-			credConfig.AccessKeySecret = opts.withAccessSecret
+		// Determine the access secret from either of the two config option names.
+		accessSecret := opts.withSecretKey
+		if accessSecret == "" {
+			accessSecret = opts.withAccessSecret
 		}
 
-		credentialChain := []providers.Provider{
-			providers.NewEnvCredentialProvider(),
-			providers.NewConfigurationCredentialProvider(credConfig),
-			providers.NewInstanceMetadataProvider(),
-		}
-		credProvider := providers.NewChainProvider(credentialChain)
-
-		creds, err := credProvider.Retrieve()
-		if err != nil {
-			return nil, err
-		}
 		clientConfig := sdk.NewConfig()
 		clientConfig.Scheme = "https"
-		client, err := kms.NewClientWithOptions(region, clientConfig, creds)
+
+		// Credential selection.
+		//
+		// Previously the wrapper resolved credentials once via
+		// providers.NewChainProvider(...).Retrieve() and injected the resulting
+		// STATIC snapshot into the KMS client. For an ECS RAM role that snapshot is
+		// a short-lived STS token (~6h) that is never refreshed, so every KMS call
+		// fails with InvalidAccessKeyId.NotFound once it expires, until the process
+		// restarts.
+		//
+		// Fix: build a static AccessKey credential ONLY when explicit keys are
+		// provided via config/env. Otherwise pass a nil credential so the SDK falls
+		// back to its auto-refreshing default credentials chain (env -> OIDC -> ECS
+		// RAM role), which renews the STS token before it expires. This keeps
+		// long-running processes working indefinitely.
+		var cred auth.Credential
+		if opts.withAccessKey != "" && accessSecret != "" {
+			cred = credentials.NewAccessKeyCredential(opts.withAccessKey, accessSecret)
+		}
+		// cred == nil -> SDK uses the auto-refreshing default credentials chain.
+
+		client, err := kms.NewClientWithOptions(region, clientConfig, cred)
 		if err != nil {
 			return nil, err
+		}
+
+		// Pin the KMS endpoint on the client itself, not only per request. The SDK
+		// resolves some calls (e.g. DescribeKey) via client.Domain rather than the
+		// per-request Domain, so a configured VPC endpoint can otherwise be bypassed
+		// and the call hits the public endpoint. Setting client.Domain makes every
+		// call use the configured endpoint.
+		if k.domain != "" {
+			client.Domain = k.domain
 		}
 		k.client = client
 	}
