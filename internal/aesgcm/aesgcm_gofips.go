@@ -9,6 +9,7 @@ package aesgcm
 
 import (
 	"crypto/cipher"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -21,13 +22,13 @@ func New(block cipher.Block) (cipher.AEAD, error) {
 
 func Seal(aead cipher.AEAD, plaintext, nonce, additionalData []byte, randomReader io.Reader) ([]byte, []byte, error) {
 	if aead.NonceSize() != 0 {
-		return nil, nil, fmt.Errorf("AEAD does not use Go-managed nonces in the gofips build")
+		return nil, nil, errors.New("AEAD does not use Go-managed nonces in the gofips build")
 	}
 	if nonce != nil {
-		return nil, nil, fmt.Errorf("explicit IV is not supported by the gofips build")
+		return nil, nil, errors.New("explicit IV is not supported by the gofips build")
 	}
 	if randomReader != nil {
-		return nil, nil, fmt.Errorf("random reader option is not supported by the gofips build")
+		return nil, nil, errors.New("random reader option is not supported by the gofips build")
 	}
 	sealed := aead.Seal(nil, nil, plaintext, additionalData)
 	if len(sealed) < nonceSize {
@@ -46,7 +47,7 @@ func SealBlob(aead cipher.AEAD, plaintext, nonce, additionalData []byte, randomR
 
 func Open(aead cipher.AEAD, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	if aead.NonceSize() != 0 {
-		return nil, fmt.Errorf("AEAD does not use Go-managed nonces in the gofips build")
+		return nil, errors.New("AEAD does not use Go-managed nonces in the gofips build")
 	}
 	if len(nonce) != nonceSize {
 		return nil, fmt.Errorf("invalid IV length %d, AEAD requires %d bytes", len(nonce), nonceSize)
