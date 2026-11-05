@@ -7,9 +7,8 @@ package aead
 
 import (
 	"context"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
+	"encoding/hex"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -60,16 +59,11 @@ func TestWrapperRandomNonceRejectsCallerNonceSources(t *testing.T) {
 func TestWrapperDecryptsLegacyCiphertext(t *testing.T) {
 	ctx := context.Background()
 	key := make([]byte, 32)
-	nonce := make([]byte, 12)
-	_, err := rand.Read(nonce)
-	require.NoError(t, err)
-
-	block, err := aes.NewCipher(key)
-	require.NoError(t, err)
-	legacyAEAD, err := cipher.NewGCM(block)
-	require.NoError(t, err)
 	plaintext := []byte("legacy ciphertext")
-	legacyCiphertext := legacyAEAD.Seal(nil, nonce, plaintext, nil)
+	nonce, err := hex.DecodeString("000102030405060708090a0b")
+	require.NoError(t, err)
+	legacyCiphertext, err := hex.DecodeString("e4ae54336384af9aab083a808f77bb7420b9ad39b531869264e4b86cfb3c707731")
+	require.NoError(t, err)
 	blob := &wrapping.BlobInfo{
 		Ciphertext: append(nonce, legacyCiphertext...),
 	}

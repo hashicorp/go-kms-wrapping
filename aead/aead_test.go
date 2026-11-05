@@ -76,7 +76,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	sub, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub"),
 		wrapping.WithConfigMap(map[string]string{
-			"salt": base64.StdEncoding.EncodeToString([]byte("zip")),
+			"salt": base64.StdEncoding.EncodeToString([]byte("boundary-test-salt")),
 			"info": base64.StdEncoding.EncodeToString([]byte("zap")),
 		}),
 	)
@@ -109,7 +109,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	// direct options values this time.
 	sub2, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		WithSalt([]byte("zip")),
+		WithSalt([]byte("boundary-test-salt")),
 		WithInfo([]byte("zap")),
 	)
 	require.NoError(err)
@@ -126,7 +126,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	subBad, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
 		wrapping.WithConfigMap(map[string]string{
-			"salt": base64.StdEncoding.EncodeToString([]byte("zap")),
+			"salt": base64.StdEncoding.EncodeToString([]byte("boundary-other-salt")),
 			"info": base64.StdEncoding.EncodeToString([]byte("zip")),
 		}),
 	)

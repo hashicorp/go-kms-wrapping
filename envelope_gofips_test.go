@@ -6,9 +6,7 @@
 package wrapping
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,17 +35,13 @@ func TestEnvelopeEncryptRejectsExplicitIV(t *testing.T) {
 
 func TestEnvelopeDecryptsLegacyCiphertext(t *testing.T) {
 	key := make([]byte, 32)
-	nonce := make([]byte, 12)
-	_, err := rand.Read(nonce)
+	nonce, err := hex.DecodeString("000102030405060708090a0b")
 	require.NoError(t, err)
-
-	block, err := aes.NewCipher(key)
+	plaintext := []byte("legacy ciphertext")
+	ciphertext, err := hex.DecodeString("e4ae54336384af9aab083a808f77bb7420b9ad39b531869264e4b86cfb3c707731")
 	require.NoError(t, err)
-	legacyAEAD, err := cipher.NewGCM(block)
-	require.NoError(t, err)
-	plaintext := []byte("legacy envelope")
 	envelope := &EnvelopeInfo{
-		Ciphertext: legacyAEAD.Seal(nil, nonce, plaintext, nil),
+		Ciphertext: ciphertext,
 		Key:        key,
 		Iv:         nonce,
 	}
