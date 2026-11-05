@@ -82,6 +82,21 @@ storage.
 
 `go get github.com/hashicorp/go-kms-wrapping/v2`
 
+## Native Go FIPS Builds
+
+Build with the `gofips` build tag to select native Go FIPS AES-GCM behavior:
+
+```sh
+go build -tags=gofips ./...
+```
+
+This implementation lets Go generate and prepend GCM nonces. Without the tag,
+the library uses standard AES-GCM, which supports caller-provided nonces and is
+used by BoringCrypto builds. The `gofips` tag is distinct from the generic
+`fips` tag used for BoringCrypto builds. Selecting the tag does not itself
+enable Go FIPS mode; configure the Go FIPS module and runtime mode as required
+for your deployment.
+
 ## Overview
 
 The library exports a `Wrapper` interface that is implemented by multiple

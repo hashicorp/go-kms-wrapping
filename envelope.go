@@ -6,9 +6,9 @@ package wrapping
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"errors"
 	fmt "fmt"
 
+	"github.com/hashicorp/go-kms-wrapping/v2/internal/aesgcm"
 	uuid "github.com/hashicorp/go-uuid"
 )
 
@@ -21,6 +21,7 @@ import (
 //
 // * wrapping.WithAad: Additional authenticated data that should be sourced from
 // a separate location, and must also be provided during envelope decryption
+// * wrapping.WithIV: A caller-supplied IV. This option is unsupported in a gofips build.
 func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 	opts, err := GetOpts(opt...)
 	if err != nil {
@@ -33,26 +34,18 @@ func EnvelopeEncrypt(plaintext []byte, opt ...Option) (*EnvelopeInfo, error) {
 		return nil, err
 	}
 
-	var iv []byte
-	if opts.WithIv != nil {
-		if len(opts.WithIv) != 12 {
-			return nil, fmt.Errorf("invalid IV provided: expected 12 bytes, got %d", len(opts.WithIv))
-		}
-		iv = opts.WithIv
-	} else {
-		iv, err = uuid.GenerateRandomBytes(12)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	aead, err := aeadEncrypter(key)
 	if err != nil {
 		return nil, err
 	}
 
+	iv, ciphertext, err := aesgcm.Seal(aead, plaintext, opts.WithIv, opts.WithAad, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return &EnvelopeInfo{
-		Ciphertext: aead.Seal(nil, iv, plaintext, opts.WithAad),
+		Ciphertext: ciphertext,
 		Key:        key,
 		Iv:         iv,
 	}, nil
@@ -82,10 +75,7 @@ func EnvelopeDecrypt(data *EnvelopeInfo, opt ...Option) ([]byte, error) {
 		return nil, err
 	}
 
-	if len(data.Iv) != 12 {
-		return nil, fmt.Errorf("invalid IV: expected 12 bytes, got %d", len(data.Iv))
-	}
-	return aead.Open(nil, data.Iv, data.Ciphertext, opts.WithAad)
+	return aesgcm.Open(aead, data.Iv, data.Ciphertext, opts.WithAad)
 }
 
 func aeadEncrypter(key []byte) (cipher.AEAD, error) {
@@ -95,9 +85,9 @@ func aeadEncrypter(key []byte) (cipher.AEAD, error) {
 	}
 
 	// Create the GCM mode AEAD
-	gcm, err := cipher.NewGCM(aesCipher)
+	gcm, err := aesgcm.New(aesCipher)
 	if err != nil {
-		return nil, errors.New("failed to initialize GCM mode")
+		return nil, fmt.Errorf("failed to initialize GCM mode: %w", err)
 	}
 
 	return gcm, nil
