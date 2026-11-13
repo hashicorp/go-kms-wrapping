@@ -1,0 +1,48 @@
+name: Go FIPS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Validate the gofips implementation under normal FIPS runtime behavior.
+  gofips:
+    name: Go FIPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
+        with:
+          go-version: "1.26"
+
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Test gofips implementation (fips140=on)
+        env:
+          GOFIPS140: latest
+          GODEBUG: fips140=on
+        run: go test -count=1 -tags=gofips ./...
+
+  # Detect operations rejected by Go's best-effort FIPS-only checks.
+  gofips-only:
+    name: Go FIPS (fips140=only)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b
+        with:
+          go-version: "1.26"
+
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Test gofips implementation with FIPS-only enforcement
+        env:
+          GOFIPS140: latest
+          GODEBUG: fips140=only
+        run: go test -count=1 -tags=gofips ./...

@@ -76,7 +76,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	sub, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub"),
 		wrapping.WithConfigMap(map[string]string{
-			"salt": base64.StdEncoding.EncodeToString([]byte("zip")),
+			"salt": base64.StdEncoding.EncodeToString([]byte("boundary-test-salt")),
 			"info": base64.StdEncoding.EncodeToString([]byte("zap")),
 		}),
 	)
@@ -109,7 +109,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	// direct options values this time.
 	sub2, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
-		WithSalt([]byte("zip")),
+		WithSalt([]byte("boundary-test-salt")),
 		WithInfo([]byte("zap")),
 	)
 	require.NoError(err)
@@ -126,7 +126,7 @@ func testDerivation(t *testing.T, root *Wrapper, encBlob *wrapping.BlobInfo) {
 	subBad, err := root.NewDerivedWrapper(
 		wrapping.WithKeyId("sub2"),
 		wrapping.WithConfigMap(map[string]string{
-			"salt": base64.StdEncoding.EncodeToString([]byte("zap")),
+			"salt": base64.StdEncoding.EncodeToString([]byte("boundary-other-salt")),
 			"info": base64.StdEncoding.EncodeToString([]byte("zip")),
 		}),
 	)
@@ -164,6 +164,11 @@ func Test_Encrypt_WithIV(t *testing.T) {
 		require.NoError(t, err)
 
 		blob, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV(iv))
+		if w.aead.NonceSize() == 0 {
+			require.Nil(t, blob)
+			require.ErrorContains(t, err, "explicit IV is not supported")
+			return
+		}
 		require.NoError(t, err)
 		// The prepended nonce in the blob should match what we supplied.
 		require.Equal(t, iv, blob.Ciphertext[:12])
@@ -176,6 +181,10 @@ func Test_Encrypt_WithIV(t *testing.T) {
 	t.Run("WithIV wrong length returns error", func(t *testing.T) {
 		w := newTestWrapper(t)
 		_, err := w.Encrypt(ctx, []byte("hello"), wrapping.WithIV([]byte("short")))
+		if w.aead.NonceSize() == 0 {
+			require.ErrorContains(t, err, "explicit IV is not supported")
+			return
+		}
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid IV length")
 	})

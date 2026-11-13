@@ -107,7 +107,8 @@ func WithConfigMap(with map[string]string) Option {
 	}
 }
 
-// WithIV provides a 12-byte initialization vector for an operation
+// WithIV provides a 12-byte initialization vector for an operation. The AEAD
+// wrapper returns an error when explicitly supplied IVs are used in a gofips build.
 func WithIV(with []byte) Option {
 	return func() interface{} {
 		return OptionFunc(func(o *Options) error {

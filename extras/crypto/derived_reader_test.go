@@ -42,13 +42,13 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  aeadWrapper,
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := aeadWrapper.(*aead.Wrapper).KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
-					R: hkdf.New(sha256.New, b, []byte("salt"), nil),
+					R: hkdf.New(sha256.New, b, []byte("strict-fips-test"), nil),
 					N: 32,
 				}
 				return r
@@ -59,13 +59,13 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  aeadWrapper,
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := aeadWrapper.(*aead.Wrapper).KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
-					R: hkdf.New(sha256.New, b, []byte("salt"), []byte("info")),
+					R: hkdf.New(sha256.New, b, []byte("strict-fips-test"), []byte("info")),
 					N: 32,
 				}
 				return r
@@ -76,13 +76,13 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  testWrapper,
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := testWrapper.KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
-					R: hkdf.New(sha256.New, b, []byte("salt"), nil),
+					R: hkdf.New(sha256.New, b, []byte("strict-fips-test"), nil),
 					N: 32,
 				}
 				return r
@@ -93,13 +93,13 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  testWrapper,
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			want: func() *io.LimitedReader {
 				b, err := testWrapper.KeyBytes(ctx)
 				require.NoError(t, err)
 				r := &io.LimitedReader{
-					R: hkdf.New(sha256.New, b, []byte("salt"), []byte("info")),
+					R: hkdf.New(sha256.New, b, []byte("strict-fips-test"), []byte("info")),
 					N: 32,
 				}
 				return r
@@ -110,14 +110,14 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  pooledWrapper,
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			want: func() *io.LimitedReader {
 				raw := pooledWrapper.(*multi.PooledWrapper).WrapperForKeyId("__base__")
 				b, err := raw.(*aead.Wrapper).KeyBytes(ctx)
 				require.NoError(t, err)
 				return &io.LimitedReader{
-					R: hkdf.New(sha256.New, b, []byte("salt"), nil),
+					R: hkdf.New(sha256.New, b, []byte("strict-fips-test"), nil),
 					N: 32,
 				}
 			}(),
@@ -127,7 +127,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  &unknownWrapper{},
 				lenLimit: 20,
-				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -138,7 +138,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  nil,
 				lenLimit: 10,
-				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithInfo([]byte("info")), crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -160,7 +160,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  &aead.Wrapper{},
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -171,7 +171,7 @@ func TestNewDerivedReader(t *testing.T) {
 			args: args{
 				wrapper:  &wrapping.TestWrapper{},
 				lenLimit: 32,
-				opt:      []wrapping.Option{crypto.WithSalt([]byte("salt"))},
+				opt:      []wrapping.Option{crypto.WithSalt([]byte("strict-fips-test"))},
 			},
 			wantErr:         true,
 			wantErrCode:     wrapping.ErrInvalidParameter,
@@ -191,7 +191,16 @@ func TestNewDerivedReader(t *testing.T) {
 				return
 			}
 			require.NoError(err)
-			assert.Equal(tc.want, got)
+			assert.Equal(tc.want.N, got.N)
+
+			wantBytes := make([]byte, tc.want.N)
+			_, err = io.ReadFull(tc.want, wantBytes)
+			require.NoError(err)
+
+			gotBytes := make([]byte, got.N)
+			_, err = io.ReadFull(got, gotBytes)
+			require.NoError(err)
+			assert.Equal(wantBytes, gotBytes)
 		})
 	}
 }
