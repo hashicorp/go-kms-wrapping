@@ -5,6 +5,8 @@ package crypto_test
 
 import (
 	"context"
+	"os"
+	"strings"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
@@ -112,13 +114,6 @@ func Test_HmacSha256(t *testing.T) {
 			wantHmac: crypto.TestWithBlake2b(t, []byte("test"), testWrapper, nil, nil, crypto.WithPrk([]byte("prk-0123456789012345678901234567890"))),
 		},
 		{
-			name:     "withEd25519",
-			data:     []byte("test"),
-			wrapper:  testWrapper,
-			opts:     []wrapping.Option{crypto.WithEd25519()},
-			wantHmac: crypto.TestWithEd25519(t, []byte("test"), testWrapper, nil, nil),
-		},
-		{
 			name:     "blake2b-WithMarshaledSigInfo",
 			data:     []byte("test"),
 			wrapper:  testWrapper,
@@ -159,6 +154,17 @@ func Test_HmacSha256(t *testing.T) {
 		})
 	}
 
+	t.Run("withEd25519", func(t *testing.T) {
+		if isFips140Only() {
+			t.Skip("Ed25519 key generation from a derived reader is not permitted in FIPS 140-only mode")
+		}
+
+		want := crypto.TestWithEd25519(t, []byte("test"), testWrapper, nil, nil)
+		got, err := crypto.HmacSha256(testCtx, []byte("test"), testWrapper, crypto.WithEd25519())
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
 	t.Run("HmacSha256WithPrk", func(t *testing.T) {
 		assert, require := assert.New(t), require.New(t)
 		hm, err := crypto.HmacSha256WithPrk(testCtx, []byte("test"), []byte("prk-0123456789012345678901234567890"))
@@ -166,4 +172,13 @@ func Test_HmacSha256(t *testing.T) {
 		want := crypto.TestWithBlake2b(t, []byte("test"), testWrapper, nil, nil, crypto.WithPrk([]byte("prk-0123456789012345678901234567890")))
 		assert.Equal(want, hm)
 	})
+}
+
+func isFips140Only() bool {
+	for _, setting := range strings.Split(os.Getenv("GODEBUG"), ",") {
+		if setting == "fips140=only" {
+			return true
+		}
+	}
+	return false
 }

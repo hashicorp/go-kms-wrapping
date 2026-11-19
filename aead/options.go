@@ -4,7 +4,6 @@
 package aead
 
 import (
-	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -103,9 +102,8 @@ type options struct {
 
 func getDefaultOptions() options {
 	return options{
-		WithAeadType:     wrapping.AeadTypeAesGcm,
-		WithHashType:     wrapping.HashTypeSha256,
-		WithRandomReader: rand.Reader,
+		WithAeadType: wrapping.AeadTypeAesGcm,
+		WithHashType: wrapping.HashTypeSha256,
 	}
 }
 
@@ -159,7 +157,8 @@ func WithSalt(salt []byte) wrapping.Option {
 	}
 }
 
-// WithRandomReader provides an optional random reader
+// WithRandomReader provides an optional random reader. A non-nil reader is not
+// supported in a gofips build, where Go generates the nonce internally.
 func WithRandomReader(reader io.Reader) wrapping.Option {
 	return func() interface{} {
 		return OptionFunc(func(o *options) error {

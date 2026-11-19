@@ -7,14 +7,13 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"hash"
-	"slices"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/hashicorp/go-kms-wrapping/v2/internal/aesgcm"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -183,7 +182,7 @@ func (s *Wrapper) SetAesGcmKeyBytes(key []byte) error {
 		return err
 	}
 
-	aead, err := cipher.NewGCM(aesCipher)
+	aead, err := aesgcm.New(aesCipher)
 	if err != nil {
 		return err
 	}
@@ -227,33 +226,13 @@ func (s *Wrapper) Encrypt(_ context.Context, plaintext []byte, opt ...wrapping.O
 		return nil, err
 	}
 
-	if opts.WithRandomReader == nil {
-		opts.WithRandomReader = rand.Reader
+	ciphertext, err := aesgcm.SealBlob(s.aead, plaintext, opts.WithIv, opts.WithAad, opts.WithRandomReader)
+	if err != nil {
+		return nil, err
 	}
-
-	ns := s.aead.NonceSize()
-	var iv []byte
-	if opts.WithIv != nil {
-		// Caller supplied an explicit IV; validate it matches the AEAD's required size.
-		if len(opts.WithIv) != ns {
-			return nil, fmt.Errorf("invalid IV length %d, AEAD requires %d bytes", len(opts.WithIv), ns)
-		}
-		iv = slices.Clone(opts.WithIv)
-	} else {
-		// No IV supplied; generate a random nonce.
-		iv = make([]byte, ns)
-		n, err := opts.WithRandomReader.Read(iv)
-		if err != nil {
-			return nil, err
-		}
-		if n != ns {
-			return nil, fmt.Errorf("expected to read %d bytes for iv, got %d", ns, n)
-		}
-	}
-	ciphertext := s.aead.Seal(nil, iv, plaintext, opts.WithAad)
 
 	return &wrapping.BlobInfo{
-		Ciphertext: append(iv, ciphertext...),
+		Ciphertext: ciphertext,
 		KeyInfo: &wrapping.KeyInfo{
 			KeyId: s.keyId,
 		},
@@ -279,17 +258,5 @@ func (s *Wrapper) Decrypt(_ context.Context, in *wrapping.BlobInfo, opt ...wrapp
 	if err != nil {
 		return nil, err
 	}
-
-	ns := s.aead.NonceSize()
-	if len(in.Ciphertext) < ns {
-		return nil, fmt.Errorf("invalid ciphertext length %d, must be at least %d bytes", len(in.Ciphertext), ns)
-	}
-	iv, ciphertext := in.Ciphertext[:ns], in.Ciphertext[ns:]
-
-	plaintext, err := s.aead.Open(nil, iv, ciphertext, opts.WithAad)
-	if err != nil {
-		return nil, err
-	}
-
-	return plaintext, nil
+	return aesgcm.OpenBlob(s.aead, in.Ciphertext, opts.WithAad)
 }
