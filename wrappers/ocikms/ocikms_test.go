@@ -2,11 +2,14 @@
 package ocikms
 
 import (
+	"errors"
+	"net/http"
 	"os"
 	"reflect"
 	"testing"
 
 	wrapping "github.com/hashicorp/go-kms-wrapping/v2"
+	"github.com/oracle/oci-go-sdk/v65/common"
 	"golang.org/x/net/context"
 )
 
@@ -17,6 +20,40 @@ import (
 * 2. Go to ocikms folder: vault/vault/seal/ocikms
 *		VAULT_OCIKMS_SEAL_KEY_ID="your-kms-key" VAULT_OCIKMS_CRYPTO_ENDPOINT="your-kms-crypto-endpoint" go test
  */
+
+func TestRetrySkipsMissingResponse(t *testing.T) {
+	policy := (&Wrapper{}).getRequestMetadata().RetryPolicy
+	if policy == nil || policy.ShouldRetryOperation == nil {
+		t.Fatal("missing retry policy")
+	}
+	should := policy.ShouldRetryOperation
+
+	if should(common.OCIOperationResponse{Error: errors.New("signer")}) {
+		t.Fatal("retried a nil response")
+	}
+	if !should(common.OCIOperationResponse{Error: errors.New("upstream"), Response: httpStatus(500)}) {
+		t.Fatal("did not retry a 500")
+	}
+	if should(common.OCIOperationResponse{Error: errors.New("upstream"), Response: httpStatus(404)}) {
+		t.Fatal("retried a 404")
+	}
+	if should(common.OCIOperationResponse{Response: httpStatus(500)}) {
+		t.Fatal("retried a 500 without an error")
+	}
+	if should(common.OCIOperationResponse{Error: errors.New("upstream"), Response: nilHTTPResponse{}}) {
+		t.Fatal("retried a response with no HTTP response")
+	}
+}
+
+type httpStatus int
+
+func (s httpStatus) HTTPResponse() *http.Response {
+	return &http.Response{StatusCode: int(s)}
+}
+
+type nilHTTPResponse struct{}
+
+func (nilHTTPResponse) HTTPResponse() *http.Response { return nil }
 
 func TestWrapper(t *testing.T) {
 	initSeal(t)
